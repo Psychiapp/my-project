@@ -1,0 +1,1071 @@
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  SafeAreaView,
+  TouchableOpacity,
+  Modal,
+  TextInput,
+  Alert,
+  ActivityIndicator,
+} from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { router } from 'expo-router';
+import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
+import {
+  cancelSessionWithRefund,
+  rescheduleSession,
+  formatCurrency,
+  getSessionPrice,
+} from '@/lib/refunds';
+import {
+  sendSessionCancelledNotification,
+  sendSessionRescheduledNotification,
+  cancelSessionReminders,
+  scheduleAllSessionReminders,
+} from '@/lib/notifications';
+
+type SessionTab = 'upcoming' | 'past';
+
+interface Session {
+  id: string;
+  clientName: string;
+  clientEmail: string;
+  type: 'chat' | 'phone' | 'video';
+  date: string;
+  time: string;
+  scheduledAt: string;
+  duration: number;
+  earnings?: number;
+  rating?: number;
+}
+
+const mockUpcomingSessions: Session[] = [
+  {
+    id: '1',
+    clientName: 'John D.',
+    clientEmail: 'john@example.com',
+    type: 'video',
+    date: 'Today',
+    time: '2:00 PM',
+    scheduledAt: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(), // 2 hours from now
+    duration: 45,
+  },
+  {
+    id: '2',
+    clientName: 'Sarah M.',
+    clientEmail: 'sarah@example.com',
+    type: 'chat',
+    date: 'Tomorrow',
+    time: '10:00 AM',
+    scheduledAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // Tomorrow
+    duration: 30,
+  },
+  {
+    id: '3',
+    clientName: 'Michael R.',
+    clientEmail: 'michael@example.com',
+    type: 'phone',
+    date: 'Thu, Jan 16',
+    time: '3:00 PM',
+    scheduledAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days from now
+    duration: 30,
+  },
+];
+
+const mockPastSessions: Session[] = [
+  {
+    id: '4',
+    clientName: 'Emily K.',
+    clientEmail: 'emily@example.com',
+    type: 'video',
+    date: 'Jan 10, 2026',
+    time: '11:00 AM',
+    scheduledAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+    duration: 45,
+    earnings: 15.0,
+    rating: 5,
+  },
+  {
+    id: '5',
+    clientName: 'David L.',
+    clientEmail: 'david@example.com',
+    type: 'chat',
+    date: 'Jan 8, 2026',
+    time: '2:00 PM',
+    scheduledAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+    duration: 30,
+    earnings: 5.25,
+    rating: 5,
+  },
+];
+
+const typeIcons: Record<string, string> = {
+  chat: '💬',
+  phone: '📞',
+  video: '🎥',
+};
+
+// Available time slots for rescheduling
+const TIME_SLOTS = [
+  '9:00 AM', '10:00 AM', '11:00 AM',
+  '1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM', '5:00 PM',
+];
+
+export default function SupporterSessionsScreen() {
+  const [activeTab, setActiveTab] = useState<SessionTab>('upcoming');
+  const [sessions, setSessions] = useState(mockUpcomingSessions);
+
+  // Modal states
+  const [cancelModalVisible, setCancelModalVisible] = useState(false);
+  const [rescheduleModalVisible, setRescheduleModalVisible] = useState(false);
+  const [selectedSession, setSelectedSession] = useState<Session | null>(null);
+  const [cancelReason, setCancelReason] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  // Reschedule states
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedTime, setSelectedTime] = useState<string | null>(null);
+
+  // Generate next 7 days for date selection
+  const getAvailableDates = () => {
+    const dates: Date[] = [];
+    for (let i = 1; i <= 7; i++) {
+      const date = new Date();
+      date.setDate(date.getDate() + i);
+      dates.push(date);
+    }
+    return dates;
+  };
+
+  const formatDateOption = (date: Date) => {
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${days[date.getDay()]}, ${months[date.getMonth()]} ${date.getDate()}`;
+  };
+
+  const handleCancelPress = (session: Session) => {
+    setSelectedSession(session);
+    setCancelReason('');
+    setCancelModalVisible(true);
+  };
+
+  const handleReschedulePress = (session: Session) => {
+    setSelectedSession(session);
+    setSelectedDate(null);
+    setSelectedTime(null);
+    setRescheduleModalVisible(true);
+  };
+
+  const confirmCancellation = async () => {
+    if (!selectedSession) return;
+
+    if (!cancelReason.trim()) {
+      Alert.alert('Reason Required', 'Please provide a reason for cancellation.');
+      return;
+    }
+
+    setIsProcessing(true);
+
+    const sessionPrice = getSessionPrice(selectedSession.type);
+    const result = await cancelSessionWithRefund(
+      {
+        sessionId: selectedSession.id,
+        clientName: selectedSession.clientName,
+        clientEmail: selectedSession.clientEmail,
+        sessionType: selectedSession.type,
+        amount: sessionPrice,
+        scheduledAt: selectedSession.scheduledAt,
+      },
+      cancelReason,
+      'supporter'
+    );
+
+    setIsProcessing(false);
+
+    if (result.success) {
+      // Cancel any scheduled reminders for this session
+      await cancelSessionReminders(selectedSession.id);
+
+      // Notify the client about the cancellation
+      await sendSessionCancelledNotification({
+        sessionId: selectedSession.id,
+        sessionType: selectedSession.type,
+        date: selectedSession.date,
+        otherPartyName: 'Your supporter', // Supporter name would come from auth context in production
+        isSupporter: false, // Sending to client
+        refundAmount: formatCurrency(result.refundAmount),
+      });
+
+      // Remove session from list
+      setSessions(sessions.filter(s => s.id !== selectedSession.id));
+      setCancelModalVisible(false);
+
+      Alert.alert(
+        'Session Cancelled',
+        `The session with ${selectedSession.clientName} has been cancelled.\n\nA full refund of ${formatCurrency(result.refundAmount)} has been processed for the client.`,
+        [{ text: 'OK' }]
+      );
+    } else {
+      Alert.alert('Error', result.error || 'Failed to cancel session. Please try again.');
+    }
+  };
+
+  const confirmReschedule = async () => {
+    if (!selectedSession || !selectedDate || !selectedTime) {
+      Alert.alert('Select Date & Time', 'Please select both a date and time for the rescheduled session.');
+      return;
+    }
+
+    setIsProcessing(true);
+
+    // Parse the selected time
+    const [time, period] = selectedTime.split(' ');
+    const [hours, minutes] = time.split(':').map(Number);
+    const adjustedHours = period === 'PM' && hours !== 12 ? hours + 12 : hours;
+
+    const newScheduledTime = new Date(selectedDate);
+    newScheduledTime.setHours(adjustedHours, minutes, 0, 0);
+
+    const sessionPrice = getSessionPrice(selectedSession.type);
+    const result = await rescheduleSession(
+      {
+        sessionId: selectedSession.id,
+        clientName: selectedSession.clientName,
+        clientEmail: selectedSession.clientEmail,
+        sessionType: selectedSession.type,
+        amount: sessionPrice,
+        scheduledAt: selectedSession.scheduledAt,
+      },
+      newScheduledTime,
+      'supporter'
+    );
+
+    setIsProcessing(false);
+
+    if (result.success) {
+      // Cancel old reminders and schedule new ones
+      await cancelSessionReminders(selectedSession.id);
+      await scheduleAllSessionReminders({
+        sessionId: selectedSession.id,
+        sessionType: selectedSession.type,
+        otherPartyName: selectedSession.clientName,
+        scheduledTime: newScheduledTime,
+      });
+
+      // Notify the client about the reschedule
+      await sendSessionRescheduledNotification({
+        sessionId: selectedSession.id,
+        otherPartyName: 'Your supporter', // Supporter name would come from auth context in production
+        isSupporter: false, // Sending to client
+        newDate: formatDateOption(selectedDate),
+        newTime: selectedTime,
+      });
+
+      // Update session in list
+      setSessions(sessions.map(s => {
+        if (s.id === selectedSession.id) {
+          return {
+            ...s,
+            date: formatDateOption(selectedDate),
+            time: selectedTime,
+            scheduledAt: newScheduledTime.toISOString(),
+          };
+        }
+        return s;
+      }));
+
+      setRescheduleModalVisible(false);
+
+      Alert.alert(
+        'Session Rescheduled',
+        `Your session with ${selectedSession.clientName} has been rescheduled to ${formatDateOption(selectedDate)} at ${selectedTime}.\n\nThe client has been notified.`,
+        [{ text: 'OK' }]
+      );
+    } else {
+      Alert.alert('Error', 'Failed to reschedule session. Please try again.');
+    }
+  };
+
+  const renderSession = (session: Session, isUpcoming: boolean) => (
+    <View key={session.id} style={styles.sessionCard}>
+      <View style={styles.sessionHeader}>
+        <View style={styles.typeIconContainer}>
+          <Text style={styles.typeIcon}>{typeIcons[session.type]}</Text>
+        </View>
+        <View style={styles.sessionInfo}>
+          <Text style={styles.clientName}>{session.clientName}</Text>
+          <Text style={styles.sessionType}>
+            {session.type.charAt(0).toUpperCase() + session.type.slice(1)} Session
+          </Text>
+        </View>
+        {!isUpcoming && session.earnings && (
+          <View style={styles.earningsBadge}>
+            <Text style={styles.earningsText}>+${session.earnings.toFixed(2)}</Text>
+          </View>
+        )}
+      </View>
+
+      <View style={styles.sessionDetails}>
+        <View style={styles.detailItem}>
+          <Text style={styles.detailIcon}>📅</Text>
+          <Text style={styles.detailText}>{session.date}</Text>
+        </View>
+        <View style={styles.detailItem}>
+          <Text style={styles.detailIcon}>🕐</Text>
+          <Text style={styles.detailText}>{session.time}</Text>
+        </View>
+        <View style={styles.detailItem}>
+          <Text style={styles.detailIcon}>⏱</Text>
+          <Text style={styles.detailText}>{session.duration} min</Text>
+        </View>
+      </View>
+
+      {isUpcoming && (
+        <View style={styles.sessionActions}>
+          <TouchableOpacity
+            style={styles.rescheduleButton}
+            onPress={() => handleReschedulePress(session)}
+          >
+            <Text style={styles.rescheduleButtonText}>Reschedule</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.cancelButton}
+            onPress={() => handleCancelPress(session)}
+          >
+            <Text style={styles.cancelButtonText}>Cancel</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.joinButton}
+            activeOpacity={0.8}
+            onPress={() => router.push(`/session/${session.id}?type=${session.type}`)}
+          >
+            <LinearGradient
+              colors={[PsychiColors.azure, PsychiColors.deep]}
+              style={styles.joinButtonGradient}
+            >
+              <Text style={styles.joinButtonText}>
+                {session.type === 'chat' ? 'Chat' : 'Join'}
+              </Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {!isUpcoming && session.rating && (
+        <View style={styles.ratingRow}>
+          <Text style={styles.ratingLabel}>Client rating:</Text>
+          <View style={styles.starsContainer}>
+            {[1, 2, 3, 4, 5].map((star) => (
+              <Text key={star} style={styles.star}>
+                {star <= (session.rating || 0) ? '⭐' : '☆'}
+              </Text>
+            ))}
+          </View>
+        </View>
+      )}
+    </View>
+  );
+
+  return (
+    <SafeAreaView style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Sessions</Text>
+      </View>
+
+      {/* Tabs */}
+      <View style={styles.tabContainer}>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'upcoming' && styles.tabActive]}
+          onPress={() => setActiveTab('upcoming')}
+        >
+          <Text style={[styles.tabText, activeTab === 'upcoming' && styles.tabTextActive]}>
+            Upcoming
+          </Text>
+          {sessions.length > 0 && (
+            <View style={styles.tabBadge}>
+              <Text style={styles.tabBadgeText}>{sessions.length}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'past' && styles.tabActive]}
+          onPress={() => setActiveTab('past')}
+        >
+          <Text style={[styles.tabText, activeTab === 'past' && styles.tabTextActive]}>
+            Completed
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Sessions List */}
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        {activeTab === 'upcoming'
+          ? sessions.map((session) => renderSession(session, true))
+          : mockPastSessions.map((session) => renderSession(session, false))}
+
+        {activeTab === 'upcoming' && sessions.length === 0 && (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyIcon}>📅</Text>
+            <Text style={styles.emptyTitle}>No upcoming sessions</Text>
+            <Text style={styles.emptySubtitle}>
+              Your upcoming sessions will appear here
+            </Text>
+          </View>
+        )}
+        <View style={{ height: 32 }} />
+      </ScrollView>
+
+      {/* Cancel Modal */}
+      <Modal
+        visible={cancelModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setCancelModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Cancel Session</Text>
+              <TouchableOpacity
+                onPress={() => setCancelModalVisible(false)}
+                style={styles.closeButton}
+              >
+                <Text style={styles.closeButtonText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            {selectedSession && (
+              <>
+                <View style={styles.refundInfo}>
+                  <Text style={styles.refundIcon}>💰</Text>
+                  <View style={styles.refundTextContainer}>
+                    <Text style={styles.refundTitle}>Full Refund Will Be Processed</Text>
+                    <Text style={styles.refundAmount}>
+                      {formatCurrency(getSessionPrice(selectedSession.type))}
+                    </Text>
+                    <Text style={styles.refundNote}>
+                      Supporter-initiated cancellations always result in a full refund for the client.
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.sessionSummary}>
+                  <Text style={styles.summaryLabel}>Session with</Text>
+                  <Text style={styles.summaryValue}>{selectedSession.clientName}</Text>
+                  <Text style={styles.summaryLabel}>Scheduled for</Text>
+                  <Text style={styles.summaryValue}>
+                    {selectedSession.date} at {selectedSession.time}
+                  </Text>
+                </View>
+
+                <Text style={styles.inputLabel}>Reason for cancellation *</Text>
+                <TextInput
+                  style={styles.reasonInput}
+                  value={cancelReason}
+                  onChangeText={setCancelReason}
+                  placeholder="Please explain why you need to cancel..."
+                  placeholderTextColor={PsychiColors.textMuted}
+                  multiline
+                  numberOfLines={3}
+                  textAlignVertical="top"
+                />
+
+                <View style={styles.modalActions}>
+                  <TouchableOpacity
+                    style={styles.modalCancelButton}
+                    onPress={() => setCancelModalVisible(false)}
+                  >
+                    <Text style={styles.modalCancelButtonText}>Keep Session</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.confirmCancelButton, isProcessing && styles.buttonDisabled]}
+                    onPress={confirmCancellation}
+                    disabled={isProcessing}
+                  >
+                    {isProcessing ? (
+                      <ActivityIndicator color={PsychiColors.white} size="small" />
+                    ) : (
+                      <Text style={styles.confirmCancelButtonText}>Cancel & Refund</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Reschedule Modal */}
+      <Modal
+        visible={rescheduleModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setRescheduleModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, styles.rescheduleModalContent]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Reschedule Session</Text>
+              <TouchableOpacity
+                onPress={() => setRescheduleModalVisible(false)}
+                style={styles.closeButton}
+              >
+                <Text style={styles.closeButtonText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            {selectedSession && (
+              <ScrollView showsVerticalScrollIndicator={false}>
+                <View style={styles.rescheduleInfo}>
+                  <Text style={styles.rescheduleInfoText}>
+                    Rescheduling session with {selectedSession.clientName}
+                  </Text>
+                  <Text style={styles.rescheduleCurrentTime}>
+                    Currently: {selectedSession.date} at {selectedSession.time}
+                  </Text>
+                </View>
+
+                <Text style={styles.inputLabel}>Select New Date</Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.dateScrollView}
+                >
+                  {getAvailableDates().map((date, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      style={[
+                        styles.dateOption,
+                        selectedDate?.toDateString() === date.toDateString() &&
+                          styles.dateOptionSelected,
+                      ]}
+                      onPress={() => setSelectedDate(date)}
+                    >
+                      <Text
+                        style={[
+                          styles.dateOptionDay,
+                          selectedDate?.toDateString() === date.toDateString() &&
+                            styles.dateOptionTextSelected,
+                        ]}
+                      >
+                        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getDay()]}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.dateOptionDate,
+                          selectedDate?.toDateString() === date.toDateString() &&
+                            styles.dateOptionTextSelected,
+                        ]}
+                      >
+                        {date.getDate()}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+
+                <Text style={styles.inputLabel}>Select New Time</Text>
+                <View style={styles.timeGrid}>
+                  {TIME_SLOTS.map((time) => (
+                    <TouchableOpacity
+                      key={time}
+                      style={[
+                        styles.timeOption,
+                        selectedTime === time && styles.timeOptionSelected,
+                      ]}
+                      onPress={() => setSelectedTime(time)}
+                    >
+                      <Text
+                        style={[
+                          styles.timeOptionText,
+                          selectedTime === time && styles.timeOptionTextSelected,
+                        ]}
+                      >
+                        {time}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                <View style={styles.noticeBox}>
+                  <Text style={styles.noticeIcon}>ℹ️</Text>
+                  <Text style={styles.noticeText}>
+                    The client will be notified of the schedule change via push notification and email.
+                  </Text>
+                </View>
+
+                <View style={styles.modalActions}>
+                  <TouchableOpacity
+                    style={styles.modalCancelButton}
+                    onPress={() => setRescheduleModalVisible(false)}
+                  >
+                    <Text style={styles.modalCancelButtonText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.confirmRescheduleButton,
+                      (!selectedDate || !selectedTime || isProcessing) && styles.buttonDisabled,
+                    ]}
+                    onPress={confirmReschedule}
+                    disabled={!selectedDate || !selectedTime || isProcessing}
+                  >
+                    {isProcessing ? (
+                      <ActivityIndicator color={PsychiColors.white} size="small" />
+                    ) : (
+                      <Text style={styles.confirmRescheduleButtonText}>Confirm Reschedule</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: PsychiColors.cream,
+  },
+  header: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.sm,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#2A2A2A',
+    fontFamily: 'Georgia',
+  },
+  tabContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: Spacing.lg,
+    marginBottom: Spacing.md,
+  },
+  tab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    marginRight: Spacing.sm,
+    borderRadius: BorderRadius.full,
+    backgroundColor: PsychiColors.white,
+    ...Shadows.soft,
+  },
+  tabActive: {
+    backgroundColor: PsychiColors.azure,
+  },
+  tabText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: PsychiColors.textSecondary,
+  },
+  tabTextActive: {
+    color: PsychiColors.white,
+  },
+  tabBadge: {
+    backgroundColor: PsychiColors.white,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.full,
+    marginLeft: Spacing.xs,
+  },
+  tabBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: PsychiColors.azure,
+  },
+  scrollView: {
+    flex: 1,
+    paddingHorizontal: Spacing.lg,
+  },
+  sessionCard: {
+    backgroundColor: PsychiColors.white,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.md,
+    marginBottom: Spacing.md,
+    ...Shadows.medium,
+  },
+  sessionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: Spacing.md,
+  },
+  typeIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: BorderRadius.md,
+    backgroundColor: 'rgba(74, 144, 226, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: Spacing.md,
+  },
+  typeIcon: {
+    fontSize: 24,
+  },
+  sessionInfo: {
+    flex: 1,
+  },
+  clientName: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#2A2A2A',
+  },
+  sessionType: {
+    fontSize: 14,
+    color: PsychiColors.textMuted,
+    marginTop: 2,
+  },
+  earningsBadge: {
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.full,
+  },
+  earningsText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: PsychiColors.success,
+  },
+  sessionDetails: {
+    flexDirection: 'row',
+    backgroundColor: PsychiColors.cream,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.sm,
+    marginBottom: Spacing.md,
+  },
+  detailItem: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  detailIcon: {
+    fontSize: 14,
+    marginRight: 4,
+  },
+  detailText: {
+    fontSize: 13,
+    color: PsychiColors.textSecondary,
+    fontWeight: '500',
+  },
+  sessionActions: {
+    flexDirection: 'row',
+    gap: Spacing.xs,
+  },
+  rescheduleButton: {
+    flex: 1,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    backgroundColor: 'rgba(74, 144, 226, 0.1)',
+    alignItems: 'center',
+  },
+  rescheduleButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: PsychiColors.azure,
+  },
+  cancelButton: {
+    flex: 1,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: PsychiColors.error,
+  },
+  joinButton: {
+    flex: 1,
+    borderRadius: BorderRadius.md,
+    overflow: 'hidden',
+  },
+  joinButtonGradient: {
+    paddingVertical: Spacing.sm,
+    alignItems: 'center',
+  },
+  joinButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: PsychiColors.white,
+  },
+  ratingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: Spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.05)',
+  },
+  ratingLabel: {
+    fontSize: 14,
+    color: PsychiColors.textMuted,
+  },
+  starsContainer: {
+    flexDirection: 'row',
+  },
+  star: {
+    fontSize: 16,
+    marginLeft: 2,
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: Spacing.xl * 2,
+  },
+  emptyIcon: {
+    fontSize: 48,
+    marginBottom: Spacing.md,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#2A2A2A',
+    marginBottom: Spacing.xs,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: PsychiColors.textMuted,
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: PsychiColors.white,
+    borderTopLeftRadius: BorderRadius.xl,
+    borderTopRightRadius: BorderRadius.xl,
+    padding: Spacing.lg,
+    maxHeight: '80%',
+  },
+  rescheduleModalContent: {
+    maxHeight: '90%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.lg,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#2A2A2A',
+    fontFamily: 'Georgia',
+  },
+  closeButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: PsychiColors.cream,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeButtonText: {
+    fontSize: 16,
+    color: PsychiColors.textMuted,
+  },
+  refundInfo: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.md,
+    marginBottom: Spacing.lg,
+  },
+  refundIcon: {
+    fontSize: 32,
+    marginRight: Spacing.md,
+  },
+  refundTextContainer: {
+    flex: 1,
+  },
+  refundTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: PsychiColors.success,
+    marginBottom: 2,
+  },
+  refundAmount: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: PsychiColors.success,
+    marginBottom: 4,
+  },
+  refundNote: {
+    fontSize: 12,
+    color: PsychiColors.textMuted,
+    lineHeight: 16,
+  },
+  sessionSummary: {
+    backgroundColor: PsychiColors.cream,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    marginBottom: Spacing.lg,
+  },
+  summaryLabel: {
+    fontSize: 12,
+    color: PsychiColors.textMuted,
+    marginBottom: 2,
+  },
+  summaryValue: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#2A2A2A',
+    marginBottom: Spacing.sm,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2A2A2A',
+    marginBottom: Spacing.sm,
+  },
+  reasonInput: {
+    backgroundColor: PsychiColors.cream,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    fontSize: 15,
+    color: '#2A2A2A',
+    minHeight: 80,
+    marginBottom: Spacing.lg,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+    marginTop: Spacing.md,
+    marginBottom: Spacing.lg,
+  },
+  modalCancelButton: {
+    flex: 1,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    backgroundColor: PsychiColors.cream,
+    alignItems: 'center',
+  },
+  modalCancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: PsychiColors.textSecondary,
+  },
+  confirmCancelButton: {
+    flex: 1,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    backgroundColor: PsychiColors.error,
+    alignItems: 'center',
+  },
+  confirmCancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: PsychiColors.white,
+  },
+  confirmRescheduleButton: {
+    flex: 1,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    backgroundColor: PsychiColors.azure,
+    alignItems: 'center',
+  },
+  confirmRescheduleButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: PsychiColors.white,
+  },
+  buttonDisabled: {
+    opacity: 0.5,
+  },
+  // Reschedule specific styles
+  rescheduleInfo: {
+    backgroundColor: PsychiColors.cream,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    marginBottom: Spacing.lg,
+  },
+  rescheduleInfoText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#2A2A2A',
+    marginBottom: 4,
+  },
+  rescheduleCurrentTime: {
+    fontSize: 14,
+    color: PsychiColors.textMuted,
+  },
+  dateScrollView: {
+    marginBottom: Spacing.lg,
+  },
+  dateOption: {
+    width: 64,
+    height: 72,
+    borderRadius: BorderRadius.lg,
+    backgroundColor: PsychiColors.cream,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: Spacing.sm,
+  },
+  dateOptionSelected: {
+    backgroundColor: PsychiColors.azure,
+  },
+  dateOptionDay: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: PsychiColors.textMuted,
+    marginBottom: 4,
+  },
+  dateOptionDate: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#2A2A2A',
+  },
+  dateOptionTextSelected: {
+    color: PsychiColors.white,
+  },
+  timeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
+    marginBottom: Spacing.lg,
+  },
+  timeOption: {
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.md,
+    backgroundColor: PsychiColors.cream,
+  },
+  timeOptionSelected: {
+    backgroundColor: PsychiColors.azure,
+  },
+  timeOptionText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: PsychiColors.textSecondary,
+  },
+  timeOptionTextSelected: {
+    color: PsychiColors.white,
+  },
+  noticeBox: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(74, 144, 226, 0.1)',
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+  },
+  noticeIcon: {
+    fontSize: 16,
+    marginRight: Spacing.sm,
+  },
+  noticeText: {
+    flex: 1,
+    fontSize: 13,
+    color: PsychiColors.textSecondary,
+    lineHeight: 18,
+  },
+});

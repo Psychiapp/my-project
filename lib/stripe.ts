@@ -1,0 +1,284 @@
+import { Alert } from 'react-native';
+import { initPaymentSheet, presentPaymentSheet } from '@stripe/stripe-react-native';
+import { StripeConfig, Config } from '@/constants/config';
+
+// Stripe integration with payment sheet support
+
+interface PaymentIntentResponse {
+  clientSecret: string;
+  paymentIntentId: string;
+}
+
+interface CreatePaymentParams {
+  amount: number; // in cents
+  currency?: string;
+  customerId?: string;
+  metadata?: Record<string, string>;
+}
+
+// Create a payment intent via your backend
+export async function createPaymentIntent(params: CreatePaymentParams): Promise<PaymentIntentResponse> {
+  const { amount, currency = 'usd', customerId, metadata } = params;
+
+  // In production, this would call your Supabase Edge Function
+  // For now, return mock data
+  console.log('Creating payment intent:', { amount, currency, customerId, metadata });
+
+  // Simulate API call
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve({
+        clientSecret: 'pi_mock_client_secret',
+        paymentIntentId: 'pi_' + Date.now(),
+      });
+    }, 1000);
+  });
+}
+
+// Confirm payment
+export async function confirmPayment(clientSecret: string): Promise<{ success: boolean; error?: string }> {
+  // In production, this would use Stripe SDK
+  console.log('Confirming payment with secret:', clientSecret);
+
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve({ success: true });
+    }, 1500);
+  });
+}
+
+// Get saved payment methods for a customer
+export async function getPaymentMethods(customerId: string): Promise<PaymentMethod[]> {
+  // Mock payment methods
+  return [
+    {
+      id: 'pm_1',
+      type: 'card',
+      card: {
+        brand: 'visa',
+        last4: '4242',
+        expMonth: 12,
+        expYear: 2027,
+      },
+      isDefault: true,
+    },
+  ];
+}
+
+// Add a new payment method
+export async function addPaymentMethod(
+  customerId: string,
+  paymentMethodId: string
+): Promise<{ success: boolean; error?: string }> {
+  console.log('Adding payment method:', { customerId, paymentMethodId });
+  return { success: true };
+}
+
+// Create or update subscription
+export async function createSubscription(params: {
+  customerId: string;
+  priceId: string;
+  paymentMethodId: string;
+}): Promise<{ subscriptionId: string; status: string }> {
+  console.log('Creating subscription:', params);
+
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve({
+        subscriptionId: 'sub_' + Date.now(),
+        status: 'active',
+      });
+    }, 1500);
+  });
+}
+
+// Cancel subscription
+export async function cancelSubscription(subscriptionId: string): Promise<{ success: boolean }> {
+  console.log('Canceling subscription:', subscriptionId);
+  return { success: true };
+}
+
+// Types
+export interface PaymentMethod {
+  id: string;
+  type: 'card';
+  card: {
+    brand: string;
+    last4: string;
+    expMonth: number;
+    expYear: number;
+  };
+  isDefault: boolean;
+}
+
+export interface SubscriptionPlan {
+  id: string;
+  name: string;
+  priceId: string;
+  amount: number;
+  interval: 'month' | 'year';
+  features: string[];
+}
+
+// Subscription plans
+export const subscriptionPlans: SubscriptionPlan[] = [
+  {
+    id: 'basic',
+    name: 'Basic',
+    priceId: 'price_basic_monthly',
+    amount: 9500,
+    interval: 'month',
+    features: [
+      '4 chat sessions per month',
+      'Message your supporter',
+      'Session history',
+    ],
+  },
+  {
+    id: 'standard',
+    name: 'Standard',
+    priceId: 'price_standard_monthly',
+    amount: 14500,
+    interval: 'month',
+    features: [
+      '4 chat sessions per month',
+      '2 phone sessions per month',
+      'Priority matching',
+      'Extended session notes',
+    ],
+  },
+  {
+    id: 'premium',
+    name: 'Premium',
+    priceId: 'price_premium_monthly',
+    amount: 17500,
+    interval: 'month',
+    features: [
+      '4 chat sessions per month',
+      '2 phone sessions per month',
+      '2 video sessions per month',
+      'Priority matching',
+      '24/7 message support',
+      'Wellness resources',
+    ],
+  },
+];
+
+// Payment Sheet Functions
+
+/**
+ * Initialize and present payment sheet for session booking
+ */
+export async function processSessionPayment(
+  sessionType: 'chat' | 'phone' | 'video',
+  supporterId: string,
+  sessionDate: string
+): Promise<boolean> {
+  const pricing = Config.pricing[sessionType];
+
+  // Check if Stripe is configured
+  if (!StripeConfig.publishableKey) {
+    // Demo mode
+    Alert.alert(
+      'Demo Mode',
+      `Payment of ${pricing.display} would be processed here.\n\nTo enable real payments, add your Stripe publishable key to the .env file.`,
+      [{ text: 'OK' }]
+    );
+    return true;
+  }
+
+  try {
+    // Create payment intent on your backend
+    const paymentIntent = await createPaymentIntent({
+      amount: pricing.amount,
+      metadata: { sessionType, supporterId, sessionDate },
+    });
+
+    // Initialize payment sheet
+    const { error: initError } = await initPaymentSheet({
+      merchantDisplayName: Config.appName,
+      paymentIntentClientSecret: paymentIntent.clientSecret,
+      allowsDelayedPaymentMethods: false,
+    });
+
+    if (initError) {
+      console.error('Error initializing payment sheet:', initError);
+      Alert.alert('Error', 'Unable to load payment form. Please try again.');
+      return false;
+    }
+
+    // Present payment sheet
+    const { error: presentError } = await presentPaymentSheet();
+
+    if (presentError) {
+      if (presentError.code !== 'Canceled') {
+        Alert.alert('Payment Failed', presentError.message || 'Please try again.');
+      }
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Payment error:', error);
+    Alert.alert('Error', 'Payment failed. Please try again.');
+    return false;
+  }
+}
+
+/**
+ * Process subscription payment with payment sheet
+ */
+export async function processSubscriptionPaymentSheet(
+  tier: 'basic' | 'standard' | 'premium'
+): Promise<boolean> {
+  const plan = subscriptionPlans.find(p => p.id === tier);
+  if (!plan) return false;
+
+  // Check if Stripe is configured
+  if (!StripeConfig.publishableKey) {
+    // Demo mode
+    Alert.alert(
+      'Demo Mode',
+      `Subscription to ${plan.name} plan ($${(plan.amount / 100).toFixed(2)}/month) would be processed here.\n\nTo enable real payments, add your Stripe publishable key to the .env file.`,
+      [{ text: 'OK' }]
+    );
+    return true;
+  }
+
+  try {
+    // Create payment intent for first month
+    const paymentIntent = await createPaymentIntent({
+      amount: plan.amount,
+      metadata: { type: 'subscription', tier },
+    });
+
+    // Initialize payment sheet
+    const { error: initError } = await initPaymentSheet({
+      merchantDisplayName: Config.appName,
+      paymentIntentClientSecret: paymentIntent.clientSecret,
+      allowsDelayedPaymentMethods: false,
+    });
+
+    if (initError) {
+      console.error('Error initializing payment sheet:', initError);
+      Alert.alert('Error', 'Unable to load payment form. Please try again.');
+      return false;
+    }
+
+    // Present payment sheet
+    const { error: presentError } = await presentPaymentSheet();
+
+    if (presentError) {
+      if (presentError.code !== 'Canceled') {
+        Alert.alert('Payment Failed', presentError.message || 'Please try again.');
+      }
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Subscription payment error:', error);
+    Alert.alert('Error', 'Payment failed. Please try again.');
+    return false;
+  }
+}

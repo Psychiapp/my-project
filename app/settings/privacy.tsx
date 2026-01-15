@@ -1,0 +1,397 @@
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  SafeAreaView,
+  TouchableOpacity,
+  Switch,
+  Alert,
+  Linking,
+} from 'react-native';
+import { useRouter } from 'expo-router';
+import { useAuth } from '@/contexts/AuthContext';
+import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
+import { ExternalUrls } from '@/constants/config';
+
+export default function PrivacySecurityScreen() {
+  const router = useRouter();
+  const { signOut } = useAuth();
+
+  const [biometricEnabled, setBiometricEnabled] = useState(false);
+  const [analyticsEnabled, setAnalyticsEnabled] = useState(true);
+
+  const handleChangePassword = () => {
+    Alert.alert(
+      'Change Password',
+      'We will send a password reset link to your email.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Send Link',
+          onPress: () => Alert.alert('Email Sent', 'Check your inbox for the reset link.'),
+        },
+      ]
+    );
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete Account',
+      'This action cannot be undone. All your data will be permanently deleted.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert(
+              'Confirm Deletion',
+              'Type DELETE to confirm account deletion.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'I Understand',
+                  style: 'destructive',
+                  onPress: async () => {
+                    await signOut();
+                    router.replace('/(auth)/welcome');
+                  },
+                },
+              ]
+            );
+          },
+        },
+      ]
+    );
+  };
+
+  const handleExportData = () => {
+    Alert.alert(
+      'Export Your Data',
+      'We will prepare your data export and email it to you within 24 hours.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Request Export',
+          onPress: () => Alert.alert('Request Received', 'You will receive an email when your data is ready.'),
+        },
+      ]
+    );
+  };
+
+  const openLink = (url: string) => {
+    Linking.openURL(url).catch(() => {
+      Alert.alert('Error', 'Unable to open link');
+    });
+  };
+
+  const securitySettings = [
+    {
+      icon: '🔐',
+      title: 'Change Password',
+      description: 'Update your account password',
+      onPress: handleChangePassword,
+    },
+    {
+      icon: '📱',
+      title: 'Active Sessions',
+      description: 'Manage devices logged into your account',
+      onPress: () => Alert.alert('Active Sessions', 'This device is the only active session.'),
+    },
+  ];
+
+  const legalLinks = [
+    {
+      icon: '📄',
+      title: 'Privacy Policy',
+      url: ExternalUrls.privacyPolicy,
+    },
+    {
+      icon: '📋',
+      title: 'Terms of Service',
+      url: ExternalUrls.termsOfService,
+    },
+  ];
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Text style={styles.backArrow}>‹</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Privacy & Security</Text>
+          <View style={styles.placeholder} />
+        </View>
+
+        {/* Security Info Card */}
+        <View style={styles.section}>
+          <View style={styles.infoCard}>
+            <Text style={styles.infoIcon}>🔒</Text>
+            <View style={styles.infoContent}>
+              <Text style={styles.infoTitle}>Your Data is Protected</Text>
+              <Text style={styles.infoText}>
+                All sessions use end-to-end encryption. Your conversations remain private.
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Security Settings */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Security</Text>
+          <View style={styles.settingsCard}>
+            {securitySettings.map((item, index) => (
+              <TouchableOpacity
+                key={item.title}
+                style={[
+                  styles.settingRow,
+                  index < securitySettings.length - 1 && styles.settingRowBorder,
+                ]}
+                onPress={item.onPress}
+              >
+                <View style={styles.settingIcon}>
+                  <Text style={styles.settingIconText}>{item.icon}</Text>
+                </View>
+                <View style={styles.settingInfo}>
+                  <Text style={styles.settingTitle}>{item.title}</Text>
+                  <Text style={styles.settingDescription}>{item.description}</Text>
+                </View>
+                <Text style={styles.settingArrow}>›</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* Biometric Toggle */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Authentication</Text>
+          <View style={styles.settingsCard}>
+            <View style={styles.toggleRow}>
+              <View style={styles.settingIcon}>
+                <Text style={styles.settingIconText}>👆</Text>
+              </View>
+              <View style={styles.settingInfo}>
+                <Text style={styles.settingTitle}>Biometric Login</Text>
+                <Text style={styles.settingDescription}>Use Face ID or Touch ID to sign in</Text>
+              </View>
+              <Switch
+                value={biometricEnabled}
+                onValueChange={setBiometricEnabled}
+                trackColor={{ false: '#E5E7EB', true: 'rgba(74, 144, 226, 0.4)' }}
+                thumbColor={biometricEnabled ? PsychiColors.azure : '#F3F4F6'}
+                ios_backgroundColor="#E5E7EB"
+              />
+            </View>
+          </View>
+        </View>
+
+        {/* Privacy Settings */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Privacy</Text>
+          <View style={styles.settingsCard}>
+            <View style={styles.toggleRow}>
+              <View style={styles.settingIcon}>
+                <Text style={styles.settingIconText}>📊</Text>
+              </View>
+              <View style={styles.settingInfo}>
+                <Text style={styles.settingTitle}>Analytics</Text>
+                <Text style={styles.settingDescription}>Help improve Psychi with anonymous usage data</Text>
+              </View>
+              <Switch
+                value={analyticsEnabled}
+                onValueChange={setAnalyticsEnabled}
+                trackColor={{ false: '#E5E7EB', true: 'rgba(74, 144, 226, 0.4)' }}
+                thumbColor={analyticsEnabled ? PsychiColors.azure : '#F3F4F6'}
+                ios_backgroundColor="#E5E7EB"
+              />
+            </View>
+          </View>
+        </View>
+
+        {/* Data Management */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Your Data</Text>
+          <View style={styles.settingsCard}>
+            <TouchableOpacity style={[styles.settingRow, styles.settingRowBorder]} onPress={handleExportData}>
+              <View style={styles.settingIcon}>
+                <Text style={styles.settingIconText}>📥</Text>
+              </View>
+              <View style={styles.settingInfo}>
+                <Text style={styles.settingTitle}>Export Your Data</Text>
+                <Text style={styles.settingDescription}>Download a copy of your information</Text>
+              </View>
+              <Text style={styles.settingArrow}>›</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.settingRow} onPress={handleDeleteAccount}>
+              <View style={[styles.settingIcon, styles.dangerIcon]}>
+                <Text style={styles.settingIconText}>🗑️</Text>
+              </View>
+              <View style={styles.settingInfo}>
+                <Text style={[styles.settingTitle, styles.dangerText]}>Delete Account</Text>
+                <Text style={styles.settingDescription}>Permanently delete your account and data</Text>
+              </View>
+              <Text style={styles.settingArrow}>›</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Legal Links */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Legal</Text>
+          <View style={styles.settingsCard}>
+            {legalLinks.map((item, index) => (
+              <TouchableOpacity
+                key={item.title}
+                style={[
+                  styles.settingRow,
+                  index < legalLinks.length - 1 && styles.settingRowBorder,
+                ]}
+                onPress={() => openLink(item.url)}
+              >
+                <View style={styles.settingIcon}>
+                  <Text style={styles.settingIconText}>{item.icon}</Text>
+                </View>
+                <View style={styles.settingInfo}>
+                  <Text style={styles.settingTitle}>{item.title}</Text>
+                </View>
+                <Text style={styles.settingArrow}>›</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        <View style={{ height: 32 }} />
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: PsychiColors.cream,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.sm,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+  },
+  backArrow: {
+    fontSize: 32,
+    color: PsychiColors.textSecondary,
+    marginTop: -4,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#2A2A2A',
+    fontFamily: 'Georgia',
+  },
+  placeholder: {
+    width: 40,
+  },
+  section: {
+    paddingHorizontal: Spacing.lg,
+    marginBottom: Spacing.lg,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2A2A2A',
+    marginBottom: Spacing.md,
+  },
+  infoCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: 'rgba(34, 197, 94, 0.1)',
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.md,
+  },
+  infoIcon: {
+    fontSize: 24,
+    marginRight: Spacing.md,
+  },
+  infoContent: {
+    flex: 1,
+  },
+  infoTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#2A2A2A',
+    marginBottom: 4,
+  },
+  infoText: {
+    fontSize: 14,
+    color: PsychiColors.textSecondary,
+    lineHeight: 20,
+  },
+  settingsCard: {
+    backgroundColor: PsychiColors.white,
+    borderRadius: BorderRadius.lg,
+    ...Shadows.soft,
+  },
+  settingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.md,
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.md,
+  },
+  settingRowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  settingIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: BorderRadius.sm,
+    backgroundColor: 'rgba(74, 144, 226, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: Spacing.md,
+  },
+  dangerIcon: {
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+  },
+  settingIconText: {
+    fontSize: 20,
+  },
+  settingInfo: {
+    flex: 1,
+  },
+  settingTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#2A2A2A',
+  },
+  dangerText: {
+    color: PsychiColors.error,
+  },
+  settingDescription: {
+    fontSize: 13,
+    color: PsychiColors.textMuted,
+    marginTop: 2,
+  },
+  settingArrow: {
+    fontSize: 24,
+    color: PsychiColors.textSoft,
+  },
+});

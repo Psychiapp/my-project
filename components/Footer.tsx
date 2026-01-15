@@ -1,0 +1,298 @@
+/**
+ * Footer - Exact match to web app Footer.tsx
+ * Includes crisis banner and navigation links
+ */
+
+import React from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Linking,
+  Image,
+} from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { router } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
+import { PsychiColors, Gradients, Spacing, BorderRadius, Typography } from '@/constants/theme';
+import { ExternalUrls } from '@/constants/config';
+
+interface FooterProps {
+  onNavigate?: (screen: string) => void;
+  onScrollToSection?: (section: string) => void;
+}
+
+// Footer link sections matching web app exactly
+const footerLinks = {
+  support: {
+    title: 'Support',
+    links: [
+      { label: 'Get Support Now', action: 'signup' },
+      { label: 'How It Works', action: 'scroll:how-it-works' },
+      { label: 'Pricing', action: 'scroll:pricing' },
+      { label: 'FAQ', action: 'scroll:faq' },
+    ],
+  },
+  company: {
+    title: 'Company',
+    links: [
+      { label: 'About Us', action: 'scroll:about' },
+      { label: 'Contact', action: `email:${ExternalUrls.supportEmail}` },
+    ],
+  },
+  legal: {
+    title: 'Legal',
+    links: [
+      { label: 'Terms of Service', action: `url:${ExternalUrls.termsOfService}` },
+      { label: 'Privacy Policy', action: `url:${ExternalUrls.privacyPolicy}` },
+    ],
+  },
+  supporters: {
+    title: 'For Supporters',
+    links: [
+      { label: 'Become a Supporter', action: 'signup:supporter' },
+      { label: 'Supporter Guidelines', action: `url:${ExternalUrls.supporterGuidelines}` },
+    ],
+  },
+};
+
+export default function Footer({ onNavigate, onScrollToSection }: FooterProps) {
+  const handleCrisisCall = () => {
+    Linking.openURL('tel:988');
+  };
+
+  const handleCrisisText = () => {
+    Linking.openURL('sms:741741?body=HOME');
+  };
+
+  const handleLinkPress = async (action: string) => {
+    const [type, ...rest] = action.split(':');
+    const value = rest.join(':'); // Rejoin in case URL contains colons
+
+    switch (type) {
+      case 'signup':
+        router.push('/(auth)/sign-up');
+        break;
+      case 'scroll':
+        // Scroll to section on the landing page
+        onScrollToSection?.(value);
+        break;
+      case 'navigate':
+        onNavigate?.(value);
+        break;
+      case 'email':
+        Linking.openURL(`mailto:${value}`);
+        break;
+      case 'url':
+        // Open in in-app browser for better UX (especially for PDFs)
+        await WebBrowser.openBrowserAsync(value, {
+          presentationStyle: WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET,
+        });
+        break;
+      default:
+        router.push('/(auth)/sign-up');
+    }
+  };
+
+  return (
+    <View style={styles.container}>
+      {/* Crisis Banner */}
+      <LinearGradient
+        colors={Gradients.crisisBanner}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.crisisBanner}
+      >
+        <Text style={styles.crisisText}>
+          <Text style={styles.crisisLabel}>Need immediate help? </Text>
+          Call or text{' '}
+          <Text style={styles.crisisNumber} onPress={handleCrisisCall}>988</Text>
+          {' '}(Suicide & Crisis Lifeline) or text{' '}
+          <Text style={styles.crisisNumber} onPress={handleCrisisText}>HOME</Text>
+          {' '}to{' '}
+          <Text style={styles.crisisNumber} onPress={handleCrisisText}>741741</Text>
+          {' '}(Crisis Text Line)
+        </Text>
+      </LinearGradient>
+
+      {/* Main Footer */}
+      <LinearGradient
+        colors={Gradients.footer}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.footer}
+      >
+        {/* Logo */}
+        <View style={styles.logoSection}>
+          <Image
+            source={require('@/assets/images/logo.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+          <Text style={styles.tagline}>
+            Peer support for everyone
+          </Text>
+        </View>
+
+        {/* Links Grid - matches web app exactly */}
+        <View style={styles.linksContainer}>
+          {/* Row 1: Support & Company */}
+          <View style={styles.linksRow}>
+            {/* Support Links */}
+            <View style={styles.linkColumn}>
+              <Text style={styles.linkHeader}>{footerLinks.support.title}</Text>
+              {footerLinks.support.links.map((link, index) => (
+                <TouchableOpacity key={index} onPress={() => handleLinkPress(link.action)}>
+                  <Text style={styles.link}>{link.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Company Links */}
+            <View style={styles.linkColumn}>
+              <Text style={styles.linkHeader}>{footerLinks.company.title}</Text>
+              {footerLinks.company.links.map((link, index) => (
+                <TouchableOpacity key={index} onPress={() => handleLinkPress(link.action)}>
+                  <Text style={styles.link}>{link.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Row 2: Legal & For Supporters */}
+          <View style={styles.linksRow}>
+            {/* Legal Links */}
+            <View style={styles.linkColumn}>
+              <Text style={styles.linkHeader}>{footerLinks.legal.title}</Text>
+              {footerLinks.legal.links.map((link, index) => (
+                <TouchableOpacity key={index} onPress={() => handleLinkPress(link.action)}>
+                  <Text style={styles.link}>{link.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* For Supporters Links */}
+            <View style={styles.linkColumn}>
+              <Text style={styles.linkHeader}>{footerLinks.supporters.title}</Text>
+              {footerLinks.supporters.links.map((link, index) => (
+                <TouchableOpacity key={index} onPress={() => handleLinkPress(link.action)}>
+                  <Text style={styles.link}>{link.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </View>
+
+        {/* Bottom Section */}
+        <View style={styles.bottomSection}>
+          <View style={styles.divider} />
+          <Text style={styles.copyright}>
+            © 2024 Psychi. All rights reserved.
+          </Text>
+          <Text style={styles.disclaimer}>
+            Psychi is not a replacement for professional mental health care.
+          </Text>
+        </View>
+      </LinearGradient>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    overflow: 'hidden',
+  },
+
+  // Crisis Banner
+  crisisBanner: {
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+  },
+  crisisText: {
+    fontFamily: Typography.fontFamily.sans,
+    fontSize: Typography.fontSize.sm,
+    color: PsychiColors.white,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  crisisLabel: {
+    fontWeight: '600',
+  },
+  crisisNumber: {
+    fontWeight: '700',
+    textDecorationLine: 'underline',
+  },
+
+  // Main Footer
+  footer: {
+    paddingVertical: Spacing['3xl'],
+    paddingHorizontal: Spacing.lg,
+  },
+
+  // Logo section
+  logoSection: {
+    marginBottom: Spacing['2xl'],
+    alignItems: 'flex-start',
+  },
+  logo: {
+    width: 120,
+    height: 44,
+    marginBottom: Spacing.sm,
+    tintColor: PsychiColors.white,
+  },
+  tagline: {
+    fontFamily: Typography.fontFamily.sans,
+    fontSize: Typography.fontSize.sm,
+    color: 'rgba(165, 180, 252, 0.8)',
+  },
+
+  // Links container
+  linksContainer: {
+    marginBottom: Spacing['2xl'],
+  },
+  linksRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: Spacing.xl,
+  },
+  linkColumn: {
+    flex: 1,
+  },
+  linkHeader: {
+    fontFamily: Typography.fontFamily.sans,
+    fontSize: Typography.fontSize.sm,
+    fontWeight: '600',
+    color: PsychiColors.white,
+    marginBottom: Spacing.md,
+  },
+  link: {
+    fontFamily: Typography.fontFamily.sans,
+    fontSize: Typography.fontSize.sm,
+    color: 'rgba(165, 180, 252, 0.6)',
+    marginBottom: Spacing.sm,
+  },
+
+  // Bottom section
+  bottomSection: {
+    alignItems: 'center',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    width: '100%',
+    marginBottom: Spacing.lg,
+  },
+  copyright: {
+    fontFamily: Typography.fontFamily.sans,
+    fontSize: Typography.fontSize.sm,
+    color: 'rgba(165, 180, 252, 0.6)',
+    marginBottom: Spacing.xs,
+  },
+  disclaimer: {
+    fontFamily: Typography.fontFamily.sans,
+    fontSize: Typography.fontSize.xs,
+    color: 'rgba(165, 180, 252, 0.4)',
+    textAlign: 'center',
+  },
+});
