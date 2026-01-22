@@ -9,18 +9,31 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  SafeAreaView,
   Dimensions,
   StatusBar,
   Platform,
   ActivityIndicator,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import Daily, { DailyCall, DailyParticipant, DailyMediaView } from '@daily-co/react-native-daily-js';
 import { PsychiColors, Spacing, BorderRadius } from '@/constants/theme';
-import { LockIcon } from '@/components/icons';
+import { LockIcon, MicIcon, MicOffIcon, VideoIcon, VideoOffIcon, VolumeHighIcon, VolumeLowIcon, PhoneIcon } from '@/components/icons';
 import EmergencyButton from './EmergencyButton';
+
+// Conditionally import Daily.co to avoid crash in Expo Go
+let Daily: any = null;
+let DailyMediaView: any = null;
+type DailyCall = any;
+type DailyParticipant = any;
+
+try {
+  const dailyModule = require('@daily-co/react-native-daily-js');
+  Daily = dailyModule.default;
+  DailyMediaView = dailyModule.DailyMediaView;
+} catch (e) {
+  console.log('Daily.co native module not available (running in Expo Go)');
+}
 
 const { width } = Dimensions.get('window');
 
@@ -44,6 +57,26 @@ export default function VideoCall({
   onEndCall,
   onError,
 }: VideoCallProps) {
+  // Check if Daily.co is available (not in Expo Go)
+  if (!Daily) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.errorContainer}>
+          <View style={styles.errorIcon}>
+            <Text style={styles.errorIconText}>!</Text>
+          </View>
+          <Text style={styles.errorTitle}>Video Calls Unavailable</Text>
+          <Text style={styles.errorMessage}>
+            Video and voice calls require a development build. They are not available in Expo Go.
+          </Text>
+          <TouchableOpacity style={styles.errorButton} onPress={onEndCall}>
+            <Text style={styles.errorButtonText}>Go Back</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   const [callObject, setCallObject] = useState<DailyCall | null>(null);
   const [participants, setParticipants] = useState<Record<string, DailyParticipant>>({});
   const [isMuted, setIsMuted] = useState(false);
@@ -174,12 +207,12 @@ export default function VideoCall({
   const remoteParticipant = Object.values(participants).find((p) => !p.local);
 
   const ControlButton = ({
-    icon,
+    iconComponent,
     label,
     isActive,
     onPress,
   }: {
-    icon: string;
+    iconComponent: React.ReactNode;
     label: string;
     isActive?: boolean;
     onPress: () => void;
@@ -191,7 +224,7 @@ export default function VideoCall({
           isActive && styles.controlIconActive,
         ]}
       >
-        <Text style={styles.controlIcon}>{icon}</Text>
+        {iconComponent}
       </View>
       <Text style={styles.controlLabel}>{label}</Text>
     </TouchableOpacity>
@@ -317,7 +350,7 @@ export default function VideoCall({
       <SafeAreaView style={styles.controlsContainer}>
         <View style={styles.controlsRow}>
           <ControlButton
-            icon={isMuted ? '🔇' : '🎤'}
+            iconComponent={isMuted ? <MicOffIcon size={24} color={PsychiColors.white} /> : <MicIcon size={24} color={PsychiColors.white} />}
             label={isMuted ? 'Unmute' : 'Mute'}
             isActive={isMuted}
             onPress={toggleMute}
@@ -325,7 +358,7 @@ export default function VideoCall({
 
           {isVideoEnabled && (
             <ControlButton
-              icon={isCameraOn ? '📹' : '📷'}
+              iconComponent={isCameraOn ? <VideoIcon size={24} color={PsychiColors.white} /> : <VideoOffIcon size={24} color={PsychiColors.white} />}
               label={isCameraOn ? 'Camera Off' : 'Camera On'}
               isActive={!isCameraOn}
               onPress={toggleCamera}
@@ -333,7 +366,7 @@ export default function VideoCall({
           )}
 
           <ControlButton
-            icon={isSpeakerOn ? '🔊' : '🔈'}
+            iconComponent={isSpeakerOn ? <VolumeHighIcon size={24} color={PsychiColors.white} /> : <VolumeLowIcon size={24} color={PsychiColors.white} />}
             label={isSpeakerOn ? 'Speaker' : 'Earpiece'}
             isActive={!isSpeakerOn}
             onPress={() => setIsSpeakerOn(!isSpeakerOn)}
@@ -346,7 +379,9 @@ export default function VideoCall({
             colors={[PsychiColors.error, '#C53030'] as const}
             style={styles.endCallGradient}
           >
-            <Text style={styles.endCallIcon}>📞</Text>
+            <View style={styles.endCallIconContainer}>
+              <PhoneIcon size={20} color={PsychiColors.white} />
+            </View>
             <Text style={styles.endCallText}>End Call</Text>
           </LinearGradient>
         </TouchableOpacity>
@@ -545,9 +580,6 @@ const styles = StyleSheet.create({
   controlIconActive: {
     backgroundColor: 'rgba(239, 68, 68, 0.3)',
   },
-  controlIcon: {
-    fontSize: 24,
-  },
   controlLabel: {
     fontSize: 12,
     color: 'rgba(255, 255, 255, 0.7)',
@@ -564,8 +596,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.md,
     gap: Spacing.sm,
   },
-  endCallIcon: {
-    fontSize: 20,
+  endCallIconContainer: {
     transform: [{ rotate: '135deg' }],
   },
   endCallText: {

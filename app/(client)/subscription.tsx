@@ -4,13 +4,14 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
   TouchableOpacity,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
+import { ChevronLeftIcon, CheckIcon, MinusCircleIcon } from '@/components/icons';
 import { Config } from '@/constants/config';
 
 type PlanTier = 'basic' | 'standard' | 'premium';
@@ -111,9 +112,9 @@ export default function SubscriptionScreen() {
   const renderFeatureValue = (value: string | boolean) => {
     if (typeof value === 'boolean') {
       return value ? (
-        <Text style={styles.featureCheck}>✓</Text>
+        <CheckIcon size={16} color={PsychiColors.success} />
       ) : (
-        <Text style={styles.featureDash}>—</Text>
+        <MinusCircleIcon size={16} color={PsychiColors.textMuted} />
       );
     }
     return <Text style={styles.featureText}>{value}</Text>;
@@ -125,7 +126,7 @@ export default function SubscriptionScreen() {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Text style={styles.backArrow}>‹</Text>
+            <ChevronLeftIcon size={24} color={PsychiColors.azure} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Subscription</Text>
           <View style={styles.placeholder} />
@@ -196,7 +197,7 @@ export default function SubscriptionScreen() {
 
                   {isSelected && !isCurrent && (
                     <View style={styles.selectedIndicator}>
-                      <Text style={styles.selectedCheck}>✓</Text>
+                      <CheckIcon size={14} color={PsychiColors.white} />
                     </View>
                   )}
                 </TouchableOpacity>

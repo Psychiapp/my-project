@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
+import { CheckIcon } from '@/components/icons';
 import { subscriptionPlans, SubscriptionPlan } from '@/lib/stripe';
 
 interface SubscriptionPlansProps {
@@ -86,7 +87,7 @@ export default function SubscriptionPlans({
             <View style={styles.featuresContainer}>
               {plan.features.map((feature, featureIndex) => (
                 <View key={featureIndex} style={styles.featureRow}>
-                  <Text style={styles.checkIcon}>✓</Text>
+                  <CheckIcon size={14} color={PsychiColors.success} />
                   <Text style={styles.featureText}>{feature}</Text>
                 </View>
               ))}
@@ -214,11 +215,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  checkIcon: {
-    fontSize: 14,
-    color: PsychiColors.success,
+  checkIconContainer: {
     marginRight: Spacing.sm,
-    fontWeight: '700',
   },
   featureText: {
     fontSize: 14,

@@ -4,13 +4,14 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
   TouchableOpacity,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
+import { ChevronLeftIcon, HeartIcon, ChatIcon, PhoneIcon, VideoIcon } from '@/components/icons';
 import { Config } from '@/constants/config';
 
 // Mock supporter data - in production this would come from API
@@ -19,7 +20,6 @@ const mockSupporters: Record<string, {
   name: string;
   education: string;
   specialties: string[];
-  rating: number;
   sessions: number;
   bio: string;
   available: boolean;
@@ -27,14 +27,13 @@ const mockSupporters: Record<string, {
   experience: string;
   approach: string;
   availability: string[];
-  reviews: { author: string; rating: number; text: string; date: string }[];
+  feedback: { author: string; text: string; date: string }[];
 }> = {
   '1': {
     id: '1',
     name: 'Sarah Chen',
     education: 'Psychology, Stanford',
     specialties: ['Anxiety', 'Stress', 'Academic'],
-    rating: 4.9,
     sessions: 127,
     bio: 'I specialize in helping students navigate academic stress and anxiety. Having gone through similar experiences during my own education, I understand the unique pressures that come with academic life.',
     available: true,
@@ -42,10 +41,10 @@ const mockSupporters: Record<string, {
     experience: '2+ years',
     approach: 'I use a combination of active listening, mindfulness techniques, and cognitive reframing to help you build resilience and manage stress effectively.',
     availability: ['Weekdays 9am-5pm', 'Saturday mornings'],
-    reviews: [
-      { author: 'Alex M.', rating: 5, text: 'Sarah helped me through a really tough semester. Highly recommend!', date: 'Jan 2026' },
-      { author: 'Jordan K.', rating: 5, text: 'Understanding and supportive. Great listener.', date: 'Dec 2025' },
-      { author: 'Taylor R.', rating: 4, text: 'Very helpful with my anxiety about exams.', date: 'Dec 2025' },
+    feedback: [
+      { author: 'Alex M.', text: 'Sarah helped me through a really tough semester. Highly recommend!', date: 'Jan 2026' },
+      { author: 'Jordan K.', text: 'Understanding and supportive. Great listener.', date: 'Dec 2025' },
+      { author: 'Taylor R.', text: 'Very helpful with my anxiety about exams.', date: 'Dec 2025' },
     ],
   },
   '2': {
@@ -53,7 +52,6 @@ const mockSupporters: Record<string, {
     name: 'Marcus Johnson',
     education: 'Clinical Psych, UCLA',
     specialties: ['Depression', 'Life Transitions', 'Relationships'],
-    rating: 4.8,
     sessions: 89,
     bio: 'Passionate about helping people through major life changes. Whether you\'re dealing with a breakup, career change, or just feeling lost, I\'m here to listen and support you.',
     available: true,
@@ -61,9 +59,9 @@ const mockSupporters: Record<string, {
     experience: '3+ years',
     approach: 'My approach focuses on validation, empathy, and helping you discover your own inner strength and resilience.',
     availability: ['Weekdays 6pm-10pm', 'Weekends'],
-    reviews: [
-      { author: 'Casey P.', rating: 5, text: 'Marcus is incredibly empathetic. Helped me through a difficult breakup.', date: 'Jan 2026' },
-      { author: 'Morgan L.', rating: 5, text: 'Great at helping me see things from different perspectives.', date: 'Jan 2026' },
+    feedback: [
+      { author: 'Casey P.', text: 'Marcus is incredibly empathetic. Helped me through a difficult breakup.', date: 'Jan 2026' },
+      { author: 'Morgan L.', text: 'Great at helping me see things from different perspectives.', date: 'Jan 2026' },
     ],
   },
 };
@@ -99,10 +97,10 @@ export default function SupporterProfileScreen() {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Text style={styles.backArrow}>‹</Text>
+            <ChevronLeftIcon size={24} color={PsychiColors.azure} />
           </TouchableOpacity>
           <TouchableOpacity onPress={handleToggleFavorite} style={styles.favoriteButton}>
-            <Text style={styles.favoriteIcon}>{isFavorite ? '❤️' : '🤍'}</Text>
+            <HeartIcon size={24} color={isFavorite ? PsychiColors.coral : PsychiColors.textMuted} />
           </TouchableOpacity>
         </View>
 
@@ -120,11 +118,6 @@ export default function SupporterProfileScreen() {
           <Text style={styles.name}>{supporter.name}</Text>
           <Text style={styles.education}>{supporter.education}</Text>
           <View style={styles.statsRow}>
-            <View style={styles.stat}>
-              <Text style={styles.statValue}>⭐ {supporter.rating}</Text>
-              <Text style={styles.statLabel}>Rating</Text>
-            </View>
-            <View style={styles.statDivider} />
             <View style={styles.stat}>
               <Text style={styles.statValue}>{supporter.sessions}</Text>
               <Text style={styles.statLabel}>Sessions</Text>
@@ -191,19 +184,16 @@ export default function SupporterProfileScreen() {
           </View>
         </View>
 
-        {/* Reviews */}
+        {/* Feedback */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Reviews</Text>
-          {supporter.reviews.map((review, index) => (
+          <Text style={styles.sectionTitle}>Client Feedback</Text>
+          {supporter.feedback.map((item, index) => (
             <View key={index} style={styles.reviewCard}>
               <View style={styles.reviewHeader}>
-                <Text style={styles.reviewAuthor}>{review.author}</Text>
-                <View style={styles.reviewRating}>
-                  <Text style={styles.reviewStars}>{'⭐'.repeat(review.rating)}</Text>
-                </View>
+                <Text style={styles.reviewAuthor}>{item.author}</Text>
               </View>
-              <Text style={styles.reviewText}>{review.text}</Text>
-              <Text style={styles.reviewDate}>{review.date}</Text>
+              <Text style={styles.reviewText}>{item.text}</Text>
+              <Text style={styles.reviewDate}>{item.date}</Text>
             </View>
           ))}
         </View>
@@ -217,7 +207,7 @@ export default function SupporterProfileScreen() {
               onPress={() => handleBook('chat')}
               disabled={!supporter.available}
             >
-              <Text style={styles.sessionIcon}>💬</Text>
+              <ChatIcon size={28} color={PsychiColors.azure} />
               <Text style={styles.sessionType}>Chat</Text>
               <Text style={styles.sessionPrice}>{Config.pricing.chat.display}</Text>
               <Text style={styles.sessionDuration}>{Config.sessionDurations.chat} min</Text>
@@ -227,7 +217,7 @@ export default function SupporterProfileScreen() {
               onPress={() => handleBook('phone')}
               disabled={!supporter.available}
             >
-              <Text style={styles.sessionIcon}>📞</Text>
+              <PhoneIcon size={28} color={PsychiColors.azure} />
               <Text style={styles.sessionType}>Phone</Text>
               <Text style={styles.sessionPrice}>{Config.pricing.phone.display}</Text>
               <Text style={styles.sessionDuration}>{Config.sessionDurations.phone} min</Text>
@@ -237,7 +227,7 @@ export default function SupporterProfileScreen() {
               onPress={() => handleBook('video')}
               disabled={!supporter.available}
             >
-              <Text style={styles.sessionIcon}>📹</Text>
+              <VideoIcon size={28} color={PsychiColors.azure} />
               <Text style={styles.sessionType}>Video</Text>
               <Text style={styles.sessionPrice}>{Config.pricing.video.display}</Text>
               <Text style={styles.sessionDuration}>{Config.sessionDurations.video} min</Text>
@@ -470,12 +460,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: '#2A2A2A',
-  },
-  reviewRating: {
-    flexDirection: 'row',
-  },
-  reviewStars: {
-    fontSize: 12,
   },
   reviewText: {
     fontSize: 14,

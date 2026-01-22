@@ -4,14 +4,15 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
   TouchableOpacity,
   TextInput,
   FlatList,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
+import { SearchIcon } from '@/components/icons';
 
 // Mock supporter data
 const mockSupporters = [
@@ -20,7 +21,6 @@ const mockSupporters = [
     name: 'Sarah Chen',
     education: 'Psychology, Stanford',
     specialties: ['Anxiety', 'Stress', 'Academic'],
-    rating: 4.9,
     sessions: 127,
     bio: 'I specialize in helping students navigate academic stress and anxiety.',
     available: true,
@@ -30,7 +30,6 @@ const mockSupporters = [
     name: 'Marcus Johnson',
     education: 'Clinical Psych, UCLA',
     specialties: ['Depression', 'Life Transitions', 'Relationships'],
-    rating: 4.8,
     sessions: 89,
     bio: 'Passionate about helping people through major life changes.',
     available: true,
@@ -40,7 +39,6 @@ const mockSupporters = [
     name: 'Emily Rodriguez',
     education: 'Counseling, NYU',
     specialties: ['Self-Esteem', 'Career', 'Motivation'],
-    rating: 4.9,
     sessions: 156,
     bio: 'I help clients build confidence and find their path forward.',
     available: false,
@@ -50,7 +48,6 @@ const mockSupporters = [
     name: 'David Kim',
     education: 'Psychology, Berkeley',
     specialties: ['Anxiety', 'Social Skills', 'Identity'],
-    rating: 4.7,
     sessions: 64,
     bio: 'Creating a safe space to explore who you are and who you want to be.',
     available: true,
@@ -87,9 +84,7 @@ export default function BrowseSupportersScreen() {
           <Text style={styles.supporterName}>{item.name}</Text>
           <Text style={styles.supporterEducation}>{item.education}</Text>
           <View style={styles.ratingContainer}>
-            <Text style={styles.starIcon}>⭐</Text>
-            <Text style={styles.ratingText}>{item.rating}</Text>
-            <Text style={styles.sessionsText}>• {item.sessions} sessions</Text>
+            <Text style={styles.sessionsText}>{item.sessions} sessions completed</Text>
           </View>
         </View>
       </View>
@@ -130,7 +125,7 @@ export default function BrowseSupportersScreen() {
       {/* Search */}
       <View style={styles.searchContainer}>
         <View style={styles.searchInputContainer}>
-          <Text style={styles.searchIcon}>🔍</Text>
+          <SearchIcon size={20} color={PsychiColors.textMuted} />
           <TextInput
             style={styles.searchInput}
             placeholder="Search by name or specialty..."
@@ -176,7 +171,7 @@ export default function BrowseSupportersScreen() {
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>🔍</Text>
+            <SearchIcon size={48} color={PsychiColors.textMuted} />
             <Text style={styles.emptyTitle}>No supporters found</Text>
             <Text style={styles.emptySubtitle}>Try adjusting your search or filters</Text>
           </View>
@@ -317,19 +312,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 4,
   },
-  starIcon: {
-    fontSize: 12,
-    marginRight: 4,
-  },
-  ratingText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#2A2A2A',
-  },
   sessionsText: {
     fontSize: 13,
     color: PsychiColors.textMuted,
-    marginLeft: 4,
   },
   supporterBio: {
     fontSize: 14,

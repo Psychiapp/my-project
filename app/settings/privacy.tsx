@@ -4,15 +4,27 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
   TouchableOpacity,
   Switch,
   Alert,
   Linking,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
+import {
+  LockIcon,
+  PhoneIcon,
+  DocumentIcon,
+  ClipboardIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  ShieldIcon,
+  ChartIcon,
+  DownloadIcon,
+  TrashIcon,
+} from '@/components/icons';
 import { ExternalUrls } from '@/constants/config';
 
 export default function PrivacySecurityScreen() {
@@ -89,13 +101,13 @@ export default function PrivacySecurityScreen() {
 
   const securitySettings = [
     {
-      icon: '🔐',
+      icon: LockIcon,
       title: 'Change Password',
       description: 'Update your account password',
       onPress: handleChangePassword,
     },
     {
-      icon: '📱',
+      icon: PhoneIcon,
       title: 'Active Sessions',
       description: 'Manage devices logged into your account',
       onPress: () => Alert.alert('Active Sessions', 'This device is the only active session.'),
@@ -104,12 +116,12 @@ export default function PrivacySecurityScreen() {
 
   const legalLinks = [
     {
-      icon: '📄',
+      icon: DocumentIcon,
       title: 'Privacy Policy',
       url: ExternalUrls.privacyPolicy,
     },
     {
-      icon: '📋',
+      icon: ClipboardIcon,
       title: 'Terms of Service',
       url: ExternalUrls.termsOfService,
     },
@@ -121,7 +133,7 @@ export default function PrivacySecurityScreen() {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Text style={styles.backArrow}>‹</Text>
+            <ChevronLeftIcon size={24} color={PsychiColors.azure} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Privacy & Security</Text>
           <View style={styles.placeholder} />
@@ -130,7 +142,7 @@ export default function PrivacySecurityScreen() {
         {/* Security Info Card */}
         <View style={styles.section}>
           <View style={styles.infoCard}>
-            <Text style={styles.infoIcon}>🔒</Text>
+            <ShieldIcon size={24} color={PsychiColors.azure} />
             <View style={styles.infoContent}>
               <Text style={styles.infoTitle}>Your Data is Protected</Text>
               <Text style={styles.infoText}>
@@ -154,13 +166,13 @@ export default function PrivacySecurityScreen() {
                 onPress={item.onPress}
               >
                 <View style={styles.settingIcon}>
-                  <Text style={styles.settingIconText}>{item.icon}</Text>
+                  <item.icon size={20} color={PsychiColors.azure} />
                 </View>
                 <View style={styles.settingInfo}>
                   <Text style={styles.settingTitle}>{item.title}</Text>
                   <Text style={styles.settingDescription}>{item.description}</Text>
                 </View>
-                <Text style={styles.settingArrow}>›</Text>
+                <ChevronRightIcon size={20} color={PsychiColors.textMuted} />
               </TouchableOpacity>
             ))}
           </View>
@@ -172,7 +184,7 @@ export default function PrivacySecurityScreen() {
           <View style={styles.settingsCard}>
             <View style={styles.toggleRow}>
               <View style={styles.settingIcon}>
-                <Text style={styles.settingIconText}>👆</Text>
+                <LockIcon size={20} color={PsychiColors.azure} />
               </View>
               <View style={styles.settingInfo}>
                 <Text style={styles.settingTitle}>Biometric Login</Text>
@@ -195,7 +207,7 @@ export default function PrivacySecurityScreen() {
           <View style={styles.settingsCard}>
             <View style={styles.toggleRow}>
               <View style={styles.settingIcon}>
-                <Text style={styles.settingIconText}>📊</Text>
+                <ChartIcon size={20} color={PsychiColors.azure} />
               </View>
               <View style={styles.settingInfo}>
                 <Text style={styles.settingTitle}>Analytics</Text>
@@ -218,23 +230,23 @@ export default function PrivacySecurityScreen() {
           <View style={styles.settingsCard}>
             <TouchableOpacity style={[styles.settingRow, styles.settingRowBorder]} onPress={handleExportData}>
               <View style={styles.settingIcon}>
-                <Text style={styles.settingIconText}>📥</Text>
+                <DownloadIcon size={20} color={PsychiColors.azure} />
               </View>
               <View style={styles.settingInfo}>
                 <Text style={styles.settingTitle}>Export Your Data</Text>
                 <Text style={styles.settingDescription}>Download a copy of your information</Text>
               </View>
-              <Text style={styles.settingArrow}>›</Text>
+              <ChevronRightIcon size={20} color={PsychiColors.textMuted} />
             </TouchableOpacity>
             <TouchableOpacity style={styles.settingRow} onPress={handleDeleteAccount}>
               <View style={[styles.settingIcon, styles.dangerIcon]}>
-                <Text style={styles.settingIconText}>🗑️</Text>
+                <TrashIcon size={20} color={PsychiColors.error} />
               </View>
               <View style={styles.settingInfo}>
                 <Text style={[styles.settingTitle, styles.dangerText]}>Delete Account</Text>
                 <Text style={styles.settingDescription}>Permanently delete your account and data</Text>
               </View>
-              <Text style={styles.settingArrow}>›</Text>
+              <ChevronRightIcon size={20} color={PsychiColors.textMuted} />
             </TouchableOpacity>
           </View>
         </View>
@@ -253,12 +265,12 @@ export default function PrivacySecurityScreen() {
                 onPress={() => openLink(item.url)}
               >
                 <View style={styles.settingIcon}>
-                  <Text style={styles.settingIconText}>{item.icon}</Text>
+                  <item.icon size={20} color={PsychiColors.azure} />
                 </View>
                 <View style={styles.settingInfo}>
                   <Text style={styles.settingTitle}>{item.title}</Text>
                 </View>
-                <Text style={styles.settingArrow}>›</Text>
+                <ChevronRightIcon size={20} color={PsychiColors.textMuted} />
               </TouchableOpacity>
             ))}
           </View>

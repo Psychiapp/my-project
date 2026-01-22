@@ -8,10 +8,10 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
@@ -25,6 +25,7 @@ import {
   getPermissionDisplayName,
   getPermissionDescription,
 } from '@/lib/permissions';
+import { CameraIcon, MicIcon, NotificationsIcon, LockIcon, InfoIcon } from '@/components/icons';
 
 interface PermissionItemProps {
   type: PermissionType;
@@ -34,16 +35,18 @@ interface PermissionItemProps {
 }
 
 function PermissionItem({ type, granted, onRequest, isLoading }: PermissionItemProps) {
-  const icons: Record<PermissionType, string> = {
-    camera: '📷',
-    microphone: '🎤',
-    notifications: '🔔',
+  const icons: Record<PermissionType, React.FC<{ size?: number; color?: string }>> = {
+    camera: CameraIcon,
+    microphone: MicIcon,
+    notifications: NotificationsIcon,
   };
+
+  const IconComponent = icons[type];
 
   return (
     <View style={styles.permissionItem}>
       <View style={styles.permissionIcon}>
-        <Text style={styles.permissionIconText}>{icons[type]}</Text>
+        <IconComponent size={24} color={PsychiColors.azure} />
       </View>
       <View style={styles.permissionInfo}>
         <Text style={styles.permissionName}>{getPermissionDisplayName(type)}</Text>
@@ -147,7 +150,7 @@ export default function PermissionsScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerIcon}>
-            <Text style={styles.headerIconText}>🔐</Text>
+            <LockIcon size={40} color={PsychiColors.azure} />
           </View>
           <Text style={styles.title}>Enable Permissions</Text>
           <Text style={styles.subtitle}>
@@ -171,7 +174,7 @@ export default function PermissionsScreen() {
 
         {/* Info Box */}
         <View style={styles.infoBox}>
-          <Text style={styles.infoIcon}>ℹ️</Text>
+          <InfoIcon size={16} color={PsychiColors.azure} />
           <Text style={styles.infoText}>
             You can change these permissions anytime in your device settings. Your privacy is
             important to us.
@@ -259,9 +262,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: Spacing.md,
   },
-  headerIconText: {
-    fontSize: 40,
-  },
   title: {
     fontSize: 28,
     fontWeight: '700',
@@ -298,9 +298,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: Spacing.md,
-  },
-  permissionIconText: {
-    fontSize: 24,
   },
   permissionInfo: {
     flex: 1,
@@ -346,8 +343,7 @@ const styles = StyleSheet.create({
     padding: Spacing.md,
     marginBottom: Spacing.xl,
   },
-  infoIcon: {
-    fontSize: 16,
+  infoIconContainer: {
     marginRight: Spacing.sm,
   },
   infoText: {

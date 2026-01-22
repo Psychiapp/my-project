@@ -5,16 +5,16 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  SafeAreaView,
   KeyboardAvoidingView,
   Platform,
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
 import { supabase } from '@/lib/supabase';
-import { EyeIcon } from '@/components/icons';
+import { EyeIcon, WarningIcon, CheckCircleIcon, LockIcon, CheckIcon, DotIcon } from '@/components/icons';
 
 export default function ResetPasswordScreen() {
   const router = useRouter();
@@ -101,7 +101,7 @@ export default function ResetPasswordScreen() {
       <SafeAreaView style={styles.container}>
         <View style={styles.content}>
           <View style={styles.iconContainer}>
-            <Text style={styles.iconEmoji}>⚠️</Text>
+            <WarningIcon size={64} color={PsychiColors.warning} />
           </View>
           <Text style={styles.title}>Link Expired</Text>
           <Text style={styles.description}>{error}</Text>
@@ -128,7 +128,7 @@ export default function ResetPasswordScreen() {
       <SafeAreaView style={styles.container}>
         <View style={styles.content}>
           <View style={styles.successIcon}>
-            <Text style={styles.successEmoji}>✅</Text>
+            <CheckCircleIcon size={72} color={PsychiColors.success} />
           </View>
           <Text style={styles.title}>Password Reset!</Text>
           <Text style={styles.description}>
@@ -154,7 +154,7 @@ export default function ResetPasswordScreen() {
         <View style={styles.content}>
           {/* Icon */}
           <View style={styles.iconContainer}>
-            <Text style={styles.iconEmoji}>🔑</Text>
+            <LockIcon size={64} color={PsychiColors.azure} />
           </View>
 
           {/* Title */}
@@ -213,27 +213,35 @@ export default function ResetPasswordScreen() {
             <View style={styles.requirementsContainer}>
               <Text style={styles.requirementsTitle}>Password must contain:</Text>
               <View style={styles.requirementRow}>
-                <Text style={[styles.requirementIcon, password.length >= 8 && styles.requirementMet]}>
-                  {password.length >= 8 ? '✓' : '○'}
-                </Text>
+                {password.length >= 8 ? (
+                  <CheckIcon size={14} color={PsychiColors.success} />
+                ) : (
+                  <DotIcon size={14} color={PsychiColors.textMuted} />
+                )}
                 <Text style={styles.requirementText}>At least 8 characters</Text>
               </View>
               <View style={styles.requirementRow}>
-                <Text style={[styles.requirementIcon, /[A-Z]/.test(password) && styles.requirementMet]}>
-                  {/[A-Z]/.test(password) ? '✓' : '○'}
-                </Text>
+                {/[A-Z]/.test(password) ? (
+                  <CheckIcon size={14} color={PsychiColors.success} />
+                ) : (
+                  <DotIcon size={14} color={PsychiColors.textMuted} />
+                )}
                 <Text style={styles.requirementText}>One uppercase letter</Text>
               </View>
               <View style={styles.requirementRow}>
-                <Text style={[styles.requirementIcon, /[a-z]/.test(password) && styles.requirementMet]}>
-                  {/[a-z]/.test(password) ? '✓' : '○'}
-                </Text>
+                {/[a-z]/.test(password) ? (
+                  <CheckIcon size={14} color={PsychiColors.success} />
+                ) : (
+                  <DotIcon size={14} color={PsychiColors.textMuted} />
+                )}
                 <Text style={styles.requirementText}>One lowercase letter</Text>
               </View>
               <View style={styles.requirementRow}>
-                <Text style={[styles.requirementIcon, /[0-9]/.test(password) && styles.requirementMet]}>
-                  {/[0-9]/.test(password) ? '✓' : '○'}
-                </Text>
+                {/[0-9]/.test(password) ? (
+                  <CheckIcon size={14} color={PsychiColors.success} />
+                ) : (
+                  <DotIcon size={14} color={PsychiColors.textMuted} />
+                )}
                 <Text style={styles.requirementText}>One number</Text>
               </View>
             </View>
@@ -283,15 +291,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: Spacing.lg,
   },
-  iconEmoji: {
-    fontSize: 64,
-  },
   successIcon: {
     alignItems: 'center',
     marginBottom: Spacing.lg,
-  },
-  successEmoji: {
-    fontSize: 72,
   },
   title: {
     fontSize: 28,
@@ -354,14 +356,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 4,
   },
-  requirementIcon: {
-    fontSize: 14,
-    color: PsychiColors.textMuted,
+  requirementIconContainer: {
     marginRight: Spacing.sm,
     width: 16,
-  },
-  requirementMet: {
-    color: PsychiColors.success,
+    alignItems: 'center',
   },
   requirementText: {
     fontSize: 13,

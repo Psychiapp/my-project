@@ -4,14 +4,26 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
   TouchableOpacity,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
+import {
+  ProfileIcon,
+  BookIcon,
+  BankIcon,
+  NotificationsIcon,
+  PhoneIcon,
+  ClipboardIcon,
+  InfoIcon,
+  LogoutIcon,
+  CertificateIcon,
+  ChevronRightIcon,
+} from '@/components/icons';
 
 export default function SupporterProfileScreen() {
   const { profile, signOut } = useAuth();
@@ -38,7 +50,6 @@ export default function SupporterProfileScreen() {
   const supporterProfile = {
     name: 'Sarah Chen',
     education: 'Psychology, Stanford University',
-    rating: 4.9,
     totalSessions: 127,
     bio: 'I specialize in helping students navigate academic stress and anxiety. My approach combines active listening with practical coping strategies.',
     specialties: ['Anxiety', 'Stress', 'Academic', 'Motivation'],
@@ -47,49 +58,49 @@ export default function SupporterProfileScreen() {
 
   const menuItems = [
     {
-      icon: '👤',
+      icon: ProfileIcon,
       title: 'Edit Profile',
       subtitle: 'Update bio, photo, and specialties',
       onPress: () => router.push('/(supporter)/edit-profile'),
     },
     {
-      icon: '🎓',
+      icon: CertificateIcon,
       title: 'Education & Experience',
       subtitle: 'Update credentials and background',
       onPress: () => router.push('/(supporter)/edit-profile'),
     },
     {
-      icon: '💳',
+      icon: BankIcon,
       title: 'Payout Settings',
       subtitle: 'Manage bank account and schedule',
       onPress: () => router.push('/(supporter)/payout-settings'),
     },
     {
-      icon: '📚',
+      icon: BookIcon,
       title: 'Training Center',
       subtitle: 'Access training materials',
       onPress: () => router.push('/(supporter)/training'),
     },
     {
-      icon: '🔔',
+      icon: NotificationsIcon,
       title: 'Notifications',
       subtitle: 'Configure alerts and reminders',
       onPress: () => router.push('/settings/notifications'),
     },
     {
-      icon: '📱',
+      icon: PhoneIcon,
       title: 'Device Permissions',
       subtitle: 'Camera, microphone & notifications',
       onPress: () => router.push('/permissions'),
     },
     {
-      icon: '📋',
+      icon: ClipboardIcon,
       title: 'Guidelines',
       subtitle: 'Review supporter guidelines',
       onPress: () => router.push('/(supporter)/training'),
     },
     {
-      icon: '❓',
+      icon: InfoIcon,
       title: 'Help & Support',
       subtitle: 'Get help or contact us',
       onPress: () => router.push('/settings/help'),
@@ -116,10 +127,6 @@ export default function SupporterProfileScreen() {
             <Text style={styles.profileName}>{supporterProfile.name}</Text>
             <Text style={styles.profileEducation}>{supporterProfile.education}</Text>
             <View style={styles.statsRow}>
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>⭐ {supporterProfile.rating}</Text>
-              </View>
-              <View style={styles.statDivider} />
               <View style={styles.statItem}>
                 <Text style={styles.statValue}>{supporterProfile.totalSessions} sessions</Text>
               </View>
@@ -153,23 +160,26 @@ export default function SupporterProfileScreen() {
 
         {/* Menu Items */}
         <View style={styles.menuSection}>
-          {menuItems.map((item, index) => (
-            <TouchableOpacity
-              key={index}
-              style={styles.menuItem}
-              onPress={item.onPress}
-              activeOpacity={0.7}
-            >
-              <View style={styles.menuIcon}>
-                <Text style={styles.menuIconText}>{item.icon}</Text>
-              </View>
-              <View style={styles.menuInfo}>
-                <Text style={styles.menuTitle}>{item.title}</Text>
-                <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
-              </View>
-              <Text style={styles.menuArrow}>›</Text>
-            </TouchableOpacity>
-          ))}
+          {menuItems.map((item, index) => {
+            const IconComponent = item.icon;
+            return (
+              <TouchableOpacity
+                key={index}
+                style={styles.menuItem}
+                onPress={item.onPress}
+                activeOpacity={0.7}
+              >
+                <View style={styles.menuIcon}>
+                  <IconComponent size={20} color={PsychiColors.azure} />
+                </View>
+                <View style={styles.menuInfo}>
+                  <Text style={styles.menuTitle}>{item.title}</Text>
+                  <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
+                </View>
+                <ChevronRightIcon size={20} color={PsychiColors.textSoft} />
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
         {/* Sign Out */}
@@ -178,7 +188,7 @@ export default function SupporterProfileScreen() {
           onPress={handleSignOut}
           activeOpacity={0.7}
         >
-          <Text style={styles.signOutIcon}>🚪</Text>
+          <LogoutIcon size={18} color={PsychiColors.error} />
           <Text style={styles.signOutText}>Sign Out</Text>
         </TouchableOpacity>
 
@@ -329,9 +339,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: Spacing.md,
   },
-  menuIconText: {
-    fontSize: 20,
-  },
   menuInfo: {
     flex: 1,
   },
@@ -359,11 +366,8 @@ const styles = StyleSheet.create({
     padding: Spacing.md,
     ...Shadows.soft,
   },
-  signOutIcon: {
-    fontSize: 18,
-    marginRight: Spacing.sm,
-  },
   signOutText: {
+    marginLeft: Spacing.sm,
     fontSize: 16,
     fontWeight: '600',
     color: PsychiColors.error,

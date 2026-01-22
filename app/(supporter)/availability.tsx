@@ -4,14 +4,27 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
   TouchableOpacity,
   Switch,
+  Modal,
+  Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
+import { PsychiColors, Spacing, BorderRadius, Shadows, Typography } from '@/constants/theme';
+import { CloseIcon, PlusIcon, ClockIcon, InfoIcon, CheckIcon } from '@/components/icons';
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+// Available time options (every 30 minutes)
+const TIME_OPTIONS: string[] = [];
+for (let h = 0; h < 24; h++) {
+  for (let m = 0; m < 60; m += 30) {
+    const hour = h.toString().padStart(2, '0');
+    const minute = m.toString().padStart(2, '0');
+    TIME_OPTIONS.push(`${hour}:${minute}`);
+  }
+}
 
 interface TimeSlot {
   start: string;
@@ -34,13 +47,120 @@ export default function AvailabilityScreen() {
     Sunday: { enabled: false, slots: [] },
   });
 
+  const [timePickerVisible, setTimePickerVisible] = useState(false);
+  const [editingDay, setEditingDay] = useState<string | null>(null);
+  const [editingSlotIndex, setEditingSlotIndex] = useState<number | null>(null);
+  const [editingField, setEditingField] = useState<'start' | 'end'>('start');
+  const [selectedTime, setSelectedTime] = useState('09:00');
+
   const toggleDay = (day: string) => {
+    const currentEnabled = availability[day]?.enabled || false;
+
+    // Check if this is the last enabled day
+    if (currentEnabled) {
+      const enabledDays = Object.entries(availability).filter(([_, v]) => v.enabled);
+      if (enabledDays.length === 1 && enabledDays[0][0] === day) {
+        Alert.alert(
+          'Cannot Disable',
+          'You must have at least one day available for sessions.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+    }
+
     setAvailability((prev) => ({
       ...prev,
       [day]: {
         ...prev[day],
-        enabled: !prev[day].enabled,
-        slots: !prev[day].enabled ? [{ start: '09:00', end: '17:00' }] : [],
+        enabled: !currentEnabled,
+        slots: !currentEnabled ? [{ start: '09:00', end: '17:00' }] : [],
+      },
+    }));
+  };
+
+  const openTimePicker = (day: string, slotIndex: number, field: 'start' | 'end') => {
+    setEditingDay(day);
+    setEditingSlotIndex(slotIndex);
+    setEditingField(field);
+    setSelectedTime(availability[day].slots[slotIndex][field]);
+    setTimePickerVisible(true);
+  };
+
+  const confirmTimeSelection = () => {
+    if (editingDay === null || editingSlotIndex === null) return;
+
+    const slot = availability[editingDay].slots[editingSlotIndex];
+    const newSlot = { ...slot, [editingField]: selectedTime };
+
+    // Validate that end time is after start time
+    if (editingField === 'end' && selectedTime <= newSlot.start) {
+      Alert.alert('Invalid Time', 'End time must be after start time.');
+      return;
+    }
+    if (editingField === 'start' && selectedTime >= newSlot.end) {
+      Alert.alert('Invalid Time', 'Start time must be before end time.');
+      return;
+    }
+
+    setAvailability((prev) => ({
+      ...prev,
+      [editingDay]: {
+        ...prev[editingDay],
+        slots: prev[editingDay].slots.map((s, i) =>
+          i === editingSlotIndex ? newSlot : s
+        ),
+      },
+    }));
+
+    setTimePickerVisible(false);
+  };
+
+  const addTimeSlot = (day: string) => {
+    const lastSlot = availability[day].slots[availability[day].slots.length - 1];
+    let newStart = '09:00';
+    let newEnd = '17:00';
+
+    if (lastSlot) {
+      // Try to set new slot after the last one
+      const lastEndIndex = TIME_OPTIONS.indexOf(lastSlot.end);
+      if (lastEndIndex < TIME_OPTIONS.length - 2) {
+        newStart = TIME_OPTIONS[lastEndIndex + 1];
+        newEnd = TIME_OPTIONS[Math.min(lastEndIndex + 5, TIME_OPTIONS.length - 1)];
+      }
+    }
+
+    setAvailability((prev) => ({
+      ...prev,
+      [day]: {
+        ...prev[day],
+        slots: [...prev[day].slots, { start: newStart, end: newEnd }],
+      },
+    }));
+  };
+
+  const removeTimeSlot = (day: string, slotIndex: number) => {
+    const daySlots = availability[day].slots;
+
+    // Check if this is the last slot on the last enabled day
+    if (daySlots.length === 1) {
+      const enabledDays = Object.entries(availability).filter(([_, v]) => v.enabled && v.slots.length > 0);
+      if (enabledDays.length === 1 && enabledDays[0][0] === day) {
+        Alert.alert(
+          'Cannot Remove',
+          'You must have at least one time slot available for sessions.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+    }
+
+    setAvailability((prev) => ({
+      ...prev,
+      [day]: {
+        ...prev[day],
+        slots: prev[day].slots.filter((_, i) => i !== slotIndex),
+        enabled: prev[day].slots.length > 1, // Disable day if no slots left
       },
     }));
   };
@@ -51,6 +171,25 @@ export default function AvailabilityScreen() {
     const ampm = hour >= 12 ? 'PM' : 'AM';
     const displayHour = hour % 12 || 12;
     return `${displayHour}:${minutes} ${ampm}`;
+  };
+
+  const handleSave = () => {
+    // Validate at least one day with one slot
+    const hasAvailability = Object.values(availability).some(
+      (day) => day.enabled && day.slots.length > 0
+    );
+
+    if (!hasAvailability) {
+      Alert.alert(
+        'No Availability',
+        'Please set at least one day and time slot when you are available.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    // TODO: Save to database
+    Alert.alert('Saved', 'Your availability has been updated.', [{ text: 'OK' }]);
   };
 
   return (
@@ -64,7 +203,7 @@ export default function AvailabilityScreen() {
 
         {/* Info Card */}
         <View style={styles.infoCard}>
-          <Text style={styles.infoIcon}>💡</Text>
+          <InfoIcon size={18} color={PsychiColors.royalBlue} />
           <Text style={styles.infoText}>
             Clients can only book sessions during your available times. Keep your schedule updated for accurate bookings.
           </Text>
@@ -79,17 +218,15 @@ export default function AvailabilityScreen() {
                   <Text style={styles.dayName}>{day}</Text>
                   {availability[day]?.enabled && availability[day]?.slots.length > 0 && (
                     <Text style={styles.dayHours}>
-                      {availability[day].slots
-                        .map((slot) => `${formatTime(slot.start)} - ${formatTime(slot.end)}`)
-                        .join(', ')}
+                      {availability[day].slots.length} time slot{availability[day].slots.length !== 1 ? 's' : ''}
                     </Text>
                   )}
                 </View>
                 <Switch
                   value={availability[day]?.enabled || false}
                   onValueChange={() => toggleDay(day)}
-                  trackColor={{ false: 'rgba(0,0,0,0.1)', true: 'rgba(74, 144, 226, 0.3)' }}
-                  thumbColor={availability[day]?.enabled ? PsychiColors.azure : PsychiColors.textSoft}
+                  trackColor={{ false: 'rgba(0,0,0,0.1)', true: 'rgba(74, 123, 199, 0.3)' }}
+                  thumbColor={availability[day]?.enabled ? PsychiColors.royalBlue : PsychiColors.textSoft}
                 />
               </View>
 
@@ -97,20 +234,35 @@ export default function AvailabilityScreen() {
                 <View style={styles.slotsContainer}>
                   {availability[day].slots.map((slot, index) => (
                     <View key={index} style={styles.slotRow}>
-                      <TouchableOpacity style={styles.timeButton}>
+                      <TouchableOpacity
+                        style={styles.timeButton}
+                        onPress={() => openTimePicker(day, index, 'start')}
+                      >
+                        <ClockIcon size={14} color={PsychiColors.textMuted} />
                         <Text style={styles.timeButtonText}>{formatTime(slot.start)}</Text>
                       </TouchableOpacity>
                       <Text style={styles.toText}>to</Text>
-                      <TouchableOpacity style={styles.timeButton}>
+                      <TouchableOpacity
+                        style={styles.timeButton}
+                        onPress={() => openTimePicker(day, index, 'end')}
+                      >
+                        <ClockIcon size={14} color={PsychiColors.textMuted} />
                         <Text style={styles.timeButtonText}>{formatTime(slot.end)}</Text>
                       </TouchableOpacity>
-                      <TouchableOpacity style={styles.removeButton}>
-                        <Text style={styles.removeButtonText}>✕</Text>
+                      <TouchableOpacity
+                        style={styles.removeButton}
+                        onPress={() => removeTimeSlot(day, index)}
+                      >
+                        <CloseIcon size={14} color={PsychiColors.error} />
                       </TouchableOpacity>
                     </View>
                   ))}
-                  <TouchableOpacity style={styles.addSlotButton}>
-                    <Text style={styles.addSlotText}>+ Add time slot</Text>
+                  <TouchableOpacity
+                    style={styles.addSlotButton}
+                    onPress={() => addTimeSlot(day)}
+                  >
+                    <PlusIcon size={16} color={PsychiColors.royalBlue} />
+                    <Text style={styles.addSlotText}>Add time slot</Text>
                   </TouchableOpacity>
                 </View>
               )}
@@ -120,9 +272,9 @@ export default function AvailabilityScreen() {
 
         {/* Save Button */}
         <View style={styles.saveContainer}>
-          <TouchableOpacity style={styles.saveButton} activeOpacity={0.8}>
+          <TouchableOpacity style={styles.saveButton} activeOpacity={0.8} onPress={handleSave}>
             <LinearGradient
-              colors={[PsychiColors.azure, PsychiColors.deep]}
+              colors={[PsychiColors.royalBlue, '#5A8BD4']}
               style={styles.saveGradient}
             >
               <Text style={styles.saveText}>Save Changes</Text>
@@ -132,6 +284,55 @@ export default function AvailabilityScreen() {
 
         <View style={{ height: 32 }} />
       </ScrollView>
+
+      {/* Time Picker Modal */}
+      <Modal
+        visible={timePickerVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setTimePickerVisible(false)}
+      >
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setTimePickerVisible(false)}>
+              <Text style={styles.modalCancel}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>
+              Select {editingField === 'start' ? 'Start' : 'End'} Time
+            </Text>
+            <TouchableOpacity onPress={confirmTimeSelection}>
+              <Text style={styles.modalDone}>Done</Text>
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={styles.timeList} showsVerticalScrollIndicator={false}>
+            {TIME_OPTIONS.map((time) => (
+              <TouchableOpacity
+                key={time}
+                style={[
+                  styles.timeOption,
+                  selectedTime === time && styles.timeOptionSelected,
+                ]}
+                onPress={() => setSelectedTime(time)}
+              >
+                <Text
+                  style={[
+                    styles.timeOptionText,
+                    selectedTime === time && styles.timeOptionTextSelected,
+                  ]}
+                >
+                  {formatTime(time)}
+                </Text>
+                {selectedTime === time && (
+                  <View style={styles.checkmark}>
+                    <CheckIcon size={14} color={PsychiColors.white} />
+                  </View>
+                )}
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -150,40 +351,38 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.sm,
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#2A2A2A',
-    fontFamily: 'Georgia',
+    fontSize: Typography.fontSize['2xl'],
+    fontWeight: Typography.fontWeight.semibold,
+    color: PsychiColors.textPrimary,
+    fontFamily: Typography.fontFamily.serif,
   },
   headerSubtitle: {
-    fontSize: 14,
+    fontSize: Typography.fontSize.sm,
     color: PsychiColors.textMuted,
     marginTop: 4,
   },
   infoCard: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(74, 144, 226, 0.1)',
+    backgroundColor: `${PsychiColors.royalBlue}10`,
     marginHorizontal: Spacing.lg,
-    borderRadius: BorderRadius.md,
+    borderRadius: BorderRadius.lg,
     padding: Spacing.md,
     marginBottom: Spacing.md,
-  },
-  infoIcon: {
-    fontSize: 18,
-    marginRight: Spacing.sm,
+    gap: Spacing.sm,
+    alignItems: 'flex-start',
   },
   infoText: {
     flex: 1,
-    fontSize: 13,
+    fontSize: Typography.fontSize.sm,
     color: PsychiColors.textSecondary,
-    lineHeight: 18,
+    lineHeight: 20,
   },
   section: {
     paddingHorizontal: Spacing.lg,
   },
   dayCard: {
-    backgroundColor: PsychiColors.white,
-    borderRadius: BorderRadius.lg,
+    backgroundColor: PsychiColors.cloud,
+    borderRadius: BorderRadius.xl,
     marginBottom: Spacing.sm,
     overflow: 'hidden',
     ...Shadows.soft,
@@ -198,20 +397,20 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   dayName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#2A2A2A',
+    fontSize: Typography.fontSize.base,
+    fontWeight: Typography.fontWeight.semibold,
+    color: PsychiColors.textPrimary,
   },
   dayHours: {
-    fontSize: 13,
+    fontSize: Typography.fontSize.sm,
     color: PsychiColors.textMuted,
     marginTop: 2,
   },
   slotsContainer: {
-    backgroundColor: PsychiColors.cream,
+    backgroundColor: PsychiColors.frost,
     padding: Spacing.md,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.05)',
+    borderTopColor: PsychiColors.borderUltraLight,
   },
   slotRow: {
     flexDirection: 'row',
@@ -219,21 +418,24 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
   },
   timeButton: {
-    backgroundColor: PsychiColors.white,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: PsychiColors.cloud,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.sm,
+    borderRadius: BorderRadius.lg,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.1)',
+    borderColor: PsychiColors.borderLight,
+    gap: Spacing.xs,
   },
   timeButtonText: {
-    fontSize: 14,
-    color: '#2A2A2A',
-    fontWeight: '500',
+    fontSize: Typography.fontSize.sm,
+    color: PsychiColors.textPrimary,
+    fontWeight: Typography.fontWeight.medium,
   },
   toText: {
     marginHorizontal: Spacing.sm,
-    fontSize: 14,
+    fontSize: Typography.fontSize.sm,
     color: PsychiColors.textMuted,
   },
   removeButton: {
@@ -241,38 +443,104 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    backgroundColor: `${PsychiColors.error}15`,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  removeButtonText: {
-    fontSize: 14,
-    color: PsychiColors.error,
-    fontWeight: '600',
-  },
   addSlotButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingVertical: Spacing.sm,
+    gap: Spacing.xs,
   },
   addSlotText: {
-    fontSize: 14,
-    color: PsychiColors.azure,
-    fontWeight: '500',
+    fontSize: Typography.fontSize.sm,
+    color: PsychiColors.royalBlue,
+    fontWeight: Typography.fontWeight.medium,
   },
   saveContainer: {
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.lg,
   },
   saveButton: {
-    borderRadius: BorderRadius.lg,
+    borderRadius: BorderRadius.xl,
     overflow: 'hidden',
+    ...Shadows.button,
   },
   saveGradient: {
     paddingVertical: Spacing.md,
     alignItems: 'center',
   },
   saveText: {
-    fontSize: 17,
-    fontWeight: '600',
+    fontSize: Typography.fontSize.base,
+    fontWeight: Typography.fontWeight.semibold,
     color: PsychiColors.white,
+  },
+  // Modal styles
+  modalContainer: {
+    flex: 1,
+    backgroundColor: PsychiColors.cream,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: PsychiColors.borderLight,
+    backgroundColor: PsychiColors.cloud,
+  },
+  modalCancel: {
+    fontSize: Typography.fontSize.base,
+    color: PsychiColors.textMuted,
+  },
+  modalTitle: {
+    fontSize: Typography.fontSize.base,
+    fontWeight: Typography.fontWeight.semibold,
+    color: PsychiColors.textPrimary,
+  },
+  modalDone: {
+    fontSize: Typography.fontSize.base,
+    fontWeight: Typography.fontWeight.semibold,
+    color: PsychiColors.royalBlue,
+  },
+  timeList: {
+    flex: 1,
+    paddingHorizontal: Spacing.lg,
+  },
+  timeOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: Spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: PsychiColors.borderUltraLight,
+  },
+  timeOptionSelected: {
+    backgroundColor: `${PsychiColors.royalBlue}10`,
+    marginHorizontal: -Spacing.lg,
+    paddingHorizontal: Spacing.lg,
+  },
+  timeOptionText: {
+    fontSize: Typography.fontSize.base,
+    color: PsychiColors.textPrimary,
+  },
+  timeOptionTextSelected: {
+    color: PsychiColors.royalBlue,
+    fontWeight: Typography.fontWeight.semibold,
+  },
+  checkmark: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: PsychiColors.royalBlue,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkmarkText: {
+    color: PsychiColors.white,
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

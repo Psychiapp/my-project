@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { PsychiColors, Spacing } from '@/constants/theme';
+import { MaskIcon } from '@/components/icons';
 
 export default function DemoModeBanner() {
   const { isDemoMode } = useAuth();
@@ -10,7 +11,7 @@ export default function DemoModeBanner() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.icon}>🎭</Text>
+      <MaskIcon size={12} color={PsychiColors.white} />
       <Text style={styles.text}>Demo Mode - App Store Review</Text>
     </View>
   );
@@ -25,8 +26,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.xs,
     paddingHorizontal: Spacing.md,
   },
-  icon: {
-    fontSize: 12,
+  iconContainer: {
     marginRight: Spacing.xs,
   },
   text: {

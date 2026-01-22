@@ -4,17 +4,18 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
   TouchableOpacity,
   TextInput,
   Alert,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
+import { ChevronLeftIcon } from '@/components/icons';
 
 export default function EditProfileScreen() {
   const router = useRouter();
@@ -54,7 +55,7 @@ export default function EditProfileScreen() {
           {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-              <Text style={styles.backArrow}>‹</Text>
+              <ChevronLeftIcon size={24} color={PsychiColors.azure} />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Edit Profile</Text>
             <View style={styles.placeholder} />
@@ -199,8 +200,9 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#2A2A2A',
+    color: PsychiColors.textPrimary,
     fontFamily: 'Georgia',
+    letterSpacing: 0.3,
   },
   placeholder: {
     width: 40,
@@ -226,32 +228,42 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.full,
-    backgroundColor: 'rgba(74, 144, 226, 0.1)',
+    backgroundColor: 'rgba(37, 99, 235, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(37, 99, 235, 0.15)',
   },
   changePhotoText: {
     fontSize: 14,
     fontWeight: '600',
     color: PsychiColors.azure,
+    letterSpacing: 0.2,
   },
   formSection: {
     paddingHorizontal: Spacing.lg,
   },
   inputGroup: {
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.lg,
   },
   inputLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#2A2A2A',
-    marginBottom: Spacing.xs,
+    color: PsychiColors.textPrimary,
+    marginBottom: Spacing.sm,
+    letterSpacing: 0.3,
   },
   input: {
-    backgroundColor: PsychiColors.white,
-    borderRadius: BorderRadius.md,
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    borderRadius: 16,
     padding: Spacing.md,
     fontSize: 16,
-    color: '#2A2A2A',
-    ...Shadows.soft,
+    color: PsychiColors.textPrimary,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
   inputDisabled: {
     backgroundColor: 'rgba(0, 0, 0, 0.03)',

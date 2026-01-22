@@ -4,23 +4,25 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  SafeAreaView,
   Alert,
   Modal,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import ChatSession from '@/components/session/ChatSession';
 import VideoCall from '@/components/session/VideoCall';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
-import { createSession, SessionConfig } from '@/lib/daily';
+import { createSession as createDailySession, SessionConfig } from '@/lib/daily';
+import { getSession } from '@/lib/database';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   ensureSessionPermissions,
   getPermissionDisplayName,
   showPermissionDeniedAlert,
 } from '@/lib/permissions';
+import { CheckCircleIcon } from '@/components/icons';
 
 type SessionType = 'chat' | 'phone' | 'video';
 
@@ -46,28 +48,66 @@ export default function SessionScreen() {
   const [sessionEnded, setSessionEnded] = useState(false);
   const [permissionsGranted, setPermissionsGranted] = useState(false);
   const [checkingPermissions, setCheckingPermissions] = useState(false);
+  const [isLoadingSession, setIsLoadingSession] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Get current user name from auth context
   const currentUserName = profile?.firstName
     ? `${profile.firstName}${profile.lastName ? ' ' + profile.lastName : ''}`
     : 'You';
-  const currentUserId = user?.id || 'current-user-id';
+  const currentUserId = user?.id || '';
+  const currentUserRole = profile?.role || 'client';
 
-  // Mock session data - in production this would come from API
+  // Fetch real session data from database
   useEffect(() => {
-    // Simulate fetching session data
-    setSessionData({
-      id: id || '1',
-      type: (type as SessionType) || 'chat',
-      participant: {
-        id: 'supporter-1',
-        name: 'Sarah Chen',
-        role: 'supporter',
-      },
-      scheduledAt: new Date().toISOString(),
-      duration: 30,
-    });
-  }, [id, type]);
+    const fetchSessionData = async () => {
+      if (!id) {
+        setLoadError('No session ID provided');
+        setIsLoadingSession(false);
+        return;
+      }
+
+      try {
+        setIsLoadingSession(true);
+        const session = await getSession(id);
+
+        if (!session) {
+          setLoadError('Session not found');
+          setIsLoadingSession(false);
+          return;
+        }
+
+        // Determine who the other participant is based on current user's role
+        const isClient = session.client_id === currentUserId || currentUserRole === 'client';
+        const otherParticipant = isClient ? session.supporter : session.client;
+
+        if (!otherParticipant) {
+          setLoadError('Could not find session participant');
+          setIsLoadingSession(false);
+          return;
+        }
+
+        setSessionData({
+          id: session.id,
+          type: (type as SessionType) || session.session_type || 'chat',
+          participant: {
+            id: otherParticipant.id,
+            name: otherParticipant.full_name || 'Unknown',
+            role: isClient ? 'supporter' : 'client',
+          },
+          scheduledAt: session.scheduled_at,
+          duration: session.duration_minutes || 30,
+        });
+        setIsLoadingSession(false);
+      } catch (error) {
+        console.error('Error fetching session:', error);
+        setLoadError('Failed to load session');
+        setIsLoadingSession(false);
+      }
+    };
+
+    fetchSessionData();
+  }, [id, type, currentUserId, currentUserRole]);
 
   // Check permissions and create Daily.co room for video/voice calls
   useEffect(() => {
@@ -106,7 +146,7 @@ export default function SessionScreen() {
       setPermissionsGranted(true);
       setIsCreatingRoom(true);
       const dailyType = sessionData.type === 'video' ? 'video' : 'voice';
-      const config = await createSession(dailyType, currentUserName);
+      const config = await createDailySession(dailyType, currentUserName);
 
       if (config) {
         setDailySession(config);
@@ -132,11 +172,41 @@ export default function SessionScreen() {
     router.replace('/(client)');
   };
 
-  if (!sessionData) {
+  // Loading state
+  if (isLoadingSession) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
         <View style={styles.loadingContent}>
+          <ActivityIndicator size="large" color={PsychiColors.azure} />
           <Text style={styles.loadingText}>Loading session...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Error state
+  if (loadError || !sessionData) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.errorContainer}>
+          <View style={styles.errorIcon}>
+            <Text style={styles.errorIconText}>!</Text>
+          </View>
+          <Text style={styles.errorTitle}>Session Not Found</Text>
+          <Text style={styles.errorMessage}>
+            {loadError || 'This session could not be loaded. It may have been cancelled or does not exist.'}
+          </Text>
+          <TouchableOpacity
+            style={styles.errorButton}
+            onPress={() => router.back()}
+          >
+            <LinearGradient
+              colors={[PsychiColors.azure, PsychiColors.deep]}
+              style={styles.errorButtonGradient}
+            >
+              <Text style={styles.errorButtonText}>Go Back</Text>
+            </LinearGradient>
+          </TouchableOpacity>
         </View>
       </SafeAreaView>
     );
@@ -149,7 +219,7 @@ export default function SessionScreen() {
         <View style={styles.endedContainer}>
           <View style={styles.endedCard}>
             <View style={styles.endedIcon}>
-              <Text style={styles.endedEmoji}>✅</Text>
+              <CheckCircleIcon size={60} color={PsychiColors.success} />
             </View>
             <Text style={styles.endedTitle}>Session Completed</Text>
             <Text style={styles.endedSubtitle}>
@@ -176,16 +246,12 @@ export default function SessionScreen() {
               </View>
             </View>
 
-            {/* Rating Request */}
+            {/* Session Complete Message */}
             <View style={styles.ratingSection}>
-              <Text style={styles.ratingTitle}>How was your session?</Text>
-              <View style={styles.starsRow}>
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <TouchableOpacity key={star} style={styles.starButton}>
-                    <Text style={styles.starText}>⭐</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+              <Text style={styles.ratingTitle}>Session Complete</Text>
+              <Text style={styles.feedbackText}>
+                Thank you for using Psychi. We hope your session was helpful.
+              </Text>
             </View>
 
             <TouchableOpacity
@@ -400,6 +466,12 @@ const styles = StyleSheet.create({
     color: '#2A2A2A',
     marginBottom: Spacing.sm,
   },
+  feedbackText: {
+    fontSize: 14,
+    color: PsychiColors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
   starsRow: {
     flexDirection: 'row',
     gap: Spacing.sm,
@@ -479,6 +551,57 @@ const styles = StyleSheet.create({
   },
   modalConfirmText: {
     fontSize: 15,
+    fontWeight: '600',
+    color: PsychiColors.white,
+  },
+  // Error state styles
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.xl,
+  },
+  errorIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: Spacing.lg,
+  },
+  errorIconText: {
+    fontSize: 40,
+    fontWeight: '700',
+    color: PsychiColors.error,
+  },
+  errorTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#2A2A2A',
+    fontFamily: 'Georgia',
+    marginBottom: Spacing.sm,
+    textAlign: 'center',
+  },
+  errorMessage: {
+    fontSize: 15,
+    color: PsychiColors.textMuted,
+    textAlign: 'center',
+    marginBottom: Spacing.xl,
+    lineHeight: 22,
+  },
+  errorButton: {
+    borderRadius: BorderRadius.lg,
+    overflow: 'hidden',
+    width: '100%',
+    maxWidth: 200,
+  },
+  errorButtonGradient: {
+    paddingVertical: Spacing.md,
+    alignItems: 'center',
+  },
+  errorButtonText: {
+    fontSize: 17,
     fontWeight: '600',
     color: PsychiColors.white,
   },

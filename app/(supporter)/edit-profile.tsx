@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
   TouchableOpacity,
   TextInput,
   Image,
@@ -12,8 +11,10 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
+import { ChevronLeftIcon, ChatIcon, PhoneIcon, VideoIcon } from '@/components/icons';
 
 const SPECIALTIES = [
   'Anxiety',
@@ -112,7 +113,7 @@ export default function SupporterEditProfileScreen() {
           {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-              <Text style={styles.backArrow}>‹</Text>
+              <ChevronLeftIcon size={24} color={PsychiColors.azure} />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Edit Profile</Text>
             <TouchableOpacity
@@ -214,9 +215,15 @@ export default function SupporterEditProfileScreen() {
                     setSessionTypes((prev) => ({ ...prev, [type]: !prev[type] }))
                   }
                 >
-                  <Text style={styles.sessionTypeIcon}>
-                    {type === 'chat' ? '💬' : type === 'phone' ? '📞' : '📹'}
-                  </Text>
+                  <View style={styles.sessionTypeIcon}>
+                    {type === 'chat' ? (
+                      <ChatIcon size={20} color={sessionTypes[type] ? PsychiColors.azure : PsychiColors.textMuted} />
+                    ) : type === 'phone' ? (
+                      <PhoneIcon size={20} color={sessionTypes[type] ? PsychiColors.azure : PsychiColors.textMuted} />
+                    ) : (
+                      <VideoIcon size={20} color={sessionTypes[type] ? PsychiColors.azure : PsychiColors.textMuted} />
+                    )}
+                  </View>
                   <Text
                     style={[
                       styles.sessionTypeText,

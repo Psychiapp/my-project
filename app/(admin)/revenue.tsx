@@ -4,11 +4,12 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
   TouchableOpacity,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
+import { ArrowUpIcon } from '@/components/icons';
 import { Config } from '@/constants/config';
 
 type TimeRange = 'today' | 'week' | 'month' | 'year';
@@ -16,65 +17,31 @@ type TimeRange = 'today' | 'week' | 'month' | 'year';
 export default function AdminRevenueScreen() {
   const [timeRange, setTimeRange] = useState<TimeRange>('month');
 
-  // Mock revenue data
+  // Empty revenue data - would be populated from database
   const revenueData = {
-    today: {
-      total: 42000,
-      platform: 10500,
-      supporters: 31500,
-      sessions: 21,
-      growth: 15.3,
-    },
-    week: {
-      total: 385000,
-      platform: 96250,
-      supporters: 288750,
-      sessions: 187,
-      growth: 8.7,
-    },
-    month: {
-      total: 1542000,
-      platform: 385500,
-      supporters: 1156500,
-      sessions: 742,
-      growth: 12.4,
-    },
-    year: {
-      total: 18504000,
-      platform: 4626000,
-      supporters: 13878000,
-      sessions: 8915,
-      growth: 34.2,
-    },
+    today: { total: 0, platform: 0, supporters: 0, sessions: 0, growth: 0 },
+    week: { total: 0, platform: 0, supporters: 0, sessions: 0, growth: 0 },
+    month: { total: 0, platform: 0, supporters: 0, sessions: 0, growth: 0 },
+    year: { total: 0, platform: 0, supporters: 0, sessions: 0, growth: 0 },
   };
 
   const current = revenueData[timeRange];
 
+  // Empty arrays - would be populated from database
   const sessionBreakdown = [
-    { type: 'Chat', count: timeRange === 'month' ? 412 : Math.round(412 * (current.sessions / 742)), amount: 288400, color: PsychiColors.azure },
-    { type: 'Phone', count: timeRange === 'month' ? 198 : Math.round(198 * (current.sessions / 742)), amount: 297000, color: PsychiColors.violet },
-    { type: 'Video', count: timeRange === 'month' ? 132 : Math.round(132 * (current.sessions / 742)), amount: 264000, color: PsychiColors.coral },
+    { type: 'Chat', count: 0, amount: 0, color: PsychiColors.azure },
+    { type: 'Phone', count: 0, amount: 0, color: PsychiColors.violet },
+    { type: 'Video', count: 0, amount: 0, color: PsychiColors.coral },
   ];
 
   const subscriptionStats = {
-    basic: { count: 89, revenue: 845500 },
-    standard: { count: 156, revenue: 2262000 },
-    premium: { count: 67, revenue: 1172500 },
+    basic: { count: 0, revenue: 0 },
+    standard: { count: 0, revenue: 0 },
+    premium: { count: 0, revenue: 0 },
   };
 
-  const topSupporters = [
-    { name: 'Rachel G.', sessions: 89, earnings: 12450 },
-    { name: 'Sarah M.', sessions: 76, earnings: 10640 },
-    { name: 'Lisa K.', sessions: 68, earnings: 9520 },
-    { name: 'Michael T.', sessions: 54, earnings: 7560 },
-    { name: 'David W.', sessions: 47, earnings: 6580 },
-  ];
-
-  const pendingPayouts = [
-    { supporter: 'Rachel G.', amount: 312500, date: 'Jan 15' },
-    { supporter: 'Sarah M.', amount: 267500, date: 'Jan 15' },
-    { supporter: 'Lisa K.', amount: 238000, date: 'Jan 15' },
-  ];
+  const topSupporters: { name: string; sessions: number; earnings: number }[] = [];
+  const pendingPayouts: { supporter: string; amount: number; date: string }[] = [];
 
   return (
     <SafeAreaView style={styles.container}>
@@ -111,7 +78,8 @@ export default function AdminRevenueScreen() {
               ${(current.total / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })}
             </Text>
             <View style={styles.growthBadge}>
-              <Text style={styles.growthText}>↑ {current.growth}% vs last period</Text>
+              <ArrowUpIcon size={14} color={PsychiColors.white} />
+              <Text style={styles.growthText}>{current.growth}% vs last period</Text>
             </View>
           </LinearGradient>
         </View>
@@ -317,11 +285,14 @@ const styles = StyleSheet.create({
     color: PsychiColors.white,
   },
   growthBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.xs,
     borderRadius: BorderRadius.full,
     marginTop: Spacing.sm,
+    gap: 4,
   },
   growthText: {
     fontSize: 13,

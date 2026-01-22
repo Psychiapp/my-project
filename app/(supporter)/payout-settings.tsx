@@ -9,15 +9,16 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
   TouchableOpacity,
   TextInput,
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PsychiColors, Spacing, BorderRadius, Shadows, Typography } from '@/constants/theme';
+import { BankIcon, DocumentIcon, ChevronRightIcon } from '@/components/icons';
 import { ChevronLeftIcon, CheckIcon, LockIcon } from '@/components/icons';
 
 type PayoutSchedule = 'weekly' | 'biweekly' | 'monthly';
@@ -94,7 +95,7 @@ export default function PayoutSettingsScreen() {
             <View style={styles.linkedAccountCard}>
               <View style={styles.linkedAccountHeader}>
                 <View style={styles.bankIcon}>
-                  <Text style={styles.bankEmoji}>🏦</Text>
+                  <BankIcon size={24} color={PsychiColors.azure} />
                 </View>
                 <View style={styles.linkedAccountInfo}>
                   <Text style={styles.linkedAccountName}>{accountHolder || 'Bank Account'}</Text>
@@ -256,13 +257,13 @@ export default function PayoutSettingsScreen() {
         <View style={styles.section}>
           <TouchableOpacity style={styles.taxCard} activeOpacity={0.7}>
             <View style={styles.taxIcon}>
-              <Text style={styles.taxEmoji}>📄</Text>
+              <DocumentIcon size={24} color={PsychiColors.azure} />
             </View>
             <View style={styles.taxInfo}>
               <Text style={styles.taxTitle}>Tax Documents</Text>
               <Text style={styles.taxSubtitle}>View and download 1099 forms</Text>
             </View>
-            <Text style={styles.taxArrow}>›</Text>
+            <ChevronRightIcon size={20} color={PsychiColors.textMuted} />
           </TouchableOpacity>
         </View>
 

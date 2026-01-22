@@ -1,15 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
   TouchableOpacity,
   Modal,
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
@@ -18,12 +18,18 @@ import {
   cancelSessionWithRefund,
   formatCurrency,
   getSessionPrice,
-  REFUND_POLICIES,
 } from '@/lib/refunds';
+import { CheckCircleIcon, ClockIcon, CloseIcon, CalendarIcon, ChatIcon, PhoneIcon, VideoIcon, DollarIcon, WarningIcon, ErrorCircleIcon } from '@/components/icons';
 import {
   sendSessionCancelledNotification,
   cancelSessionReminders,
 } from '@/lib/notifications';
+import {
+  getPendingRescheduleRequests,
+  processExpiredRescheduleRequests,
+} from '@/lib/database';
+import RescheduleRequestCard from '@/components/RescheduleRequestCard';
+import type { RescheduleRequestWithDetails } from '@/types/database';
 
 type SessionTab = 'upcoming' | 'past';
 
@@ -36,7 +42,6 @@ interface Session {
   time: string;
   scheduledAt: string;
   duration: number;
-  rating?: number;
 }
 
 // Mock session data
@@ -73,7 +78,6 @@ const mockPastSessions: Session[] = [
     time: '3:00 PM',
     scheduledAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
     duration: 30,
-    rating: 5,
   },
   {
     id: '4',
@@ -84,14 +88,20 @@ const mockPastSessions: Session[] = [
     time: '11:00 AM',
     scheduledAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
     duration: 45,
-    rating: 5,
   },
 ];
 
-const typeIcons: Record<string, string> = {
-  chat: '💬',
-  phone: '📞',
-  video: '🎥',
+const getTypeIcon = (type: string) => {
+  switch (type) {
+    case 'chat':
+      return <ChatIcon size={24} color={PsychiColors.azure} />;
+    case 'phone':
+      return <PhoneIcon size={24} color={PsychiColors.azure} />;
+    case 'video':
+      return <VideoIcon size={24} color={PsychiColors.azure} />;
+    default:
+      return <ChatIcon size={24} color={PsychiColors.azure} />;
+  }
 };
 
 export default function SessionsScreen() {
@@ -101,6 +111,36 @@ export default function SessionsScreen() {
   const [policyModalVisible, setPolicyModalVisible] = useState(false);
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [rescheduleRequests, setRescheduleRequests] = useState<RescheduleRequestWithDetails[]>([]);
+
+  // Fetch pending reschedule requests and process expired ones
+  useEffect(() => {
+    const fetchRescheduleRequests = async () => {
+      // In production, get clientId from auth context
+      const clientId = 'demo_client_id';
+
+      // First, process any expired requests (auto-cancel sessions)
+      await processExpiredRescheduleRequests(clientId);
+
+      // Then fetch pending requests
+      const requests = await getPendingRescheduleRequests(clientId);
+      setRescheduleRequests(requests);
+    };
+
+    fetchRescheduleRequests();
+
+    // Poll for updates every minute
+    const interval = setInterval(fetchRescheduleRequests, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleRescheduleResponse = (requestId: string, accepted: boolean) => {
+    // Remove the request from the list
+    setRescheduleRequests(prev => prev.filter(r => r.id !== requestId));
+
+    // If accepted, refresh sessions to show updated time
+    // In production, you would fetch the updated session from the server
+  };
 
   const handleCancelPress = (session: Session) => {
     setSelectedSession(session);
@@ -225,7 +265,7 @@ export default function SessionsScreen() {
     <View key={session.id} style={styles.sessionCard}>
       <View style={styles.sessionHeader}>
         <View style={styles.typeIconContainer}>
-          <Text style={styles.typeIcon}>{typeIcons[session.type]}</Text>
+          {getTypeIcon(session.type)}
         </View>
         <View style={styles.sessionInfo}>
           <Text style={styles.supporterName}>{session.supporterName}</Text>
@@ -233,24 +273,19 @@ export default function SessionsScreen() {
             {session.type.charAt(0).toUpperCase() + session.type.slice(1)} Session
           </Text>
         </View>
-        {!isUpcoming && session.rating && (
-          <View style={styles.ratingBadge}>
-            <Text style={styles.ratingText}>⭐ {session.rating}</Text>
-          </View>
-        )}
       </View>
 
       <View style={styles.sessionDetails}>
         <View style={styles.detailItem}>
-          <Text style={styles.detailIcon}>📅</Text>
+          <CalendarIcon size={14} color={PsychiColors.textSecondary} />
           <Text style={styles.detailText}>{session.date}</Text>
         </View>
         <View style={styles.detailItem}>
-          <Text style={styles.detailIcon}>🕐</Text>
+          <ClockIcon size={14} color={PsychiColors.textSecondary} />
           <Text style={styles.detailText}>{session.time}</Text>
         </View>
         <View style={styles.detailItem}>
-          <Text style={styles.detailIcon}>⏱</Text>
+          <ClockIcon size={14} color={PsychiColors.textSecondary} />
           <Text style={styles.detailText}>{session.duration} min</Text>
         </View>
       </View>
@@ -324,12 +359,31 @@ export default function SessionsScreen() {
 
       {/* Sessions List */}
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        {/* Reschedule Requests Section - only show in upcoming tab */}
+        {activeTab === 'upcoming' && rescheduleRequests.length > 0 && (
+          <View style={styles.rescheduleSection}>
+            <Text style={styles.rescheduleSectionTitle}>Action Required</Text>
+            {rescheduleRequests.map((request) => (
+              <RescheduleRequestCard
+                key={request.id}
+                request={request}
+                onRespond={handleRescheduleResponse}
+              />
+            ))}
+          </View>
+        )}
+
         {activeTab === 'upcoming' ? (
           sessions.length > 0 ? (
             sessions.map((session) => renderSession(session, true))
+          ) : rescheduleRequests.length > 0 ? (
+            // Don't show empty state if there are reschedule requests
+            null
           ) : (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyIcon}>📅</Text>
+              <View style={styles.emptyIconBg}>
+                <CalendarIcon size={32} color={PsychiColors.azure} />
+              </View>
               <Text style={styles.emptyTitle}>No upcoming sessions</Text>
               <Text style={styles.emptySubtitle}>
                 Book a session with a supporter to get started
@@ -352,7 +406,9 @@ export default function SessionsScreen() {
           mockPastSessions.map((session) => renderSession(session, false))
         ) : (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>📋</Text>
+            <View style={styles.emptyIconBg}>
+              <CheckCircleIcon size={32} color={PsychiColors.azure} />
+            </View>
             <Text style={styles.emptyTitle}>No past sessions</Text>
             <Text style={styles.emptySubtitle}>
               Your completed sessions will appear here
@@ -377,7 +433,7 @@ export default function SessionsScreen() {
                 onPress={() => setCancelModalVisible(false)}
                 style={styles.closeButton}
               >
-                <Text style={styles.closeButtonText}>✕</Text>
+                <CloseIcon size={20} color={PsychiColors.textMuted} />
               </TouchableOpacity>
             </View>
 
@@ -397,13 +453,15 @@ export default function SessionsScreen() {
                         refundInfo.percentage === 0 && styles.refundInfoCardNone,
                       ]}
                     >
-                      <Text style={styles.refundInfoIcon}>
-                        {refundInfo.percentage === 100
-                          ? '💰'
-                          : refundInfo.percentage === 50
-                          ? '⚠️'
-                          : '🚫'}
-                      </Text>
+                      <View style={styles.refundInfoIcon}>
+                        {refundInfo.percentage === 100 ? (
+                          <DollarIcon size={24} color={PsychiColors.success} />
+                        ) : refundInfo.percentage === 50 ? (
+                          <WarningIcon size={24} color={PsychiColors.warning} />
+                        ) : (
+                          <ErrorCircleIcon size={24} color={PsychiColors.error} />
+                        )}
+                      </View>
                       <View style={styles.refundInfoContent}>
                         <Text
                           style={[
@@ -485,90 +543,55 @@ export default function SessionsScreen() {
                 onPress={() => setPolicyModalVisible(false)}
                 style={styles.closeButton}
               >
-                <Text style={styles.closeButtonText}>✕</Text>
+                <CloseIcon size={16} color={PsychiColors.textMuted} />
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <Text style={styles.policyIntro}>
-                We understand that plans change. Here's our cancellation and refund policy:
-              </Text>
-
-              {/* Full Refund */}
-              <View style={styles.policyItem}>
-                <View style={[styles.policyIconContainer, styles.policyIconFull]}>
-                  <Text style={styles.policyIcon}>✓</Text>
-                </View>
-                <View style={styles.policyContent}>
-                  <Text style={styles.policyTitle}>100% Refund</Text>
-                  <Text style={styles.policyDescription}>
-                    Cancel more than {REFUND_POLICIES.FULL_REFUND_HOURS} hours before your
-                    scheduled session to receive a full refund.
-                  </Text>
-                </View>
+            {/* Full Refund */}
+            <View style={styles.policyItem}>
+              <View style={[styles.policyIconContainer, styles.policyIconFull]}>
+                <CheckCircleIcon size={20} color={PsychiColors.success} />
               </View>
-
-              {/* Partial Refund */}
-              <View style={styles.policyItem}>
-                <View style={[styles.policyIconContainer, styles.policyIconPartial]}>
-                  <Text style={styles.policyIcon}>½</Text>
-                </View>
-                <View style={styles.policyContent}>
-                  <Text style={styles.policyTitle}>50% Refund</Text>
-                  <Text style={styles.policyDescription}>
-                    Cancel between {REFUND_POLICIES.NO_REFUND_HOURS} and{' '}
-                    {REFUND_POLICIES.FULL_REFUND_HOURS} hours before your session to receive
-                    a 50% refund.
-                  </Text>
-                </View>
-              </View>
-
-              {/* No Refund */}
-              <View style={styles.policyItem}>
-                <View style={[styles.policyIconContainer, styles.policyIconNone]}>
-                  <Text style={styles.policyIcon}>✕</Text>
-                </View>
-                <View style={styles.policyContent}>
-                  <Text style={styles.policyTitle}>No Refund</Text>
-                  <Text style={styles.policyDescription}>
-                    Cancellations within {REFUND_POLICIES.NO_REFUND_HOURS} hours of the
-                    session are not eligible for a refund.
-                  </Text>
-                </View>
-              </View>
-
-              {/* Supporter Cancellation */}
-              <View style={styles.policyItem}>
-                <View style={[styles.policyIconContainer, styles.policyIconSupporter]}>
-                  <Text style={styles.policyIcon}>💜</Text>
-                </View>
-                <View style={styles.policyContent}>
-                  <Text style={styles.policyTitle}>Supporter Cancellations</Text>
-                  <Text style={styles.policyDescription}>
-                    If your supporter cancels the session, you will always receive a full
-                    refund regardless of timing.
-                  </Text>
-                </View>
-              </View>
-
-              {/* Note */}
-              <View style={styles.policyNote}>
-                <Text style={styles.policyNoteIcon}>ℹ️</Text>
-                <Text style={styles.policyNoteText}>
-                  Refunds are typically processed within 5-10 business days and will be
-                  returned to your original payment method.
+              <View style={styles.policyContent}>
+                <Text style={styles.policyTitle}>100% Refund</Text>
+                <Text style={styles.policyDescription}>
+                  Cancel more than 24 hours before your session
                 </Text>
               </View>
+            </View>
 
-              <TouchableOpacity
-                style={styles.gotItButton}
-                onPress={() => setPolicyModalVisible(false)}
-              >
-                <Text style={styles.gotItButtonText}>Got It</Text>
-              </TouchableOpacity>
+            {/* Partial Refund */}
+            <View style={styles.policyItem}>
+              <View style={[styles.policyIconContainer, styles.policyIconPartial]}>
+                <ClockIcon size={20} color="#F59E0B" />
+              </View>
+              <View style={styles.policyContent}>
+                <Text style={styles.policyTitle}>50% Refund</Text>
+                <Text style={styles.policyDescription}>
+                  Cancel 2-24 hours before your session
+                </Text>
+              </View>
+            </View>
 
-              <View style={{ height: 20 }} />
-            </ScrollView>
+            {/* No Refund */}
+            <View style={styles.policyItem}>
+              <View style={[styles.policyIconContainer, styles.policyIconNone]}>
+                <CloseIcon size={20} color={PsychiColors.error} />
+              </View>
+              <View style={styles.policyContent}>
+                <Text style={styles.policyTitle}>No Refund</Text>
+                <Text style={styles.policyDescription}>
+                  Cancel less than 2 hours before your session
+                </Text>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={styles.gotItButton}
+              onPress={() => setPolicyModalVisible(false)}
+            >
+              <Text style={styles.gotItButtonText}>Got It</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -655,9 +678,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: Spacing.md,
   },
-  typeIcon: {
-    fontSize: 24,
-  },
   sessionInfo: {
     flex: 1,
   },
@@ -694,10 +714,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  detailIcon: {
-    fontSize: 14,
-    marginRight: 4,
+    gap: 4,
   },
   detailText: {
     fontSize: 13,
@@ -776,8 +793,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: Spacing.xl * 2,
   },
-  emptyIcon: {
-    fontSize: 48,
+  emptyIconBg: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(74, 144, 226, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: Spacing.md,
   },
   emptyTitle: {
@@ -933,12 +955,6 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   // Policy modal styles
-  policyIntro: {
-    fontSize: 15,
-    color: PsychiColors.textSecondary,
-    lineHeight: 22,
-    marginBottom: Spacing.lg,
-  },
   policyItem: {
     flexDirection: 'row',
     marginBottom: Spacing.lg,
@@ -960,13 +976,6 @@ const styles = StyleSheet.create({
   policyIconNone: {
     backgroundColor: 'rgba(239, 68, 68, 0.15)',
   },
-  policyIconSupporter: {
-    backgroundColor: 'rgba(139, 92, 246, 0.15)',
-  },
-  policyIcon: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
   policyContent: {
     flex: 1,
   },
@@ -981,23 +990,6 @@ const styles = StyleSheet.create({
     color: PsychiColors.textMuted,
     lineHeight: 20,
   },
-  policyNote: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(74, 144, 226, 0.1)',
-    borderRadius: BorderRadius.md,
-    padding: Spacing.md,
-    marginBottom: Spacing.lg,
-  },
-  policyNoteIcon: {
-    fontSize: 16,
-    marginRight: Spacing.sm,
-  },
-  policyNoteText: {
-    flex: 1,
-    fontSize: 13,
-    color: PsychiColors.textSecondary,
-    lineHeight: 18,
-  },
   gotItButton: {
     backgroundColor: PsychiColors.azure,
     paddingVertical: Spacing.md,
@@ -1008,5 +1000,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: PsychiColors.white,
+  },
+  rescheduleSection: {
+    marginBottom: Spacing.md,
+  },
+  rescheduleSectionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#D97706',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: Spacing.sm,
   },
 });

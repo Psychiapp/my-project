@@ -5,13 +5,14 @@ import {
   StyleSheet,
   TouchableOpacity,
   Modal,
-  SafeAreaView,
   ScrollView,
   ActivityIndicator,
   TextInput,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
+import { ChatIcon, PhoneIcon, VideoIcon, LockIcon, CheckIcon, CalendarIcon, ClockIcon, CloseIcon } from '@/components/icons';
 import { createPaymentIntent, confirmPayment } from '@/lib/stripe';
 
 interface CheckoutModalProps {
@@ -112,9 +113,13 @@ export default function CheckoutModal({
   const renderReview = () => (
     <View style={styles.stepContent}>
       <View style={styles.iconContainer}>
-        <Text style={styles.iconEmoji}>
-          {sessionType === 'chat' ? '💬' : sessionType === 'phone' ? '📞' : '🎥'}
-        </Text>
+        {sessionType === 'chat' ? (
+          <ChatIcon size={40} color={PsychiColors.azure} />
+        ) : sessionType === 'phone' ? (
+          <PhoneIcon size={40} color={PsychiColors.azure} />
+        ) : (
+          <VideoIcon size={40} color={PsychiColors.azure} />
+        )}
       </View>
       <Text style={styles.title}>Confirm Booking</Text>
       <Text style={styles.subtitle}>Review your session details</Text>
@@ -244,7 +249,7 @@ export default function CheckoutModal({
       </TouchableOpacity>
 
       <View style={styles.secureNotice}>
-        <Text style={styles.secureIcon}>🔒</Text>
+        <LockIcon size={14} color={PsychiColors.textMuted} />
         <Text style={styles.secureText}>Payments are secure and encrypted</Text>
       </View>
     </View>
@@ -261,15 +266,21 @@ export default function CheckoutModal({
   const renderSuccess = () => (
     <View style={styles.successContent}>
       <View style={styles.successIcon}>
-        <Text style={styles.successEmoji}>✅</Text>
+        <CheckIcon size={50} color={PsychiColors.success} />
       </View>
       <Text style={styles.successTitle}>Booking Confirmed!</Text>
       <Text style={styles.successSubtitle}>
         Your session with {supporterName} has been scheduled.
       </Text>
       <View style={styles.successDetails}>
-        <Text style={styles.successDetail}>📅 {date}</Text>
-        <Text style={styles.successDetail}>🕐 {time}</Text>
+        <View style={styles.successDetailRow}>
+          <CalendarIcon size={16} color="#2A2A2A" />
+          <Text style={styles.successDetail}>{date}</Text>
+        </View>
+        <View style={styles.successDetailRow}>
+          <ClockIcon size={16} color="#2A2A2A" />
+          <Text style={styles.successDetail}>{time}</Text>
+        </View>
       </View>
     </View>
   );
@@ -285,7 +296,7 @@ export default function CheckoutModal({
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={resetAndClose} style={styles.closeButton}>
-            <Text style={styles.closeText}>✕</Text>
+            <CloseIcon size={20} color={PsychiColors.textMuted} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>
             {step === 'review' ? 'Checkout' : step === 'payment' ? 'Payment' : ''}
@@ -329,10 +340,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  closeText: {
-    fontSize: 20,
-    color: PsychiColors.textMuted,
-  },
   headerTitle: {
     fontSize: 17,
     fontWeight: '600',
@@ -355,9 +362,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: Spacing.md,
-  },
-  iconEmoji: {
-    fontSize: 40,
   },
   title: {
     fontSize: 24,
@@ -496,8 +500,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: Spacing.md,
   },
-  secureIcon: {
-    fontSize: 14,
+  secureIconContainer: {
     marginRight: Spacing.xs,
   },
   secureText: {
@@ -532,9 +535,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: Spacing.md,
   },
-  successEmoji: {
-    fontSize: 50,
-  },
   successTitle: {
     fontSize: 24,
     fontWeight: '700',
@@ -550,6 +550,11 @@ const styles = StyleSheet.create({
   },
   successDetails: {
     gap: Spacing.sm,
+  },
+  successDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
   },
   successDetail: {
     fontSize: 16,

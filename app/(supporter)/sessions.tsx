@@ -4,33 +4,47 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
   TouchableOpacity,
   Modal,
   TextInput,
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
 import {
+  ChatIcon,
+  PhoneIcon,
+  VideoIcon,
+  CalendarIcon,
+  ClockIcon,
+  DollarIcon,
+  InfoIcon,
+  CloseIcon,
+} from '@/components/icons';
+import {
   cancelSessionWithRefund,
-  rescheduleSession,
   formatCurrency,
   getSessionPrice,
 } from '@/lib/refunds';
 import {
   sendSessionCancelledNotification,
-  sendSessionRescheduledNotification,
+  sendRescheduleRequestNotification,
   cancelSessionReminders,
-  scheduleAllSessionReminders,
 } from '@/lib/notifications';
+import {
+  createRescheduleRequest,
+  calculateResponseDeadline,
+  getTimeUntilDeadline,
+} from '@/lib/database';
 
 type SessionTab = 'upcoming' | 'past';
 
 interface Session {
   id: string;
+  clientId: string;
   clientName: string;
   clientEmail: string;
   type: 'chat' | 'phone' | 'video';
@@ -39,12 +53,13 @@ interface Session {
   scheduledAt: string;
   duration: number;
   earnings?: number;
-  rating?: number;
+  pendingReschedule?: boolean;
 }
 
 const mockUpcomingSessions: Session[] = [
   {
     id: '1',
+    clientId: 'client_1',
     clientName: 'John D.',
     clientEmail: 'john@example.com',
     type: 'video',
@@ -55,6 +70,7 @@ const mockUpcomingSessions: Session[] = [
   },
   {
     id: '2',
+    clientId: 'client_2',
     clientName: 'Sarah M.',
     clientEmail: 'sarah@example.com',
     type: 'chat',
@@ -65,6 +81,7 @@ const mockUpcomingSessions: Session[] = [
   },
   {
     id: '3',
+    clientId: 'client_3',
     clientName: 'Michael R.',
     clientEmail: 'michael@example.com',
     type: 'phone',
@@ -78,6 +95,7 @@ const mockUpcomingSessions: Session[] = [
 const mockPastSessions: Session[] = [
   {
     id: '4',
+    clientId: 'client_4',
     clientName: 'Emily K.',
     clientEmail: 'emily@example.com',
     type: 'video',
@@ -86,10 +104,10 @@ const mockPastSessions: Session[] = [
     scheduledAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
     duration: 45,
     earnings: 15.0,
-    rating: 5,
   },
   {
     id: '5',
+    clientId: 'client_5',
     clientName: 'David L.',
     clientEmail: 'david@example.com',
     type: 'chat',
@@ -98,14 +116,13 @@ const mockPastSessions: Session[] = [
     scheduledAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
     duration: 30,
     earnings: 5.25,
-    rating: 5,
   },
 ];
 
-const typeIcons: Record<string, string> = {
-  chat: '💬',
-  phone: '📞',
-  video: '🎥',
+const typeIcons: Record<string, React.FC<{ size?: number; color?: string }>> = {
+  chat: ChatIcon,
+  phone: PhoneIcon,
+  video: VideoIcon,
 };
 
 // Available time slots for rescheduling
@@ -229,49 +246,37 @@ export default function SupporterSessionsScreen() {
     const newScheduledTime = new Date(selectedDate);
     newScheduledTime.setHours(adjustedHours, minutes, 0, 0);
 
-    const sessionPrice = getSessionPrice(selectedSession.type);
-    const result = await rescheduleSession(
-      {
-        sessionId: selectedSession.id,
-        clientName: selectedSession.clientName,
-        clientEmail: selectedSession.clientEmail,
-        sessionType: selectedSession.type,
-        amount: sessionPrice,
-        scheduledAt: selectedSession.scheduledAt,
-      },
-      newScheduledTime,
-      'supporter'
+    // Create a reschedule request instead of immediately updating
+    const request = await createRescheduleRequest(
+      selectedSession.id,
+      'supporter_id', // Would come from auth context in production
+      selectedSession.clientId,
+      selectedSession.scheduledAt,
+      newScheduledTime.toISOString()
     );
 
     setIsProcessing(false);
 
-    if (result.success) {
-      // Cancel old reminders and schedule new ones
-      await cancelSessionReminders(selectedSession.id);
-      await scheduleAllSessionReminders({
+    if (request) {
+      // Calculate the response deadline for display
+      const deadline = calculateResponseDeadline(selectedSession.scheduledAt);
+      const deadlineInfo = getTimeUntilDeadline(deadline.toISOString());
+
+      // Notify the client about the reschedule request
+      await sendRescheduleRequestNotification({
         sessionId: selectedSession.id,
-        sessionType: selectedSession.type,
-        otherPartyName: selectedSession.clientName,
-        scheduledTime: newScheduledTime,
+        supporterName: 'Your supporter', // Would come from auth context
+        proposedDate: formatDateOption(selectedDate),
+        proposedTime: selectedTime,
+        responseDeadline: deadline.toISOString(),
       });
 
-      // Notify the client about the reschedule
-      await sendSessionRescheduledNotification({
-        sessionId: selectedSession.id,
-        otherPartyName: 'Your supporter', // Supporter name would come from auth context in production
-        isSupporter: false, // Sending to client
-        newDate: formatDateOption(selectedDate),
-        newTime: selectedTime,
-      });
-
-      // Update session in list
+      // Mark session as having pending reschedule
       setSessions(sessions.map(s => {
         if (s.id === selectedSession.id) {
           return {
             ...s,
-            date: formatDateOption(selectedDate),
-            time: selectedTime,
-            scheduledAt: newScheduledTime.toISOString(),
+            pendingReschedule: true,
           };
         }
         return s;
@@ -280,12 +285,12 @@ export default function SupporterSessionsScreen() {
       setRescheduleModalVisible(false);
 
       Alert.alert(
-        'Session Rescheduled',
-        `Your session with ${selectedSession.clientName} has been rescheduled to ${formatDateOption(selectedDate)} at ${selectedTime}.\n\nThe client has been notified.`,
+        'Reschedule Request Sent',
+        `A request to reschedule your session with ${selectedSession.clientName} to ${formatDateOption(selectedDate)} at ${selectedTime} has been sent.\n\n${selectedSession.clientName} must respond within ${deadlineInfo.formatted}.\n\nIf they don't respond in time, the session will be automatically cancelled and they will receive a full refund.`,
         [{ text: 'OK' }]
       );
     } else {
-      Alert.alert('Error', 'Failed to reschedule session. Please try again.');
+      Alert.alert('Error', 'Failed to send reschedule request. Please try again.');
     }
   };
 
@@ -293,7 +298,10 @@ export default function SupporterSessionsScreen() {
     <View key={session.id} style={styles.sessionCard}>
       <View style={styles.sessionHeader}>
         <View style={styles.typeIconContainer}>
-          <Text style={styles.typeIcon}>{typeIcons[session.type]}</Text>
+          {(() => {
+            const IconComponent = typeIcons[session.type];
+            return IconComponent ? <IconComponent size={20} color={PsychiColors.white} /> : null;
+          })()}
         </View>
         <View style={styles.sessionInfo}>
           <Text style={styles.clientName}>{session.clientName}</Text>
@@ -301,6 +309,11 @@ export default function SupporterSessionsScreen() {
             {session.type.charAt(0).toUpperCase() + session.type.slice(1)} Session
           </Text>
         </View>
+        {session.pendingReschedule && (
+          <View style={styles.pendingBadge}>
+            <Text style={styles.pendingBadgeText}>Pending</Text>
+          </View>
+        )}
         {!isUpcoming && session.earnings && (
           <View style={styles.earningsBadge}>
             <Text style={styles.earningsText}>+${session.earnings.toFixed(2)}</Text>
@@ -310,15 +323,15 @@ export default function SupporterSessionsScreen() {
 
       <View style={styles.sessionDetails}>
         <View style={styles.detailItem}>
-          <Text style={styles.detailIcon}>📅</Text>
+          <CalendarIcon size={14} color={PsychiColors.textMuted} />
           <Text style={styles.detailText}>{session.date}</Text>
         </View>
         <View style={styles.detailItem}>
-          <Text style={styles.detailIcon}>🕐</Text>
+          <ClockIcon size={14} color={PsychiColors.textMuted} />
           <Text style={styles.detailText}>{session.time}</Text>
         </View>
         <View style={styles.detailItem}>
-          <Text style={styles.detailIcon}>⏱</Text>
+          <ClockIcon size={14} color={PsychiColors.textMuted} />
           <Text style={styles.detailText}>{session.duration} min</Text>
         </View>
       </View>
@@ -326,10 +339,13 @@ export default function SupporterSessionsScreen() {
       {isUpcoming && (
         <View style={styles.sessionActions}>
           <TouchableOpacity
-            style={styles.rescheduleButton}
+            style={[styles.rescheduleButton, session.pendingReschedule && styles.buttonDisabled]}
             onPress={() => handleReschedulePress(session)}
+            disabled={session.pendingReschedule}
           >
-            <Text style={styles.rescheduleButtonText}>Reschedule</Text>
+            <Text style={styles.rescheduleButtonText}>
+              {session.pendingReschedule ? 'Awaiting Response' : 'Reschedule'}
+            </Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.cancelButton}
@@ -354,18 +370,6 @@ export default function SupporterSessionsScreen() {
         </View>
       )}
 
-      {!isUpcoming && session.rating && (
-        <View style={styles.ratingRow}>
-          <Text style={styles.ratingLabel}>Client rating:</Text>
-          <View style={styles.starsContainer}>
-            {[1, 2, 3, 4, 5].map((star) => (
-              <Text key={star} style={styles.star}>
-                {star <= (session.rating || 0) ? '⭐' : '☆'}
-              </Text>
-            ))}
-          </View>
-        </View>
-      )}
     </View>
   );
 
@@ -409,7 +413,7 @@ export default function SupporterSessionsScreen() {
 
         {activeTab === 'upcoming' && sessions.length === 0 && (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>📅</Text>
+            <CalendarIcon size={48} color={PsychiColors.textMuted} />
             <Text style={styles.emptyTitle}>No upcoming sessions</Text>
             <Text style={styles.emptySubtitle}>
               Your upcoming sessions will appear here
@@ -434,14 +438,14 @@ export default function SupporterSessionsScreen() {
                 onPress={() => setCancelModalVisible(false)}
                 style={styles.closeButton}
               >
-                <Text style={styles.closeButtonText}>✕</Text>
+                <CloseIcon size={20} color={PsychiColors.textMuted} />
               </TouchableOpacity>
             </View>
 
             {selectedSession && (
               <>
                 <View style={styles.refundInfo}>
-                  <Text style={styles.refundIcon}>💰</Text>
+                  <DollarIcon size={24} color={PsychiColors.success} />
                   <View style={styles.refundTextContainer}>
                     <Text style={styles.refundTitle}>Full Refund Will Be Processed</Text>
                     <Text style={styles.refundAmount}>
@@ -514,7 +518,7 @@ export default function SupporterSessionsScreen() {
                 onPress={() => setRescheduleModalVisible(false)}
                 style={styles.closeButton}
               >
-                <Text style={styles.closeButtonText}>✕</Text>
+                <CloseIcon size={20} color={PsychiColors.textMuted} />
               </TouchableOpacity>
             </View>
 
@@ -591,9 +595,9 @@ export default function SupporterSessionsScreen() {
                 </View>
 
                 <View style={styles.noticeBox}>
-                  <Text style={styles.noticeIcon}>ℹ️</Text>
+                  <InfoIcon size={16} color={PsychiColors.azure} />
                   <Text style={styles.noticeText}>
-                    The client will be notified of the schedule change via push notification and email.
+                    A reschedule request will be sent to the client. They must respond at least 3 hours before the original session time. If they don't respond, the session will be automatically cancelled and they will receive a full refund.
                   </Text>
                 </View>
 
@@ -615,7 +619,7 @@ export default function SupporterSessionsScreen() {
                     {isProcessing ? (
                       <ActivityIndicator color={PsychiColors.white} size="small" />
                     ) : (
-                      <Text style={styles.confirmRescheduleButtonText}>Confirm Reschedule</Text>
+                      <Text style={styles.confirmRescheduleButtonText}>Send Request</Text>
                     )}
                   </TouchableOpacity>
                 </View>
@@ -733,6 +737,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: PsychiColors.success,
+  },
+  pendingBadge: {
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.full,
+  },
+  pendingBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#D97706',
   },
   sessionDetails: {
     flexDirection: 'row',

@@ -4,13 +4,26 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
   TouchableOpacity,
   Linking,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
+import {
+  MailIcon,
+  ChatIcon,
+  EditIcon,
+  BookIcon,
+  VideoIcon,
+  ClipboardIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  AlertIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
+} from '@/components/icons';
 import { ExternalUrls, Config } from '@/constants/config';
 
 interface FAQItem {
@@ -51,19 +64,19 @@ export default function HelpSupportScreen() {
 
   const contactOptions = [
     {
-      icon: '📧',
+      icon: MailIcon,
       title: 'Email Support',
       description: 'Get help via email',
       action: () => Linking.openURL(`mailto:${ExternalUrls.supportEmail}`),
     },
     {
-      icon: '📱',
+      icon: ChatIcon,
       title: 'In-App Chat',
       description: 'Chat with our support team',
       action: () => Alert.alert('Coming Soon', 'In-app support chat will be available soon.'),
     },
     {
-      icon: '📝',
+      icon: EditIcon,
       title: 'Submit Feedback',
       description: 'Help us improve Psychi',
       action: () => Alert.alert('Thank You', 'Your feedback helps us improve. Feature coming soon.'),
@@ -72,17 +85,17 @@ export default function HelpSupportScreen() {
 
   const resourceLinks = [
     {
-      icon: '📚',
+      icon: BookIcon,
       title: 'User Guide',
       action: () => Alert.alert('User Guide', 'Comprehensive guide coming soon.'),
     },
     {
-      icon: '🎥',
+      icon: VideoIcon,
       title: 'Video Tutorials',
       action: () => Alert.alert('Video Tutorials', 'Tutorial videos coming soon.'),
     },
     {
-      icon: '📋',
+      icon: ClipboardIcon,
       title: 'Community Guidelines',
       action: () => Linking.openURL(ExternalUrls.supporterGuidelines),
     },
@@ -98,7 +111,7 @@ export default function HelpSupportScreen() {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Text style={styles.backArrow}>‹</Text>
+            <ChevronLeftIcon size={24} color={PsychiColors.azure} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Help & Support</Text>
           <View style={styles.placeholder} />
@@ -107,7 +120,7 @@ export default function HelpSupportScreen() {
         {/* Emergency Notice */}
         <View style={styles.section}>
           <View style={styles.emergencyCard}>
-            <Text style={styles.emergencyIcon}>🚨</Text>
+            <AlertIcon size={24} color={PsychiColors.error} />
             <View style={styles.emergencyContent}>
               <Text style={styles.emergencyTitle}>In Crisis?</Text>
               <Text style={styles.emergencyText}>
@@ -134,7 +147,7 @@ export default function HelpSupportScreen() {
                 onPress={option.action}
                 activeOpacity={0.7}
               >
-                <Text style={styles.contactIcon}>{option.icon}</Text>
+                <option.icon size={32} color={PsychiColors.azure} />
                 <Text style={styles.contactTitle}>{option.title}</Text>
                 <Text style={styles.contactDescription}>{option.description}</Text>
               </TouchableOpacity>
@@ -158,9 +171,11 @@ export default function HelpSupportScreen() {
               >
                 <View style={styles.faqHeader}>
                   <Text style={styles.faqQuestion}>{item.question}</Text>
-                  <Text style={styles.faqToggle}>
-                    {expandedFaq === index ? '−' : '+'}
-                  </Text>
+                  {expandedFaq === index ? (
+                    <ChevronUpIcon size={20} color={PsychiColors.azure} />
+                  ) : (
+                    <ChevronDownIcon size={20} color={PsychiColors.azure} />
+                  )}
                 </View>
                 {expandedFaq === index && (
                   <Text style={styles.faqAnswer}>{item.answer}</Text>
@@ -184,10 +199,10 @@ export default function HelpSupportScreen() {
                 onPress={link.action}
               >
                 <View style={styles.resourceIcon}>
-                  <Text style={styles.resourceIconText}>{link.icon}</Text>
+                  <link.icon size={20} color={PsychiColors.azure} />
                 </View>
                 <Text style={styles.resourceTitle}>{link.title}</Text>
-                <Text style={styles.resourceArrow}>›</Text>
+                <ChevronRightIcon size={20} color={PsychiColors.textMuted} />
               </TouchableOpacity>
             ))}
           </View>

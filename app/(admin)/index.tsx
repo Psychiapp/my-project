@@ -4,41 +4,32 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
   TouchableOpacity,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
+import { UsersIcon, CheckIcon, ChartIcon, CreditCardIcon } from '@/components/icons';
 
 export default function AdminDashboard() {
   const router = useRouter();
 
-  // Mock admin stats
+  // Real stats would come from database - showing zeros for now
   const stats = {
-    totalUsers: 1247,
-    activeClients: 892,
-    activeSupporters: 156,
-    pendingVerification: 12,
-    todaySessions: 47,
-    weekSessions: 312,
-    monthRevenue: 15420,
-    weekRevenue: 3850,
+    totalUsers: 0,
+    activeClients: 0,
+    activeSupporters: 0,
+    pendingVerification: 0,
+    todaySessions: 0,
+    weekSessions: 0,
+    monthRevenue: 0,
+    weekRevenue: 0,
   };
 
-  const recentActivity = [
-    { type: 'session', text: 'Session completed between John D. and Sarah M.', time: '5m ago' },
-    { type: 'signup', text: 'New client registered: Emily R.', time: '12m ago' },
-    { type: 'verification', text: 'Supporter verification pending: Michael T.', time: '25m ago' },
-    { type: 'payout', text: 'Payout processed: $125.00 to supporter Lisa K.', time: '1h ago' },
-    { type: 'session', text: 'Video session started: Alex P. with Rachel G.', time: '1h ago' },
-  ];
-
-  const alerts = [
-    { type: 'warning', text: '12 supporters pending verification', action: 'Review' },
-    { type: 'info', text: '3 support tickets awaiting response', action: 'View' },
-    { type: 'success', text: 'Monthly revenue target 87% complete', action: 'Details' },
-  ];
+  // Empty arrays - would be populated from database
+  const recentActivity: { type: string; text: string; time: string }[] = [];
+  const alerts: { type: string; text: string; action: string }[] = [];
 
   return (
     <SafeAreaView style={styles.container}>
@@ -125,11 +116,15 @@ export default function AdminDashboard() {
               style={styles.actionCard}
               onPress={() => router.push('/(admin)/users')}
             >
-              <Text style={styles.actionIcon}>👥</Text>
+              <View style={styles.actionIconContainer}>
+                <UsersIcon size={28} color={PsychiColors.azure} />
+              </View>
               <Text style={styles.actionLabel}>Manage Users</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.actionCard}>
-              <Text style={styles.actionIcon}>✅</Text>
+              <View style={styles.actionIconContainer}>
+                <CheckIcon size={28} color={PsychiColors.azure} />
+              </View>
               <Text style={styles.actionLabel}>Verify Supporters</Text>
               {stats.pendingVerification > 0 && (
                 <View style={styles.actionBadge}>
@@ -141,11 +136,15 @@ export default function AdminDashboard() {
               style={styles.actionCard}
               onPress={() => router.push('/(admin)/sessions')}
             >
-              <Text style={styles.actionIcon}>📊</Text>
+              <View style={styles.actionIconContainer}>
+                <ChartIcon size={28} color={PsychiColors.azure} />
+              </View>
               <Text style={styles.actionLabel}>View Sessions</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.actionCard}>
-              <Text style={styles.actionIcon}>💳</Text>
+              <View style={styles.actionIconContainer}>
+                <CreditCardIcon size={28} color={PsychiColors.azure} />
+              </View>
               <Text style={styles.actionLabel}>Process Payouts</Text>
             </TouchableOpacity>
           </View>
@@ -368,8 +367,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     ...Shadows.soft,
   },
-  actionIcon: {
-    fontSize: 28,
+  actionIconContainer: {
     marginBottom: Spacing.xs,
   },
   actionLabel: {

@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 import { useNetwork } from '@/contexts/NetworkContext';
 import { PsychiColors, Spacing } from '@/constants/theme';
+import { WifiOffIcon } from '@/components/icons';
 
 export default function OfflineBanner() {
   const { isConnected, isInternetReachable } = useNetwork();
@@ -11,7 +12,7 @@ export default function OfflineBanner() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.icon}>📡</Text>
+      <WifiOffIcon size={14} color={PsychiColors.white} />
       <Text style={styles.text}>No internet connection</Text>
     </View>
   );
@@ -26,8 +27,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.sm,
     paddingHorizontal: Spacing.md,
   },
-  icon: {
-    fontSize: 14,
+  iconContainer: {
     marginRight: Spacing.xs,
   },
   text: {

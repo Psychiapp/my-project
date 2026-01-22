@@ -4,12 +4,20 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
   TouchableOpacity,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
+import {
+  DollarIcon,
+  ChartIcon,
+  ArrowRightIcon,
+  CheckIcon,
+  SettingsIcon,
+  ChevronRightIcon,
+} from '@/components/icons';
 import { Config } from '@/constants/config';
 
 type TimeRange = 'week' | 'month' | 'all';
@@ -76,12 +84,12 @@ export default function EarningsScreen() {
         {/* Stats Grid */}
         <View style={styles.statsGrid}>
           <View style={styles.statCard}>
-            <Text style={styles.statIcon}>💰</Text>
+            <DollarIcon size={24} color={PsychiColors.azure} />
             <Text style={styles.statValue}>${currentEarnings.pending.toFixed(2)}</Text>
             <Text style={styles.statLabel}>Pending Payout</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statIcon}>📊</Text>
+            <ChartIcon size={24} color={PsychiColors.azure} />
             <Text style={styles.statValue}>
               ${(currentEarnings.total / (currentEarnings.sessions || 1)).toFixed(2)}
             </Text>
@@ -97,7 +105,7 @@ export default function EarningsScreen() {
               <Text style={styles.breakdownLabel}>Chat session</Text>
               <View style={styles.breakdownValues}>
                 <Text style={styles.breakdownGross}>{Config.pricing.chat.display}</Text>
-                <Text style={styles.breakdownArrow}>→</Text>
+                <ArrowRightIcon size={14} color={PsychiColors.textMuted} />
                 <Text style={styles.breakdownNet}>
                   ${(Config.pricing.chat.supporterCut / 100).toFixed(2)}
                 </Text>
@@ -108,7 +116,7 @@ export default function EarningsScreen() {
               <Text style={styles.breakdownLabel}>Phone session</Text>
               <View style={styles.breakdownValues}>
                 <Text style={styles.breakdownGross}>{Config.pricing.phone.display}</Text>
-                <Text style={styles.breakdownArrow}>→</Text>
+                <ArrowRightIcon size={14} color={PsychiColors.textMuted} />
                 <Text style={styles.breakdownNet}>
                   ${(Config.pricing.phone.supporterCut / 100).toFixed(2)}
                 </Text>
@@ -119,7 +127,7 @@ export default function EarningsScreen() {
               <Text style={styles.breakdownLabel}>Video session</Text>
               <View style={styles.breakdownValues}>
                 <Text style={styles.breakdownGross}>{Config.pricing.video.display}</Text>
-                <Text style={styles.breakdownArrow}>→</Text>
+                <ArrowRightIcon size={14} color={PsychiColors.textMuted} />
                 <Text style={styles.breakdownNet}>
                   ${(Config.pricing.video.supporterCut / 100).toFixed(2)}
                 </Text>
@@ -136,9 +144,12 @@ export default function EarningsScreen() {
               <View style={styles.payoutInfo}>
                 <Text style={styles.payoutDate}>{payout.date}</Text>
                 <View style={styles.statusBadge}>
-                  <Text style={styles.statusText}>
-                    {payout.status === 'completed' ? '✓ Completed' : 'Pending'}
-                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    {payout.status === 'completed' && <CheckIcon size={12} color={PsychiColors.success} />}
+                    <Text style={styles.statusText}>
+                      {payout.status === 'completed' ? ' Completed' : 'Pending'}
+                    </Text>
+                  </View>
                 </View>
               </View>
               <Text style={styles.payoutAmount}>${payout.amount.toFixed(2)}</Text>
@@ -154,13 +165,13 @@ export default function EarningsScreen() {
             onPress={() => router.push('/(supporter)/payout-settings')}
           >
             <View style={styles.settingsIcon}>
-              <Text style={styles.settingsEmoji}>⚙️</Text>
+              <SettingsIcon size={24} color={PsychiColors.azure} />
             </View>
             <View style={styles.settingsInfo}>
               <Text style={styles.settingsTitle}>Payout Settings</Text>
               <Text style={styles.settingsSubtitle}>Manage bank account & payout schedule</Text>
             </View>
-            <Text style={styles.settingsArrow}>›</Text>
+            <ChevronRightIcon size={20} color={PsychiColors.textMuted} />
           </TouchableOpacity>
         </View>
 

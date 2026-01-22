@@ -4,13 +4,23 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
   TouchableOpacity,
   Switch,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
+import {
+  CalendarIcon,
+  ChatIcon,
+  NotificationsIcon,
+  StarIcon,
+  ClockIcon,
+  CheckIcon,
+  InfoIcon,
+  ChevronLeftIcon,
+} from '@/components/icons';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   registerForPushNotifications,
@@ -104,13 +114,13 @@ export default function NotificationSettingsScreen() {
       key: 'sessionReminders' as const,
       title: 'Session Reminders',
       description: 'Get notified 15 min, 1 hour, and 1 day before sessions',
-      icon: '📅',
+      icon: CalendarIcon,
     },
     {
       key: 'newMessages' as const,
       title: 'New Messages',
       description: 'Notifications when you receive new chat messages',
-      icon: '💬',
+      icon: ChatIcon,
     },
   ];
 
@@ -120,13 +130,13 @@ export default function NotificationSettingsScreen() {
       key: 'supporterUpdates' as const,
       title: 'Supporter Updates',
       description: 'Updates about cancellations and reschedules',
-      icon: '🔔',
+      icon: NotificationsIcon,
     },
     {
       key: 'promotions' as const,
       title: 'Promotions & Tips',
       description: 'Special offers and wellness tips',
-      icon: '🎁',
+      icon: StarIcon,
     },
   ];
 
@@ -136,13 +146,13 @@ export default function NotificationSettingsScreen() {
       key: 'newBookings' as const,
       title: 'New Bookings',
       description: 'Get notified when clients book sessions with you',
-      icon: '📆',
+      icon: CalendarIcon,
     },
     {
       key: 'availabilityReminders' as const,
       title: 'Weekly Availability Reminder',
       description: 'Sunday reminder to set your hours for the week',
-      icon: '⏰',
+      icon: ClockIcon,
     },
   ];
 
@@ -162,7 +172,7 @@ export default function NotificationSettingsScreen() {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Text style={styles.backArrow}>‹</Text>
+            <ChevronLeftIcon size={24} color={PsychiColors.azure} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Notifications</Text>
           <View style={styles.placeholder} />
@@ -203,7 +213,7 @@ export default function NotificationSettingsScreen() {
                   ]}
                 >
                   <View style={styles.settingIcon}>
-                    <Text style={styles.settingIconText}>{item.icon}</Text>
+                    <item.icon size={20} color={PsychiColors.azure} />
                   </View>
                   <View style={styles.settingInfo}>
                     <Text style={styles.settingTitle}>{item.title}</Text>
@@ -240,7 +250,7 @@ export default function NotificationSettingsScreen() {
                 >
                   <Text style={styles.checkLabel}>{option.label}</Text>
                   <View style={styles.checkCircle}>
-                    <Text style={styles.checkIcon}>✓</Text>
+                    <CheckIcon size={14} color={PsychiColors.white} />
                   </View>
                 </View>
               ))}
@@ -252,7 +262,7 @@ export default function NotificationSettingsScreen() {
         {pushEnabled && isSupporter && settings.availabilityReminders && (
           <View style={styles.section}>
             <View style={styles.infoCard}>
-              <Text style={styles.infoIcon}>⏰</Text>
+              <ClockIcon size={20} color={PsychiColors.azure} />
               <View style={styles.infoContent}>
                 <Text style={styles.infoTitle}>Weekly Reminder</Text>
                 <Text style={styles.infoText}>
@@ -268,7 +278,7 @@ export default function NotificationSettingsScreen() {
         {/* Info Section */}
         <View style={styles.section}>
           <View style={styles.infoCard}>
-            <Text style={styles.infoIcon}>ℹ️</Text>
+            <InfoIcon size={20} color={PsychiColors.azure} />
             <Text style={styles.infoText}>
               You can change notification permissions at any time in your device settings.
             </Text>
@@ -335,21 +345,23 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#2A2A2A',
+    color: PsychiColors.textPrimary,
     fontFamily: 'Georgia',
+    letterSpacing: 0.3,
   },
   placeholder: {
     width: 40,
   },
   section: {
     paddingHorizontal: Spacing.lg,
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.xl,
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#2A2A2A',
+    color: PsychiColors.textPrimary,
     marginBottom: Spacing.sm,
+    letterSpacing: 0.3,
   },
   sectionSubtitle: {
     fontSize: 13,
@@ -360,10 +372,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: PsychiColors.white,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
-    ...Shadows.medium,
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    borderRadius: 20,
+    padding: Spacing.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 16,
+    elevation: 3,
   },
   mainToggleInfo: {
     flex: 1,
@@ -372,7 +390,8 @@ const styles = StyleSheet.create({
   mainToggleTitle: {
     fontSize: 17,
     fontWeight: '600',
-    color: '#2A2A2A',
+    color: PsychiColors.textPrimary,
+    letterSpacing: 0.3,
   },
   mainToggleDescription: {
     fontSize: 14,
@@ -380,9 +399,15 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   settingsCard: {
-    backgroundColor: PsychiColors.white,
-    borderRadius: BorderRadius.lg,
-    ...Shadows.soft,
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 16,
+    elevation: 3,
   },
   settingRow: {
     flexDirection: 'row',
@@ -391,13 +416,13 @@ const styles = StyleSheet.create({
   },
   settingRowBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 0, 0, 0.05)',
+    borderBottomColor: 'rgba(37, 99, 235, 0.06)',
   },
   settingIcon: {
     width: 40,
     height: 40,
-    borderRadius: BorderRadius.sm,
-    backgroundColor: 'rgba(74, 144, 226, 0.1)',
+    borderRadius: 12,
+    backgroundColor: 'rgba(37, 99, 235, 0.08)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: Spacing.md,
@@ -412,7 +437,8 @@ const styles = StyleSheet.create({
   settingTitle: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#2A2A2A',
+    color: PsychiColors.textPrimary,
+    letterSpacing: 0.2,
   },
   settingDescription: {
     fontSize: 13,
@@ -445,9 +471,11 @@ const styles = StyleSheet.create({
   infoCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: 'rgba(74, 144, 226, 0.1)',
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
+    backgroundColor: 'rgba(37, 99, 235, 0.06)',
+    borderRadius: 16,
+    padding: Spacing.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(37, 99, 235, 0.1)',
   },
   infoIcon: {
     fontSize: 18,
@@ -469,10 +497,16 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   summaryCard: {
-    backgroundColor: PsychiColors.white,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
-    ...Shadows.soft,
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    borderRadius: 16,
+    padding: Spacing.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
   summaryItem: {
     fontSize: 14,

@@ -4,10 +4,11 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
   TouchableOpacity,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
+import { ChatIcon, PhoneIcon, VideoIcon, ArrowLeftRightIcon } from '@/components/icons';
 
 type SessionFilter = 'all' | 'active' | 'completed' | 'cancelled';
 type SessionType = 'chat' | 'phone' | 'video';
@@ -26,17 +27,8 @@ interface Session {
 export default function AdminSessionsScreen() {
   const [filter, setFilter] = useState<SessionFilter>('all');
 
-  // Mock session data
-  const sessions: Session[] = [
-    { id: '1', client: 'John D.', supporter: 'Sarah M.', type: 'video', status: 'active', date: 'Now', duration: '15:23', amount: 2000 },
-    { id: '2', client: 'Emily R.', supporter: 'Rachel G.', type: 'chat', status: 'active', date: 'Now', duration: '08:45', amount: 700 },
-    { id: '3', client: 'Alex P.', supporter: 'Lisa K.', type: 'phone', status: 'completed', date: 'Today, 2:30 PM', duration: '32:00', amount: 1500 },
-    { id: '4', client: 'David K.', supporter: 'Michael T.', type: 'video', status: 'completed', date: 'Today, 1:00 PM', duration: '45:00', amount: 2000 },
-    { id: '5', client: 'Lisa C.', supporter: 'Sarah M.', type: 'chat', status: 'completed', date: 'Today, 11:30 AM', duration: '28:15', amount: 700 },
-    { id: '6', client: 'Mark W.', supporter: 'Rachel G.', type: 'phone', status: 'cancelled', date: 'Today, 10:00 AM', duration: '-', amount: 0 },
-    { id: '7', client: 'Anna L.', supporter: 'Lisa K.', type: 'video', status: 'completed', date: 'Yesterday', duration: '42:30', amount: 2000 },
-    { id: '8', client: 'Tom B.', supporter: 'Michael T.', type: 'chat', status: 'completed', date: 'Yesterday', duration: '30:00', amount: 700 },
-  ];
+  // Empty array - would be populated from database
+  const sessions: Session[] = [];
 
   const stats = {
     active: sessions.filter(s => s.status === 'active').length,
@@ -53,12 +45,10 @@ export default function AdminSessionsScreen() {
     return true;
   });
 
-  const getTypeIcon = (type: SessionType) => {
-    switch (type) {
-      case 'chat': return '💬';
-      case 'phone': return '📞';
-      case 'video': return '📹';
-    }
+  const typeIcons: Record<SessionType, React.FC<{ size?: number; color?: string }>> = {
+    chat: ChatIcon,
+    phone: PhoneIcon,
+    video: VideoIcon,
   };
 
   const getStatusColor = (status: string) => {
@@ -127,7 +117,10 @@ export default function AdminSessionsScreen() {
               <View key={session.id} style={styles.sessionCard}>
                 <View style={styles.sessionHeader}>
                   <View style={styles.sessionTypeContainer}>
-                    <Text style={styles.sessionTypeIcon}>{getTypeIcon(session.type)}</Text>
+                    {(() => {
+                      const IconComponent = typeIcons[session.type];
+                      return <IconComponent size={20} color={PsychiColors.azure} />;
+                    })()}
                     <View style={[styles.statusBadge, { backgroundColor: `${getStatusColor(session.status)}20` }]}>
                       <View style={[styles.statusDot, { backgroundColor: getStatusColor(session.status) }]} />
                       <Text style={[styles.statusText, { color: getStatusColor(session.status) }]}>
@@ -148,7 +141,9 @@ export default function AdminSessionsScreen() {
                     <Text style={styles.participantRole}>Client</Text>
                     <Text style={styles.participantName}>{session.client}</Text>
                   </View>
-                  <Text style={styles.connectionArrow}>↔</Text>
+                  <View style={styles.connectionArrow}>
+                    <ArrowLeftRightIcon size={16} color={PsychiColors.textSoft} />
+                  </View>
                   <View style={styles.participant}>
                     <Text style={styles.participantRole}>Supporter</Text>
                     <Text style={styles.participantName}>{session.supporter}</Text>
@@ -324,7 +319,7 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   sessionTypeIcon: {
-    fontSize: 20,
+    marginRight: Spacing.xs,
   },
   statusBadge: {
     flexDirection: 'row',
@@ -387,8 +382,6 @@ const styles = StyleSheet.create({
     color: '#2A2A2A',
   },
   connectionArrow: {
-    fontSize: 16,
-    color: PsychiColors.textSoft,
     marginHorizontal: Spacing.sm,
   },
   sessionDetails: {

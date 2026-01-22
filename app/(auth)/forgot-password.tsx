@@ -5,13 +5,14 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  SafeAreaView,
   KeyboardAvoidingView,
   Platform,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
+import { MailIcon, ChevronLeftIcon, LockIcon } from '@/components/icons';
 import { supabase } from '@/lib/supabase';
 
 export default function ForgotPasswordScreen() {
@@ -61,7 +62,7 @@ export default function ForgotPasswordScreen() {
       <SafeAreaView style={styles.container}>
         <View style={styles.content}>
           <View style={styles.successIcon}>
-            <Text style={styles.successEmoji}>✉️</Text>
+            <MailIcon size={72} color={PsychiColors.azure} />
           </View>
           <Text style={styles.title}>Check Your Email</Text>
           <Text style={styles.description}>
@@ -96,13 +97,13 @@ export default function ForgotPasswordScreen() {
             style={styles.backButton}
             onPress={() => router.back()}
           >
-            <Text style={styles.backArrow}>‹</Text>
+            <ChevronLeftIcon size={24} color={PsychiColors.azure} />
             <Text style={styles.backText}>Back</Text>
           </TouchableOpacity>
 
           {/* Icon */}
           <View style={styles.iconContainer}>
-            <Text style={styles.iconEmoji}>🔐</Text>
+            <LockIcon size={64} color={PsychiColors.azure} />
           </View>
 
           {/* Title */}
@@ -172,12 +173,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: Spacing.xl,
   },
-  backArrow: {
-    fontSize: 28,
-    color: PsychiColors.azure,
-    marginRight: 4,
-    marginTop: -2,
-  },
   backText: {
     fontSize: 16,
     color: PsychiColors.azure,
@@ -187,15 +182,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: Spacing.lg,
   },
-  iconEmoji: {
-    fontSize: 64,
-  },
   successIcon: {
     alignItems: 'center',
     marginBottom: Spacing.lg,
-  },
-  successEmoji: {
-    fontSize: 72,
   },
   title: {
     fontSize: 28,
