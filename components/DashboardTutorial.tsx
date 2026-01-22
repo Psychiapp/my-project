@@ -209,10 +209,10 @@ export default function DashboardTutorial({
   const isFirstStep = currentStep === 0;
 
   const gradientColors = userType === 'client'
-    ? ['#87CEEB', '#4A90E2', '#2E5C8A'] as const
-    : ['#E4C4F0', '#8B6B96', '#6B4F76'] as const;
+    ? [PsychiColors.sky, PsychiColors.royalBlue, PsychiColors.sapphire] as const
+    : [PsychiColors.peach, PsychiColors.lavender, PsychiColors.violet] as const;
 
-  const accentColor = userType === 'client' ? '#4A90E2' : '#8B6B96';
+  const accentColor = userType === 'client' ? PsychiColors.royalBlue : PsychiColors.violet;
 
   return (
     <Modal
@@ -283,9 +283,9 @@ export default function DashboardTutorial({
                 { backgroundColor: userType === 'client' ? 'rgba(135, 206, 235, 0.15)' : 'rgba(228, 196, 240, 0.2)' }
               ]}>
                 <View style={styles.tipIconContainer}>
-                  <LightbulbIcon size={16} color={userType === 'client' ? '#2E5C8A' : '#6B4F76'} />
+                  <LightbulbIcon size={16} color={userType === 'client' ? PsychiColors.sapphire : PsychiColors.violet} />
                 </View>
-                <Text style={[styles.tipText, { color: userType === 'client' ? '#2E5C8A' : '#6B4F76' }]}>
+                <Text style={[styles.tipText, { color: userType === 'client' ? PsychiColors.sapphire : PsychiColors.violet }]}>
                   <Text style={styles.tipLabel}>Tip: </Text>
                   {step.tip}
                 </Text>
@@ -307,7 +307,7 @@ export default function DashboardTutorial({
                 onPress={handleNext}
               >
                 <LinearGradient
-                  colors={userType === 'client' ? ['#4A90E2', '#2E5C8A'] : ['#8B6B96', '#6B4F76']}
+                  colors={userType === 'client' ? [PsychiColors.royalBlue, PsychiColors.sapphire] : [PsychiColors.lavender, PsychiColors.violet]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={styles.nextButtonGradient}
@@ -417,7 +417,7 @@ const styles = StyleSheet.create({
   },
   description: {
     fontSize: 15,
-    color: '#4A90E2',
+    color: PsychiColors.textSecondary,
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: Spacing.md,
@@ -455,7 +455,7 @@ const styles = StyleSheet.create({
   backButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#2E5C8A',
+    color: PsychiColors.sapphire,
   },
   nextButton: {
     flex: 1,

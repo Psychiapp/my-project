@@ -14,6 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/contexts/AuthContext';
+import { PsychiColors } from '@/constants/theme';
 import { CalendarIcon, SettingsIcon, ChartIcon, ChatIcon, BookIcon, ClockIcon, DollarIcon, UsersIcon, EditIcon, PauseIcon, PlayIcon } from '@/components/icons';
 import { getSupporterAvailability, updateAcceptingClients } from '@/lib/database';
 import DashboardTutorial from '@/components/DashboardTutorial';
@@ -148,43 +149,43 @@ export default function SupporterHomeScreen() {
           <View style={styles.acceptingContent}>
             <View style={[
               styles.acceptingIconBg,
-              { backgroundColor: acceptingClients ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)' }
+              { backgroundColor: acceptingClients ? PsychiColors.successMuted : PsychiColors.errorMuted }
             ]}>
               {isLoadingToggle ? (
-                <ActivityIndicator size="small" color="#4A90E2" />
+                <ActivityIndicator size="small" color={PsychiColors.royalBlue} />
               ) : acceptingClients ? (
-                <PlayIcon size={22} color="#10B981" />
+                <PlayIcon size={20} color={PsychiColors.success} />
               ) : (
-                <PauseIcon size={22} color="#EF4444" />
+                <PauseIcon size={20} color={PsychiColors.error} />
               )}
             </View>
             <View style={styles.acceptingInfo}>
               <Text style={styles.acceptingTitle}>
-                {isLoadingToggle ? 'Loading...' : acceptingClients ? 'Accepting New Clients' : 'Not Accepting New Clients'}
+                {isLoadingToggle ? 'Loading...' : acceptingClients ? 'Accepting New Clients' : 'Paused'}
               </Text>
               <Text style={styles.acceptingDescription}>
                 {isLoadingToggle
-                  ? 'Checking your current status...'
+                  ? 'Checking your status...'
                   : acceptingClients
-                    ? 'New clients can be matched with you based on your availability.'
-                    : 'You won\'t receive new client matches. Existing clients can still book sessions.'}
+                    ? 'New clients can be matched with you.'
+                    : 'New matches paused. Existing clients can still book.'}
               </Text>
             </View>
             {isLoadingToggle ? (
-              <ActivityIndicator size="small" color="#4A90E2" />
+              <ActivityIndicator size="small" color={PsychiColors.royalBlue} />
             ) : (
               <Switch
                 value={acceptingClients}
                 onValueChange={handleAcceptingClientsToggle}
                 disabled={isUpdatingToggle}
-                trackColor={{ false: 'rgba(239, 68, 68, 0.3)', true: 'rgba(16, 185, 129, 0.3)' }}
-                thumbColor={acceptingClients ? '#10B981' : '#EF4444'}
+                trackColor={{ false: PsychiColors.errorMuted, true: PsychiColors.successMuted }}
+                thumbColor={acceptingClients ? PsychiColors.success : PsychiColors.error}
               />
             )}
           </View>
           <View style={styles.acceptingTip}>
             <Text style={styles.acceptingTipText}>
-              Turn this off when you're at capacity. Your existing clients will still be able to book sessions with you.
+              Turn off when at capacity. Existing clients can still book sessions.
             </Text>
           </View>
         </View>
