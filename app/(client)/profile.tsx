@@ -72,8 +72,8 @@ export default function ProfileScreen() {
       icon: <SlidersIcon size={20} color={PsychiColors.violet} />,
       iconBgColor: `${PsychiColors.lavender}20`,
       title: 'Preferences',
-      subtitle: 'Manage your support preferences',
-      onPress: () => router.push('/settings/edit-profile'),
+      subtitle: 'Timezone, session types & matching',
+      onPress: () => router.push('/settings/preferences'),
     },
     {
       icon: <CardIcon size={20} color={PsychiColors.coral} />,
