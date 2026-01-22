@@ -188,7 +188,7 @@ export default function Footer({ onNavigate, onScrollToSection }: FooterProps) {
         <View style={styles.bottomSection}>
           <View style={styles.divider} />
           <Text style={styles.copyright}>
-            © 2024 Psychi. All rights reserved.
+            © 2026 Psychi. All rights reserved.
           </Text>
           <Text style={styles.disclaimer}>
             Psychi is not a replacement for professional mental health care.
@@ -239,7 +239,6 @@ const styles = StyleSheet.create({
     width: 120,
     height: 44,
     marginBottom: Spacing.sm,
-    tintColor: PsychiColors.white,
   },
   tagline: {
     fontFamily: Typography.fontFamily.sans,
