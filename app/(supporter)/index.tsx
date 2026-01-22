@@ -9,21 +9,66 @@ import {
   Switch,
   ActivityIndicator,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/contexts/AuthContext';
 import { CalendarIcon, SettingsIcon, ChartIcon, ChatIcon, BookIcon, ClockIcon, DollarIcon, UsersIcon, EditIcon, PauseIcon, PlayIcon } from '@/components/icons';
 import { getSupporterAvailability, updateAcceptingClients } from '@/lib/database';
+import DashboardTutorial from '@/components/DashboardTutorial';
+
+const TUTORIAL_COMPLETED_KEY = '@psychi_supporter_tutorial_completed';
 
 export default function SupporterHomeScreen() {
   const insets = useSafeAreaInsets();
   const { profile, user } = useAuth();
 
+  // Dashboard tutorial state
+  const [showTutorial, setShowTutorial] = useState(false);
+
   // Accepting new clients toggle - controls whether new clients can be matched with this supporter
   const [acceptingClients, setAcceptingClients] = useState(true);
   const [isLoadingToggle, setIsLoadingToggle] = useState(true);
   const [isUpdatingToggle, setIsUpdatingToggle] = useState(false);
+
+  // Check if tutorial has been completed on mount
+  useEffect(() => {
+    const checkTutorialStatus = async () => {
+      try {
+        const completed = await AsyncStorage.getItem(TUTORIAL_COMPLETED_KEY);
+        if (!completed) {
+          // Small delay to let the dashboard render first
+          setTimeout(() => setShowTutorial(true), 500);
+        }
+      } catch (error) {
+        console.error('Error checking tutorial status:', error);
+      }
+    };
+    checkTutorialStatus();
+  }, []);
+
+  // Handle tutorial completion
+  const handleTutorialComplete = async () => {
+    try {
+      await AsyncStorage.setItem(TUTORIAL_COMPLETED_KEY, 'true');
+      setShowTutorial(false);
+    } catch (error) {
+      console.error('Error saving tutorial status:', error);
+      setShowTutorial(false);
+    }
+  };
+
+  // Handle tutorial skip (same as complete - they've seen it)
+  const handleTutorialClose = async () => {
+    try {
+      await AsyncStorage.setItem(TUTORIAL_COMPLETED_KEY, 'true');
+      setShowTutorial(false);
+    } catch (error) {
+      console.error('Error saving tutorial status:', error);
+      setShowTutorial(false);
+    }
+  };
 
   // Fetch initial accepting clients status from database
   useEffect(() => {
@@ -337,6 +382,15 @@ export default function SupporterHomeScreen() {
           </View>
         </View>
       </ScrollView>
+
+      {/* Dashboard Tutorial */}
+      <DashboardTutorial
+        visible={showTutorial}
+        onClose={handleTutorialClose}
+        onComplete={handleTutorialComplete}
+        userType="supporter"
+        userName={profile?.firstName}
+      />
     </View>
   );
 }

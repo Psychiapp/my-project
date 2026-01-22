@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Image,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/contexts/AuthContext';
@@ -26,6 +27,9 @@ import {
   ArrowRightIcon,
   PlusIcon,
 } from '@/components/icons';
+import DashboardTutorial from '@/components/DashboardTutorial';
+
+const TUTORIAL_COMPLETED_KEY = '@psychi_client_tutorial_completed';
 
 interface AssignedSupporter {
   id: string;
@@ -48,6 +52,47 @@ const planLabels: Record<string, string> = {
 export default function ClientHomeScreen() {
   const insets = useSafeAreaInsets();
   const { profile } = useAuth();
+
+  // Dashboard tutorial state
+  const [showTutorial, setShowTutorial] = useState(false);
+
+  // Check if tutorial has been completed on mount
+  useEffect(() => {
+    const checkTutorialStatus = async () => {
+      try {
+        const completed = await AsyncStorage.getItem(TUTORIAL_COMPLETED_KEY);
+        if (!completed) {
+          // Small delay to let the dashboard render first
+          setTimeout(() => setShowTutorial(true), 500);
+        }
+      } catch (error) {
+        console.error('Error checking tutorial status:', error);
+      }
+    };
+    checkTutorialStatus();
+  }, []);
+
+  // Handle tutorial completion
+  const handleTutorialComplete = async () => {
+    try {
+      await AsyncStorage.setItem(TUTORIAL_COMPLETED_KEY, 'true');
+      setShowTutorial(false);
+    } catch (error) {
+      console.error('Error saving tutorial status:', error);
+      setShowTutorial(false);
+    }
+  };
+
+  // Handle tutorial skip (same as complete - they've seen it)
+  const handleTutorialClose = async () => {
+    try {
+      await AsyncStorage.setItem(TUTORIAL_COMPLETED_KEY, 'true');
+      setShowTutorial(false);
+    } catch (error) {
+      console.error('Error saving tutorial status:', error);
+      setShowTutorial(false);
+    }
+  };
 
   // Real data - no mock data
   const assignedSupporter: AssignedSupporter | null = null;
@@ -209,6 +254,15 @@ export default function ClientHomeScreen() {
           </View>
         </View>
       </ScrollView>
+
+      {/* Dashboard Tutorial */}
+      <DashboardTutorial
+        visible={showTutorial}
+        onClose={handleTutorialClose}
+        onComplete={handleTutorialComplete}
+        userType="client"
+        userName={profile?.firstName}
+      />
     </View>
   );
 }
