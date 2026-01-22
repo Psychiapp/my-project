@@ -2390,7 +2390,10 @@ export async function createRescheduleRequest(
     .single();
 
   if (error) {
-    console.error('Error creating reschedule request:', error);
+    // Silently handle if table doesn't exist yet (code 42P01)
+    if (error.code !== '42P01') {
+      console.error('Error creating reschedule request:', error);
+    }
     return null;
   }
 
@@ -2421,7 +2424,10 @@ export async function getPendingRescheduleRequests(
     .order('response_deadline', { ascending: true });
 
   if (error) {
-    console.error('Error fetching reschedule requests:', error);
+    // Silently handle if table doesn't exist yet (code 42P01)
+    if (error.code !== '42P01') {
+      console.error('Error fetching reschedule requests:', error);
+    }
     return [];
   }
 
@@ -2444,7 +2450,10 @@ export async function getRescheduleRequestBySession(
     .maybeSingle();
 
   if (error) {
-    console.error('Error fetching reschedule request:', error);
+    // Silently handle if table doesn't exist yet (code 42P01)
+    if (error.code !== '42P01') {
+      console.error('Error fetching reschedule request:', error);
+    }
     return null;
   }
 
@@ -2487,7 +2496,10 @@ export async function acceptRescheduleRequest(
     .eq('id', requestId);
 
   if (updateError) {
-    console.error('Error accepting reschedule request:', updateError);
+    // Silently handle if table doesn't exist yet (code 42P01)
+    if (updateError.code !== '42P01') {
+      console.error('Error accepting reschedule request:', updateError);
+    }
     return { success: false, error: 'Failed to accept request' };
   }
 
@@ -2526,7 +2538,10 @@ export async function declineRescheduleRequest(
     .eq('id', requestId);
 
   if (error) {
-    console.error('Error declining reschedule request:', error);
+    // Silently handle if table doesn't exist yet (code 42P01)
+    if (error.code !== '42P01') {
+      console.error('Error declining reschedule request:', error);
+    }
     return { success: false, error: 'Failed to decline request' };
   }
 
@@ -2558,7 +2573,10 @@ export async function processExpiredRescheduleRequests(
   const { data: expiredRequests, error } = await query;
 
   if (error) {
-    console.error('Error fetching expired requests:', error);
+    // Silently handle if table doesn't exist yet (code 42P01)
+    if (error.code !== '42P01') {
+      console.error('Error fetching expired requests:', error);
+    }
     return { processed: 0, cancelled: [] };
   }
 
