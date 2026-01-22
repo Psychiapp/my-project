@@ -1,33 +1,39 @@
 import { useEffect, useState } from 'react';
 import { Tabs, router } from 'expo-router';
 import { View, StyleSheet } from 'react-native';
-import { PsychiColors, Shadows, Typography, BorderRadius } from '@/constants/theme';
-import { HomeIcon, SearchIcon, ChatIcon, ProfileIcon } from '@/components/icons';
+import {
+  PsychiColors,
+  Shadows,
+  Typography,
+  BorderRadius,
+  Spacing,
+} from '@/constants/theme';
+import { HomeIcon, ChatIcon, ProfileIcon } from '@/components/icons';
 import { hasRequestedPermissions } from '@/lib/permissions';
 
-// Tab bar icons
+// Premium tab bar icon with subtle active indicator
 function TabIcon({ name, focused }: { name: string; focused: boolean }) {
-  const iconColor = focused ? PsychiColors.royalBlue : PsychiColors.textMuted;
-  const iconSize = 24;
+  const iconColor = focused ? PsychiColors.royalBlue : PsychiColors.textSoft;
+  const iconSize = 22;
 
   const renderIcon = () => {
     switch (name) {
       case 'index':
-        return <HomeIcon size={iconSize} color={iconColor} />;
-      case 'browse':
-        return <SearchIcon size={iconSize} color={iconColor} />;
+        return <HomeIcon size={iconSize} color={iconColor} weight={focused ? 'regular' : 'light'} />;
       case 'sessions':
-        return <ChatIcon size={iconSize} color={iconColor} />;
+        return <ChatIcon size={iconSize} color={iconColor} weight={focused ? 'regular' : 'light'} />;
       case 'profile':
-        return <ProfileIcon size={iconSize} color={iconColor} />;
+        return <ProfileIcon size={iconSize} color={iconColor} weight={focused ? 'regular' : 'light'} />;
       default:
-        return <HomeIcon size={iconSize} color={iconColor} />;
+        return <HomeIcon size={iconSize} color={iconColor} weight={focused ? 'regular' : 'light'} />;
     }
   };
 
   return (
-    <View style={[styles.iconContainer, focused && styles.iconContainerFocused]}>
+    <View style={styles.iconContainer}>
       {renderIcon()}
+      {/* Subtle active indicator bar */}
+      {focused && <View style={styles.activeIndicator} />}
     </View>
   );
 }
@@ -39,7 +45,6 @@ export default function ClientLayout() {
     const checkFirstLaunch = async () => {
       const hasRequested = await hasRequestedPermissions();
       if (!hasRequested) {
-        // First launch - show permissions screen
         router.push('/permissions?returnTo=/(client)');
       }
       setIsCheckingPermissions(false);
@@ -48,8 +53,6 @@ export default function ClientLayout() {
     checkFirstLaunch();
   }, []);
 
-  // Don't render tabs until we've checked permissions
-  // This prevents a flash of the home screen before redirecting
   if (isCheckingPermissions) {
     return null;
   }
@@ -60,8 +63,9 @@ export default function ClientLayout() {
         headerShown: false,
         tabBarStyle: styles.tabBar,
         tabBarActiveTintColor: PsychiColors.royalBlue,
-        tabBarInactiveTintColor: PsychiColors.textMuted,
+        tabBarInactiveTintColor: PsychiColors.textSoft,
         tabBarLabelStyle: styles.tabLabel,
+        tabBarItemStyle: styles.tabItem,
       }}
     >
       <Tabs.Screen
@@ -69,13 +73,6 @@ export default function ClientLayout() {
         options={{
           title: 'Home',
           tabBarIcon: ({ focused }) => <TabIcon name="index" focused={focused} />,
-        }}
-      />
-      <Tabs.Screen
-        name="browse"
-        options={{
-          title: 'Browse',
-          tabBarIcon: ({ focused }) => <TabIcon name="browse" focused={focused} />,
         }}
       />
       <Tabs.Screen
@@ -95,19 +92,19 @@ export default function ClientLayout() {
       <Tabs.Screen
         name="book"
         options={{
-          href: null, // Hide from tab bar - accessed via buttons
+          href: null,
         }}
       />
       <Tabs.Screen
         name="subscription"
         options={{
-          href: null, // Hide from tab bar - accessed via profile
+          href: null,
         }}
       />
       <Tabs.Screen
         name="supporter"
         options={{
-          href: null, // Hide from tab bar - accessed via browse
+          href: null,
         }}
       />
     </Tabs>
@@ -116,27 +113,35 @@ export default function ClientLayout() {
 
 const styles = StyleSheet.create({
   tabBar: {
-    backgroundColor: PsychiColors.glassWhiteStrong,
-    borderTopColor: PsychiColors.borderLight,
+    backgroundColor: PsychiColors.cloud,
     borderTopWidth: 1,
-    height: 88,
-    paddingTop: 8,
+    borderTopColor: PsychiColors.borderUltraLight,
+    height: 84,
+    paddingTop: Spacing['2'],
     paddingBottom: 28,
+    paddingHorizontal: Spacing['4'],
     ...Shadows.soft,
+  },
+  tabItem: {
+    paddingTop: Spacing['1'],
   },
   tabLabel: {
     fontSize: Typography.fontSize.xs,
-    fontWeight: Typography.fontWeight.semibold,
-    marginTop: 4,
+    fontWeight: Typography.fontWeight.medium,
+    letterSpacing: Typography.letterSpacing.wide,
+    marginTop: Spacing['1'],
   },
   iconContainer: {
-    width: 44,
-    height: 32,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: BorderRadius.md,
+    paddingTop: Spacing['1'],
   },
-  iconContainerFocused: {
-    backgroundColor: 'rgba(37, 99, 235, 0.1)',
+  activeIndicator: {
+    position: 'absolute',
+    top: -Spacing['2'],
+    width: 20,
+    height: 3,
+    backgroundColor: PsychiColors.coral,
+    borderRadius: BorderRadius.full,
   },
 });

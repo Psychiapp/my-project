@@ -4,14 +4,40 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
   TouchableOpacity,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
-import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
+import {
+  PsychiColors,
+  Spacing,
+  BorderRadius,
+  Shadows,
+  Typography,
+} from '@/constants/theme';
+import {
+  ProfileIcon,
+  SlidersIcon,
+  CardIcon,
+  NotificationsIcon,
+  PhoneIcon,
+  ShieldIcon,
+  HelpIcon,
+  LogoutIcon,
+  ChevronRightIcon,
+  EditIcon,
+} from '@/components/icons';
+
+interface MenuItem {
+  icon: React.ReactNode;
+  iconBgColor: string;
+  title: string;
+  subtitle: string;
+  onPress: () => void;
+}
 
 export default function ProfileScreen() {
   const { profile, signOut } = useAuth();
@@ -34,45 +60,52 @@ export default function ProfileScreen() {
     );
   };
 
-  const menuItems = [
+  const menuItems: MenuItem[] = [
     {
-      icon: '👤',
+      icon: <ProfileIcon size={20} color={PsychiColors.royalBlue} />,
+      iconBgColor: `${PsychiColors.royalBlue}12`,
       title: 'Edit Profile',
       subtitle: 'Update your personal information',
       onPress: () => router.push('/settings/edit-profile'),
     },
     {
-      icon: '🎯',
+      icon: <SlidersIcon size={20} color={PsychiColors.violet} />,
+      iconBgColor: `${PsychiColors.lavender}20`,
       title: 'Preferences',
       subtitle: 'Manage your support preferences',
       onPress: () => router.push('/settings/edit-profile'),
     },
     {
-      icon: '💳',
+      icon: <CardIcon size={20} color={PsychiColors.coral} />,
+      iconBgColor: `${PsychiColors.coral}12`,
       title: 'Subscription',
       subtitle: 'Manage your subscription plan',
       onPress: () => router.push('/(client)/subscription'),
     },
     {
-      icon: '🔔',
+      icon: <NotificationsIcon size={20} color={PsychiColors.warning} />,
+      iconBgColor: `${PsychiColors.warning}12`,
       title: 'Notifications',
       subtitle: 'Configure notification settings',
       onPress: () => router.push('/settings/notifications'),
     },
     {
-      icon: '📱',
+      icon: <PhoneIcon size={20} color={PsychiColors.success} />,
+      iconBgColor: `${PsychiColors.success}12`,
       title: 'Device Permissions',
       subtitle: 'Camera, microphone & notifications',
       onPress: () => router.push('/permissions'),
     },
     {
-      icon: '🔒',
+      icon: <ShieldIcon size={20} color={PsychiColors.sapphire} />,
+      iconBgColor: `${PsychiColors.sapphire}12`,
       title: 'Privacy & Security',
       subtitle: 'Manage your account security',
       onPress: () => router.push('/settings/privacy'),
     },
     {
-      icon: '❓',
+      icon: <HelpIcon size={20} color={PsychiColors.textMuted} />,
+      iconBgColor: `${PsychiColors.textMuted}12`,
       title: 'Help & Support',
       subtitle: 'Get help or contact us',
       onPress: () => router.push('/settings/help'),
@@ -90,7 +123,7 @@ export default function ProfileScreen() {
         {/* Profile Card */}
         <View style={styles.profileCard}>
           <LinearGradient
-            colors={[PsychiColors.azure, PsychiColors.deep]}
+            colors={[PsychiColors.azure, PsychiColors.royalBlue]}
             style={styles.avatarGradient}
           >
             <Text style={styles.avatarText}>
@@ -105,8 +138,8 @@ export default function ProfileScreen() {
             </Text>
             <Text style={styles.profileEmail}>{profile?.email || 'user@example.com'}</Text>
           </View>
-          <TouchableOpacity style={styles.editButton}>
-            <Text style={styles.editButtonText}>Edit</Text>
+          <TouchableOpacity style={styles.editButton} activeOpacity={0.7}>
+            <EditIcon size={16} color={PsychiColors.royalBlue} />
           </TouchableOpacity>
         </View>
 
@@ -127,7 +160,9 @@ export default function ProfileScreen() {
             onPress={() => router.push('/(client)/subscription')}
           >
             <LinearGradient
-              colors={[PsychiColors.violet, PsychiColors.periwinkle]}
+              colors={[PsychiColors.coral, PsychiColors.periwinkle]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
               style={styles.upgradeButtonGradient}
             >
               <Text style={styles.upgradeButtonText}>View Plans</Text>
@@ -140,18 +175,21 @@ export default function ProfileScreen() {
           {menuItems.map((item, index) => (
             <TouchableOpacity
               key={index}
-              style={styles.menuItem}
+              style={[
+                styles.menuItem,
+                index === menuItems.length - 1 && styles.menuItemLast,
+              ]}
               onPress={item.onPress}
               activeOpacity={0.7}
             >
-              <View style={styles.menuIcon}>
-                <Text style={styles.menuIconText}>{item.icon}</Text>
+              <View style={[styles.menuIcon, { backgroundColor: item.iconBgColor }]}>
+                {item.icon}
               </View>
               <View style={styles.menuInfo}>
                 <Text style={styles.menuTitle}>{item.title}</Text>
                 <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
               </View>
-              <Text style={styles.menuArrow}>›</Text>
+              <ChevronRightIcon size={20} color={PsychiColors.textSoft} />
             </TouchableOpacity>
           ))}
         </View>
@@ -162,7 +200,7 @@ export default function ProfileScreen() {
           onPress={handleSignOut}
           activeOpacity={0.7}
         >
-          <Text style={styles.signOutIcon}>🚪</Text>
+          <LogoutIcon size={20} color={PsychiColors.error} />
           <Text style={styles.signOutText}>Sign Out</Text>
         </TouchableOpacity>
 
@@ -184,177 +222,168 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.md,
-    paddingBottom: Spacing.sm,
+    paddingHorizontal: Spacing['5'],
+    paddingTop: Spacing['4'],
+    paddingBottom: Spacing['3'],
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#2A2A2A',
-    fontFamily: 'Georgia',
+    fontSize: Typography.fontSize['2xl'],
+    fontWeight: Typography.fontWeight.semibold,
+    color: PsychiColors.textPrimary,
+    letterSpacing: Typography.letterSpacing.tight,
   },
   profileCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: PsychiColors.white,
-    marginHorizontal: Spacing.lg,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
-    marginBottom: Spacing.md,
-    ...Shadows.medium,
+    backgroundColor: PsychiColors.cloud,
+    marginHorizontal: Spacing['5'],
+    borderRadius: BorderRadius.xl,
+    padding: Spacing['4'],
+    marginBottom: Spacing['4'],
+    ...Shadows.soft,
   },
   avatarGradient: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
   },
   avatarText: {
-    fontSize: 28,
-    fontWeight: '600',
+    fontSize: Typography.fontSize['2xl'],
+    fontWeight: Typography.fontWeight.semibold,
     color: PsychiColors.white,
   },
   profileInfo: {
     flex: 1,
-    marginLeft: Spacing.md,
+    marginLeft: Spacing['4'],
   },
   profileName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#2A2A2A',
+    fontSize: Typography.fontSize.lg,
+    fontWeight: Typography.fontWeight.semibold,
+    color: PsychiColors.textPrimary,
   },
   profileEmail: {
-    fontSize: 14,
+    fontSize: Typography.fontSize.sm,
     color: PsychiColors.textMuted,
-    marginTop: 2,
+    marginTop: Spacing['0.5'],
   },
   editButton: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs,
-    borderRadius: BorderRadius.full,
-    backgroundColor: 'rgba(74, 144, 226, 0.1)',
-  },
-  editButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: PsychiColors.azure,
+    width: 40,
+    height: 40,
+    borderRadius: BorderRadius.lg,
+    backgroundColor: `${PsychiColors.royalBlue}10`,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   subscriptionCard: {
-    backgroundColor: PsychiColors.white,
-    marginHorizontal: Spacing.lg,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
-    marginBottom: Spacing.lg,
-    ...Shadows.medium,
+    backgroundColor: PsychiColors.cloud,
+    marginHorizontal: Spacing['5'],
+    borderRadius: BorderRadius.xl,
+    padding: Spacing['5'],
+    marginBottom: Spacing['5'],
+    ...Shadows.soft,
   },
   subscriptionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 4,
+    marginBottom: Spacing['1'],
   },
   subscriptionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#2A2A2A',
+    fontSize: Typography.fontSize.base,
+    fontWeight: Typography.fontWeight.semibold,
+    color: PsychiColors.textPrimary,
   },
   planBadge: {
-    backgroundColor: 'rgba(123, 104, 176, 0.1)',
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 4,
+    backgroundColor: `${PsychiColors.lavender}20`,
+    paddingHorizontal: Spacing['3'],
+    paddingVertical: Spacing['1'],
     borderRadius: BorderRadius.full,
   },
   planBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: Typography.fontSize.xs,
+    fontWeight: Typography.fontWeight.semibold,
     color: PsychiColors.violet,
   },
   subscriptionSubtitle: {
-    fontSize: 14,
+    fontSize: Typography.fontSize.sm,
     color: PsychiColors.textMuted,
-    marginBottom: Spacing.md,
+    marginBottom: Spacing['4'],
   },
   upgradeButton: {
-    borderRadius: BorderRadius.md,
+    borderRadius: BorderRadius.lg,
     overflow: 'hidden',
   },
   upgradeButtonGradient: {
-    paddingVertical: Spacing.sm,
+    paddingVertical: Spacing['3'],
     alignItems: 'center',
   },
   upgradeButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: Typography.fontSize.base,
+    fontWeight: Typography.fontWeight.medium,
     color: PsychiColors.white,
   },
   menuSection: {
-    backgroundColor: PsychiColors.white,
-    marginHorizontal: Spacing.lg,
-    borderRadius: BorderRadius.lg,
-    marginBottom: Spacing.lg,
-    ...Shadows.medium,
+    backgroundColor: PsychiColors.cloud,
+    marginHorizontal: Spacing['5'],
+    borderRadius: BorderRadius.xl,
+    marginBottom: Spacing['5'],
+    ...Shadows.soft,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: Spacing.md,
+    padding: Spacing['4'],
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.05)',
+    borderBottomColor: PsychiColors.borderUltraLight,
+  },
+  menuItemLast: {
+    borderBottomWidth: 0,
   },
   menuIcon: {
     width: 40,
     height: 40,
-    borderRadius: BorderRadius.sm,
-    backgroundColor: 'rgba(74, 144, 226, 0.1)',
+    borderRadius: BorderRadius.lg,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: Spacing.md,
-  },
-  menuIconText: {
-    fontSize: 20,
+    marginRight: Spacing['4'],
   },
   menuInfo: {
     flex: 1,
   },
   menuTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#2A2A2A',
+    fontSize: Typography.fontSize.base,
+    fontWeight: Typography.fontWeight.medium,
+    color: PsychiColors.textPrimary,
   },
   menuSubtitle: {
-    fontSize: 13,
+    fontSize: Typography.fontSize.sm,
     color: PsychiColors.textMuted,
-    marginTop: 2,
-  },
-  menuArrow: {
-    fontSize: 24,
-    color: PsychiColors.textSoft,
+    marginTop: Spacing['0.5'],
   },
   signOutButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: PsychiColors.white,
-    marginHorizontal: Spacing.lg,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
-    ...Shadows.soft,
-  },
-  signOutIcon: {
-    fontSize: 18,
-    marginRight: Spacing.sm,
+    backgroundColor: PsychiColors.cloud,
+    marginHorizontal: Spacing['5'],
+    borderRadius: BorderRadius.xl,
+    padding: Spacing['4'],
+    gap: Spacing['2'],
+    borderWidth: 1,
+    borderColor: `${PsychiColors.error}15`,
+    ...Shadows.sm,
   },
   signOutText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: Typography.fontSize.base,
+    fontWeight: Typography.fontWeight.medium,
     color: PsychiColors.error,
   },
   versionText: {
     textAlign: 'center',
-    fontSize: 13,
+    fontSize: Typography.fontSize.sm,
     color: PsychiColors.textSoft,
-    marginTop: Spacing.lg,
+    marginTop: Spacing['5'],
   },
 });

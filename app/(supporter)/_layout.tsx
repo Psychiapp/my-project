@@ -1,35 +1,43 @@
 import { useEffect, useState } from 'react';
 import { Tabs, router } from 'expo-router';
 import { View, StyleSheet } from 'react-native';
-import { PsychiColors, Shadows, Typography, BorderRadius } from '@/constants/theme';
+import {
+  PsychiColors,
+  Shadows,
+  Typography,
+  BorderRadius,
+  Spacing,
+} from '@/constants/theme';
 import { HomeIcon, CalendarIcon, ChatIcon, DollarIcon, ProfileIcon } from '@/components/icons';
 import { hasRequestedPermissions } from '@/lib/permissions';
 
-// Tab bar icons
+// Premium tab bar icon with subtle active indicator
 function TabIcon({ name, focused }: { name: string; focused: boolean }) {
-  const iconColor = focused ? PsychiColors.coral : PsychiColors.textMuted;
-  const iconSize = 24;
+  const iconColor = focused ? PsychiColors.coral : PsychiColors.textSoft;
+  const iconSize = 22;
 
   const renderIcon = () => {
     switch (name) {
       case 'index':
-        return <HomeIcon size={iconSize} color={iconColor} />;
+        return <HomeIcon size={iconSize} color={iconColor} weight={focused ? 'regular' : 'light'} />;
       case 'availability':
-        return <CalendarIcon size={iconSize} color={iconColor} />;
+        return <CalendarIcon size={iconSize} color={iconColor} weight={focused ? 'regular' : 'light'} />;
       case 'sessions':
-        return <ChatIcon size={iconSize} color={iconColor} />;
+        return <ChatIcon size={iconSize} color={iconColor} weight={focused ? 'regular' : 'light'} />;
       case 'earnings':
-        return <DollarIcon size={iconSize} color={iconColor} />;
+        return <DollarIcon size={iconSize} color={iconColor} weight={focused ? 'regular' : 'light'} />;
       case 'profile':
-        return <ProfileIcon size={iconSize} color={iconColor} />;
+        return <ProfileIcon size={iconSize} color={iconColor} weight={focused ? 'regular' : 'light'} />;
       default:
-        return <HomeIcon size={iconSize} color={iconColor} />;
+        return <HomeIcon size={iconSize} color={iconColor} weight={focused ? 'regular' : 'light'} />;
     }
   };
 
   return (
-    <View style={[styles.iconContainer, focused && styles.iconContainerFocused]}>
+    <View style={styles.iconContainer}>
       {renderIcon()}
+      {/* Subtle active indicator bar */}
+      {focused && <View style={styles.activeIndicator} />}
     </View>
   );
 }
@@ -41,7 +49,6 @@ export default function SupporterLayout() {
     const checkFirstLaunch = async () => {
       const hasRequested = await hasRequestedPermissions();
       if (!hasRequested) {
-        // First launch - show permissions screen
         router.push('/permissions?returnTo=/(supporter)');
       }
       setIsCheckingPermissions(false);
@@ -50,7 +57,6 @@ export default function SupporterLayout() {
     checkFirstLaunch();
   }, []);
 
-  // Don't render tabs until we've checked permissions
   if (isCheckingPermissions) {
     return null;
   }
@@ -61,8 +67,9 @@ export default function SupporterLayout() {
         headerShown: false,
         tabBarStyle: styles.tabBar,
         tabBarActiveTintColor: PsychiColors.coral,
-        tabBarInactiveTintColor: PsychiColors.textMuted,
+        tabBarInactiveTintColor: PsychiColors.textSoft,
         tabBarLabelStyle: styles.tabLabel,
+        tabBarItemStyle: styles.tabItem,
       }}
     >
       <Tabs.Screen
@@ -101,21 +108,39 @@ export default function SupporterLayout() {
         }}
       />
       <Tabs.Screen
+        name="feedback"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
         name="training"
         options={{
-          href: null, // Hide from tab bar - accessed via buttons
+          href: null,
         }}
       />
       <Tabs.Screen
         name="payout-settings"
         options={{
-          href: null, // Hide from tab bar - accessed via earnings page
+          href: null,
         }}
       />
       <Tabs.Screen
         name="edit-profile"
         options={{
-          href: null, // Hide from tab bar - accessed via profile page
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="clients"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="resources"
+        options={{
+          href: null,
         }}
       />
     </Tabs>
@@ -124,27 +149,35 @@ export default function SupporterLayout() {
 
 const styles = StyleSheet.create({
   tabBar: {
-    backgroundColor: PsychiColors.glassWhiteStrong,
-    borderTopColor: PsychiColors.borderLight,
+    backgroundColor: PsychiColors.cloud,
     borderTopWidth: 1,
-    height: 88,
-    paddingTop: 8,
+    borderTopColor: PsychiColors.borderUltraLight,
+    height: 84,
+    paddingTop: Spacing['2'],
     paddingBottom: 28,
+    paddingHorizontal: Spacing['2'],
     ...Shadows.soft,
   },
+  tabItem: {
+    paddingTop: Spacing['1'],
+  },
   tabLabel: {
-    fontSize: Typography.fontSize.xs - 2,
-    fontWeight: Typography.fontWeight.semibold,
-    marginTop: 4,
+    fontSize: 10,
+    fontWeight: Typography.fontWeight.medium,
+    letterSpacing: Typography.letterSpacing.wide,
+    marginTop: Spacing['1'],
   },
   iconContainer: {
-    width: 40,
-    height: 28,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: BorderRadius.sm,
+    paddingTop: Spacing['1'],
   },
-  iconContainerFocused: {
-    backgroundColor: 'rgba(251, 146, 60, 0.15)',
+  activeIndicator: {
+    position: 'absolute',
+    top: -Spacing['2'],
+    width: 20,
+    height: 3,
+    backgroundColor: PsychiColors.coral,
+    borderRadius: BorderRadius.full,
   },
 });

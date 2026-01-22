@@ -39,7 +39,7 @@ const faqItems = [
   },
   {
     question: 'How does the matching work?',
-    answer: "After you complete our brief matching quiz, we'll suggest supporters who align with your preferences—communication style, areas of focus, and availability. You can browse supporter profiles and choose who feels like the best fit.",
+    answer: "After you complete our brief matching quiz, we'll match you with a supporter who aligns with your preferences—communication style, areas of focus, and availability. Your matched supporter is carefully selected to be the best fit for you.",
   },
   {
     question: 'What types of sessions are available?',

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -15,10 +15,13 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '@/contexts/AuthContext';
 import { PsychiColors, Gradients, Spacing, BorderRadius, Shadows, Typography } from '@/constants/theme';
 import { UserRole } from '@/types';
-import { ChevronLeftIcon, HeartIcon, BookIcon, EyeIcon } from '@/components/icons';
+import { ChevronLeftIcon, HeartIcon, BookIcon, EyeIcon, CheckCircleIcon } from '@/components/icons';
+import { saveClientPreferences } from '@/lib/database';
+import { PENDING_QUIZ_PREFERENCES_KEY } from './welcome';
 
 export default function SignUpScreen() {
   const insets = useSafeAreaInsets();
@@ -30,6 +33,27 @@ export default function SignUpScreen() {
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [pendingPreferences, setPendingPreferences] = useState<any>(null);
+  const [hasCompletedQuiz, setHasCompletedQuiz] = useState(false);
+
+  // Check for pending quiz preferences on mount
+  useEffect(() => {
+    const checkPendingPreferences = async () => {
+      try {
+        const stored = await AsyncStorage.getItem(PENDING_QUIZ_PREFERENCES_KEY);
+        if (stored) {
+          const preferences = JSON.parse(stored);
+          setPendingPreferences(preferences);
+          setHasCompletedQuiz(true);
+          // Auto-select client role since they completed the quiz
+          setSelectedRole('client');
+        }
+      } catch (error) {
+        console.error('Error checking pending preferences:', error);
+      }
+    };
+    checkPendingPreferences();
+  }, []);
 
   const handleContinue = () => {
     if (!email || !password || !confirmPassword) {
@@ -57,12 +81,27 @@ export default function SignUpScreen() {
     }
 
     setIsLoading(true);
-    const { error } = await signUp(email, password, selectedRole);
-    setIsLoading(false);
+    const { error, user } = await signUp(email, password, selectedRole);
 
     if (error) {
+      setIsLoading(false);
       Alert.alert('Error', error.message);
+      return;
     }
+
+    // If user completed quiz before signup, save their preferences
+    if (pendingPreferences && user && selectedRole === 'client') {
+      try {
+        await saveClientPreferences(user.id, pendingPreferences);
+        // Clear the pending preferences from storage
+        await AsyncStorage.removeItem(PENDING_QUIZ_PREFERENCES_KEY);
+      } catch (prefError) {
+        console.error('Error saving preferences:', prefError);
+        // Don't block signup if preferences fail to save
+      }
+    }
+
+    setIsLoading(false);
   };
 
   // Role Selection Screen
@@ -96,6 +135,16 @@ export default function SignUpScreen() {
         {/* Role Selection Card */}
         <View style={[styles.formCard, { paddingBottom: insets.bottom + Spacing.lg }]}>
           <ScrollView showsVerticalScrollIndicator={false}>
+            {/* Quiz Completed Banner */}
+            {hasCompletedQuiz && (
+              <View style={styles.quizCompletedBanner}>
+                <CheckCircleIcon size={20} color={PsychiColors.success} />
+                <Text style={styles.quizCompletedText}>
+                  Matching quiz completed! Your preferences will be saved.
+                </Text>
+              </View>
+            )}
+
             {/* Client Role Option */}
             <TouchableOpacity
               style={[
@@ -355,10 +404,12 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.serif,
     marginBottom: Spacing.xs,
     textAlign: 'center',
+    letterSpacing: 0.5,
   },
   headerSubtitle: {
     fontSize: Typography.fontSize.base,
     color: 'rgba(255, 255, 255, 0.85)',
+    letterSpacing: 0.3,
   },
   formCardContainer: {
     flex: 1,
@@ -366,44 +417,60 @@ const styles = StyleSheet.create({
   },
   formCard: {
     flex: 1,
-    backgroundColor: PsychiColors.glassWhiteStrong,
-    borderTopLeftRadius: BorderRadius['3xl'],
-    borderTopRightRadius: BorderRadius['3xl'],
-    paddingTop: Spacing.xl,
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    paddingTop: Spacing['2xl'],
     paddingHorizontal: Spacing.lg,
     marginTop: -Spacing.xl,
-    ...Shadows.modal,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+    borderBottomWidth: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 20,
+    elevation: 8,
   },
   inputContainer: {
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.lg,
   },
   label: {
     fontSize: Typography.fontSize.sm,
     fontWeight: '600',
     color: PsychiColors.textPrimary,
-    marginBottom: Spacing.xs,
+    marginBottom: Spacing.sm,
+    letterSpacing: 0.3,
   },
   inputWrapper: {
-    backgroundColor: PsychiColors.white,
-    borderRadius: BorderRadius['2xl'],
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: PsychiColors.borderMedium,
-    ...Shadows.soft,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
   input: {
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.md,
+    paddingVertical: 14,
     fontSize: Typography.fontSize.base,
     color: PsychiColors.textPrimary,
   },
   passwordWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: PsychiColors.white,
-    borderRadius: BorderRadius['2xl'],
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: PsychiColors.borderMedium,
-    ...Shadows.soft,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
   passwordInput: {
     flex: 1,
@@ -438,28 +505,34 @@ const styles = StyleSheet.create({
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: Spacing.lg,
+    marginVertical: Spacing.xl,
   },
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: PsychiColors.borderMedium,
+    backgroundColor: 'rgba(37, 99, 235, 0.1)',
   },
   dividerText: {
     paddingHorizontal: Spacing.md,
     fontSize: Typography.fontSize.sm,
     color: PsychiColors.textMuted,
+    letterSpacing: 0.3,
   },
   socialButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: PsychiColors.white,
-    borderRadius: BorderRadius['2xl'],
-    paddingVertical: Spacing.md,
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    borderRadius: 16,
+    paddingVertical: 14,
     borderWidth: 1,
-    borderColor: PsychiColors.borderMedium,
-    marginBottom: Spacing.md,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+    marginBottom: Spacing.lg,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
   socialIcon: {
     fontSize: Typography.fontSize.lg,
@@ -490,17 +563,21 @@ const styles = StyleSheet.create({
   roleCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: PsychiColors.white,
-    borderRadius: BorderRadius['2xl'],
-    padding: Spacing.lg,
-    marginBottom: Spacing.md,
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: Spacing.lg,
     borderWidth: 2,
-    borderColor: 'transparent',
-    ...Shadows.card,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 16,
+    elevation: 3,
   },
   roleCardSelected: {
     borderColor: PsychiColors.royalBlue,
-    backgroundColor: 'rgba(37, 99, 235, 0.05)',
+    backgroundColor: 'rgba(37, 99, 235, 0.08)',
   },
   roleIconBg: {
     width: 56,
@@ -519,11 +596,13 @@ const styles = StyleSheet.create({
     color: PsychiColors.textPrimary,
     marginBottom: Spacing.xs,
     fontFamily: Typography.fontFamily.serif,
+    letterSpacing: 0.3,
   },
   roleDescription: {
     fontSize: Typography.fontSize.sm,
     color: PsychiColors.textSecondary,
     lineHeight: 20,
+    letterSpacing: 0.2,
   },
   radioOuter: {
     width: 24,
@@ -552,6 +631,23 @@ const styles = StyleSheet.create({
   },
   termsLink: {
     color: PsychiColors.royalBlue,
+    fontWeight: '500',
+  },
+  quizCompletedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: `${PsychiColors.success}15`,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.md,
+    marginBottom: Spacing.lg,
+    gap: Spacing.sm,
+    borderWidth: 1,
+    borderColor: `${PsychiColors.success}30`,
+  },
+  quizCompletedText: {
+    flex: 1,
+    fontSize: Typography.fontSize.sm,
+    color: PsychiColors.success,
     fontWeight: '500',
   },
 });

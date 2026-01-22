@@ -4,11 +4,11 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
   TouchableOpacity,
   TextInput,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
 
 type UserType = 'all' | 'clients' | 'supporters' | 'pending';
@@ -27,17 +27,8 @@ export default function AdminUsersScreen() {
   const [userFilter, setUserFilter] = useState<UserType>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Mock user data
-  const users: User[] = [
-    { id: '1', name: 'John Doe', email: 'john@example.com', type: 'client', status: 'active', joinDate: 'Jan 10, 2026', sessions: 12 },
-    { id: '2', name: 'Sarah Miller', email: 'sarah@example.com', type: 'supporter', status: 'active', joinDate: 'Dec 15, 2025', sessions: 47 },
-    { id: '3', name: 'Emily Roberts', email: 'emily@example.com', type: 'client', status: 'active', joinDate: 'Jan 12, 2026', sessions: 3 },
-    { id: '4', name: 'Michael Thompson', email: 'michael@example.com', type: 'supporter', status: 'pending', joinDate: 'Jan 14, 2026', sessions: 0 },
-    { id: '5', name: 'Alex Parker', email: 'alex@example.com', type: 'client', status: 'suspended', joinDate: 'Nov 20, 2025', sessions: 8 },
-    { id: '6', name: 'Rachel Green', email: 'rachel@example.com', type: 'supporter', status: 'active', joinDate: 'Oct 5, 2025', sessions: 89 },
-    { id: '7', name: 'David Kim', email: 'david@example.com', type: 'supporter', status: 'pending', joinDate: 'Jan 13, 2026', sessions: 0 },
-    { id: '8', name: 'Lisa Chen', email: 'lisa@example.com', type: 'client', status: 'active', joinDate: 'Jan 8, 2026', sessions: 5 },
-  ];
+  // Empty array - would be populated from database
+  const users: User[] = [];
 
   const stats = {
     total: users.length,

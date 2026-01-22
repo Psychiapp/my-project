@@ -1,170 +1,207 @@
 /**
  * Psychi Mobile App Theme
- * Exact match to web app design system
+ * Premium, modern aesthetic with refined design tokens
+ * Inspired by top-tier graphic design principles
  */
 
 import { Platform } from 'react-native';
 
-// Exact color palette from web app CSS variables
+// =============================================================================
+// COLOR PALETTE - Soft, muted, sophisticated
+// =============================================================================
 export const PsychiColors = {
-  // Primary Blues (exact from web CSS --psychi-*)
-  midnight: '#0C1E3D',      // --psychi-midnight (deepest navy)
-  deep: '#0F4C81',          // --psychi-deep (deep ocean)
-  sapphire: '#1E3A5F',      // --psychi-sapphire
-  royalBlue: '#2563EB',     // --psychi-royal (primary) [MOST USED]
-  azure: '#3B82F6',         // --psychi-azure
-  sky: '#60A5FA',           // --psychi-sky
+  // Primary Blues - Softer, more refined
+  midnight: '#0A1628',        // Deep navy for text
+  deep: '#1E3A5F',            // Deep ocean accent
+  sapphire: '#2E4A6E',        // Muted sapphire
+  royalBlue: '#4A7BC7',       // Primary blue - softer, less saturated
+  azure: '#6B9BD1',           // Softer azure
+  sky: '#8BB8E8',             // Light sky accent
 
-  // Warm Accent Colors (exact from web CSS)
-  periwinkle: '#E8A090',    // --psychi-periwinkle (warm peachy-brown)
-  lavender: '#D4847A',      // --psychi-lavender (dusty rose-brown)
-  violet: '#C9705F',        // --psychi-violet (deeper rose)
-  coral: '#FB923C',         // --psychi-coral (orange-coral) [KEY ACCENT]
-  peach: '#FECACA',         // --psychi-peach (light peach)
-  rose: '#FDA4AF',          // --psychi-rose (soft rose)
+  // Warm Accent Colors - Muted and elegant
+  periwinkle: '#C9A69D',      // Muted peachy-brown
+  lavender: '#B8A0C8',        // Soft lavender
+  violet: '#9B8AA8',          // Muted violet
+  coral: '#E8A07A',           // Soft coral (primary accent)
+  peach: '#F5D5C8',           // Very soft peach
+  rose: '#E8C4C4',            // Muted rose
 
-  // Background Colors (Cream palette - exact from web)
-  ivory: '#F8EBE3',         // --psychi-ivory (warm ivory)
-  cream: '#F5E8DF',         // --psychi-cream (primary background) [MOST USED]
-  mist: '#F2E5DB',          // --psychi-mist (soft mist)
-  frost: '#EFE2D8',         // --psychi-frost (light frost)
-  cloud: '#FAF8F5',         // lighter cream
-  pureWhite: '#FFFBFA',     // almost white with warmth
+  // Background Colors - Off-white, cream tones
+  ivory: '#FAFAF8',           // Near white with warmth
+  cream: '#F7F6F3',           // Primary background
+  mist: '#F2F1ED',            // Soft mist
+  frost: '#EDECE8',           // Light frost (card backgrounds)
+  cloud: '#FFFFFF',           // Pure white for elevated surfaces
+  warmWhite: '#FFFFFE',       // Warm white
 
-  // Text Colors (exact from web CSS)
-  textPrimary: '#0F172A',   // --psychi-text-primary (dark)
-  textSecondary: '#334155', // --psychi-text-secondary (medium-dark)
-  textMuted: '#64748B',     // --psychi-text-muted
-  textSoft: '#94A3B8',      // --psychi-text-soft
-  textBody: '#3D4660',      // body text color
-  warmBrown: '#6B5A52',     // subtitle color from SupportTypes
+  // Text Colors - Refined hierarchy
+  textPrimary: '#1A1F26',     // Almost black, not pure black
+  textSecondary: '#4A5568',   // Medium gray-blue
+  textMuted: '#718096',       // Soft gray
+  textSoft: '#A0AEC0',        // Very soft for hints
+  textDisabled: '#CBD5E0',    // Disabled state
 
-  // Functional Colors
-  success: '#10B981',
-  warning: '#F59E0B',
-  error: '#EF4444',
+  // Functional Colors - Softened
+  success: '#68D391',         // Soft green
+  successMuted: 'rgba(104, 211, 145, 0.12)',
+  warning: '#F6AD55',         // Soft orange
+  warningMuted: 'rgba(246, 173, 85, 0.12)',
+  error: '#FC8181',           // Soft red
+  errorMuted: 'rgba(252, 129, 129, 0.12)',
   white: '#FFFFFF',
   black: '#000000',
 
-  // Glassmorphism Colors
-  glassWhite: 'rgba(255, 255, 255, 0.6)',
-  glassWhiteStrong: 'rgba(255, 255, 255, 0.9)',
-  glassPremium: 'rgba(255, 255, 255, 0.18)',
-  glassFrosted: 'rgba(255, 255, 255, 0.85)',
+  // Glassmorphism Colors - Subtle transparency
+  glassWhite: 'rgba(255, 255, 255, 0.72)',
+  glassWhiteStrong: 'rgba(255, 255, 255, 0.88)',
+  glassPremium: 'rgba(255, 255, 255, 0.56)',
+  glassFrosted: 'rgba(255, 255, 255, 0.80)',
+  glassSubtle: 'rgba(255, 255, 255, 0.40)',
 
-  // Border Colors
-  borderLight: 'rgba(255, 255, 255, 0.25)',
-  borderMedium: 'rgba(255, 255, 255, 0.5)',
-  borderGlass: 'rgba(255, 255, 255, 0.3)',
+  // Border Colors - Delicate, almost invisible
+  borderUltraLight: 'rgba(0, 0, 0, 0.04)',
+  borderLight: 'rgba(0, 0, 0, 0.06)',
+  borderMedium: 'rgba(0, 0, 0, 0.08)',
+  borderAccent: 'rgba(74, 123, 199, 0.15)',
+  borderGlass: 'rgba(255, 255, 255, 0.20)',
 
-  // Support Type Card Accents (from web)
-  chatAccent: '#D4847A',     // Chat sessions
-  phoneAccent: '#B896C8',    // Phone calls
-  videoAccent: '#8AB5D8',    // Video chat
+  // Support Type Card Accents - Softer
+  chatAccent: '#C9A69D',
+  phoneAccent: '#B8A0C8',
+  videoAccent: '#8BB8E8',
+
+  // Legacy aliases for backwards compatibility
+  pureWhite: '#FFFFFF',
+  textBody: '#4A5568',
+  warmBrown: '#C9A69D',
 };
 
-// Gradients (for LinearGradient components) - exact from web
+// =============================================================================
+// GRADIENTS - Subtle and atmospheric
+// =============================================================================
 export const Gradients = {
-  // Hero text gradient (for "accessible" word)
-  heroText: ['#2563EB', '#FB923C'] as [string, string],  // royal blue to coral
+  // Hero/Header gradients - Softer transitions
+  hero: ['#6B9BD1', '#4A7BC7'] as [string, string],
+  heroSoft: ['#F7F6F3', '#FFFFFF'] as [string, string],
+  heroBlue: ['#6B9BD1', '#4A7BC7'] as [string, string],
+  heroText: ['#4A7BC7', '#6B9BD1'] as [string, string],
 
-  // Button gradients
-  primaryButton: ['#2563EB', '#3B82F6'] as [string, string],  // royal to azure
+  // Button gradients - Subtle
+  primaryButton: ['#4A7BC7', '#5A8BD4'] as [string, string],
+  accentButton: ['#E8A07A', '#F0B896'] as [string, string],
 
-  // Section backgrounds
-  hero: ['#60A5FA', '#3B82F6', '#FB923C'] as [string, string, string],
-  supportTypes: ['#F5E8DF', '#FAF8F5', '#FFFBFA'] as [string, string, string],
-  pricing: ['#FFFBFA', '#FFFFFF'] as [string, string],
+  // Background gradients
+  pageBackground: ['#FAFAF8', '#F7F6F3', '#F2F1ED'] as [string, string, string],
+  cardShimmer: ['rgba(255,255,255,0)', 'rgba(255,255,255,0.5)', 'rgba(255,255,255,0)'] as [string, string, string],
 
-  // Footer gradient (sapphire to midnight)
-  footer: ['#1E3A5F', '#0C1E3D'] as [string, string],
+  // Glass gradients
+  glassPremium: ['rgba(255,255,255,0.80)', 'rgba(255,255,255,0.60)'] as [string, string],
+  glassSubtle: ['rgba(255,255,255,0.56)', 'rgba(255,255,255,0.40)'] as [string, string],
 
-  // Crisis banner gradient
-  crisisBanner: ['rgba(37,99,235,0.9)', 'rgba(139,92,246,0.9)'] as [string, string],
+  // Footer/Dark sections
+  footer: ['#2E4A6E', '#1E3A5F'] as [string, string],
+  crisisBanner: ['#FC8181', '#F56565'] as [string, string],
 
-  // Role/User type gradients
-  supporter: ['#E8A090', '#D4847A'] as [string, string],  // peach to dusty rose
-  client: ['#60A5FA', '#2563EB'] as [string, string],     // sky to royal
+  // Role gradients - Softer
+  supporter: ['#C9A69D', '#B8A0C8'] as [string, string],
+  client: ['#8BB8E8', '#6B9BD1'] as [string, string],
 
-  // Glassmorphism gradients
-  glassPremium: ['rgba(255,255,255,0.18)', 'rgba(255,255,255,0.08)', 'rgba(255,255,255,0.12)'] as [string, string, string],
-  glassFrosted: ['rgba(255,255,255,0.85)', 'rgba(255,255,255,0.75)'] as [string, string],
-  glassIridescent: [
-    'rgba(165,180,252,0.15)',
-    'rgba(196,181,253,0.12)',
-    'rgba(254,202,202,0.1)',
-    'rgba(251,146,60,0.08)',
-    'rgba(165,180,252,0.15)'
-  ] as [string, string, string, string, string],
+  // Active indicator
+  activeIndicator: ['#E8A07A', '#F0B896'] as [string, string],
 
-  // Modal/Card gradients
-  modal: ['rgba(255, 255, 255, 0.95)', 'rgba(255, 255, 255, 0.9)', 'rgba(250, 248, 245, 0.95)'] as [string, string, string],
-  glass: ['rgba(255, 255, 255, 0.9)', 'rgba(255, 255, 255, 0.8)'] as [string, string],
+  // Pricing
+  pricing: ['#F7F6F3', '#EDECE8'] as [string, string],
 
-  // Support type card accents
-  chatCard: ['#D4847A', '#C9705F'] as [string, string],
-  phoneCard: ['#B896C8', '#A680B8'] as [string, string],
-  videoCard: ['#8AB5D8', '#6BA3D0'] as [string, string],
+  // Support type cards
+  chatCard: ['#C9A69D', '#B8A0C8'] as [string, string],
+  phoneCard: ['#B8A0C8', '#9B8AA8'] as [string, string],
+  videoCard: ['#8BB8E8', '#6B9BD1'] as [string, string],
+  supportTypes: ['#F7F6F3', '#EDECE8'] as [string, string],
 };
 
+// =============================================================================
+// LIGHT/DARK MODE
+// =============================================================================
 export const Colors = {
   light: {
     text: PsychiColors.textPrimary,
     textSecondary: PsychiColors.textSecondary,
     background: PsychiColors.cream,
-    card: PsychiColors.white,
+    surface: PsychiColors.cloud,
+    card: PsychiColors.frost,
     tint: PsychiColors.royalBlue,
     icon: PsychiColors.textMuted,
     tabIconDefault: PsychiColors.textSoft,
     tabIconSelected: PsychiColors.royalBlue,
     border: PsychiColors.borderLight,
     primary: PsychiColors.royalBlue,
+    accent: PsychiColors.coral,
   },
   dark: {
-    text: '#ECEDEE',
-    textSecondary: '#9BA1A6',
-    background: PsychiColors.midnight,
-    card: '#1B263B',
+    text: '#F7FAFC',
+    textSecondary: '#A0AEC0',
+    background: '#0A1628',
+    surface: '#1A2B3C',
+    card: '#1E3A5F',
     tint: PsychiColors.sky,
     icon: PsychiColors.textSoft,
     tabIconDefault: PsychiColors.textMuted,
     tabIconSelected: PsychiColors.sky,
-    border: 'rgba(74, 144, 226, 0.2)',
+    border: 'rgba(255, 255, 255, 0.08)',
     primary: PsychiColors.sky,
+    accent: PsychiColors.coral,
   },
 };
 
-// Typography - matching web app
+// =============================================================================
+// TYPOGRAPHY - Clean, modern sans-serif
+// =============================================================================
 export const Typography = {
-  // Font families
+  // Font families - SF Pro / Inter style
   fontFamily: {
+    // Primary sans-serif
+    sans: Platform.select({
+      ios: 'System',         // SF Pro on iOS
+      android: 'Roboto',
+      default: 'System',
+    }),
+    // Display/heading font
+    display: Platform.select({
+      ios: 'System',
+      android: 'Roboto',
+      default: 'System',
+    }),
+    // Serif font for elegant headings
     serif: Platform.select({
       ios: 'Georgia',
       android: 'serif',
       default: 'Georgia',
     }),
-    sans: Platform.select({
-      ios: 'System',
-      android: 'Roboto',
-      default: 'System',
+    // Mono for numbers/code
+    mono: Platform.select({
+      ios: 'Menlo',
+      android: 'monospace',
+      default: 'monospace',
     }),
   },
 
-  // Font sizes (in pixels, same as web)
+  // Font sizes - Refined scale
   fontSize: {
-    xs: 12,
-    sm: 14,
-    base: 16,
-    lg: 18,
-    xl: 20,
-    '2xl': 24,
-    '3xl': 30,
-    '4xl': 36,
-    '5xl': 48,
+    xs: 11,        // Tiny labels
+    sm: 13,        // Small text, captions
+    base: 15,      // Body text
+    md: 16,        // Default
+    lg: 17,        // Slightly larger body
+    xl: 20,        // Section headers
+    '2xl': 24,     // Page titles
+    '3xl': 28,     // Hero text
+    '4xl': 34,     // Large display
+    '5xl': 42,     // Extra large
   },
 
-  // Font weights
+  // Font weights - Prefer lighter weights
   fontWeight: {
+    light: '300' as const,
     normal: '400' as const,
     medium: '500' as const,
     semibold: '600' as const,
@@ -173,157 +210,322 @@ export const Typography = {
 
   // Line heights
   lineHeight: {
-    tight: 1.1,
-    snug: 1.25,
+    none: 1,
+    tight: 1.2,
+    snug: 1.375,
     normal: 1.5,
-    relaxed: 1.75,
+    relaxed: 1.625,
+    loose: 2,
+  },
+
+  // Letter spacing - Key for premium feel
+  letterSpacing: {
+    tighter: -0.5,
+    tight: -0.25,
+    normal: 0,
+    wide: 0.5,
+    wider: 1,
+    widest: 2,
   },
 };
 
-// Spacing (matching web app rem values converted to pixels)
+// =============================================================================
+// SPACING - Generous white space
+// =============================================================================
 export const Spacing = {
-  xs: 4,    // 0.25rem
-  sm: 8,    // 0.5rem
-  md: 16,   // 1rem
-  lg: 24,   // 1.5rem
-  xl: 32,   // 2rem
-  '2xl': 40, // 2.5rem
-  '3xl': 48, // 3rem
-  '4xl': 64, // 4rem
+  px: 1,
+  '0.5': 2,
+  '1': 4,
+  '1.5': 6,
+  '2': 8,
+  '2.5': 10,
+  '3': 12,
+  '4': 16,
+  '5': 20,
+  '6': 24,
+  '7': 28,
+  '8': 32,
+  '9': 36,
+  '10': 40,
+  '12': 48,
+  '14': 56,
+  '16': 64,
+  '20': 80,
+  '24': 96,
+
+  // Semantic aliases
+  xs: 4,
+  sm: 8,
+  md: 16,
+  lg: 24,
+  xl: 32,
+  '2xl': 48,
+  '3xl': 64,
+  '4xl': 96,
 };
 
-// Border radius (matching web app)
+// =============================================================================
+// BORDER RADIUS - Soft but not cartoonish
+// =============================================================================
 export const BorderRadius = {
-  sm: 6,    // 0.375rem
-  md: 12,   // 0.75rem
-  lg: 16,   // 1rem
-  xl: 20,   // 1.25rem
-  '2xl': 24, // 1.5rem
-  '3xl': 30, // 1.875rem
-  full: 9999,
+  none: 0,
+  sm: 4,
+  md: 8,
+  lg: 12,       // Cards, buttons
+  xl: 16,       // Large cards
+  '2xl': 20,    // Modals
+  '3xl': 24,    // Hero sections
+  full: 9999,   // Pills
+  pill: 9999,   // Alias for pill buttons
 };
 
-// Shadows (matching web app --shadow-* system)
+// =============================================================================
+// SHADOWS - Natural, not harsh
+// =============================================================================
 export const Shadows = {
-  // --shadow-ambient: 0 0 80px rgba(15,76,129,0.06)
-  ambient: {
-    shadowColor: '#0F4C81',
+  // No shadow
+  none: {
+    shadowColor: 'transparent',
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.06,
-    shadowRadius: 40,
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    elevation: 0,
+  },
+
+  // Ambient glow - very subtle
+  ambient: {
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+
+  // Small shadow - for subtle elevation
+  sm: {
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
     elevation: 2,
   },
-  // --shadow-soft: 0 4px 24px rgba(15,76,129,0.08)
+
+  // Soft shadow - primary for cards
   soft: {
-    shadowColor: '#0F4C81',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
     elevation: 3,
   },
-  // --shadow-medium: 0 8px 40px rgba(15,76,129,0.12)
+
+  // Medium shadow
   medium: {
-    shadowColor: '#0F4C81',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
-    shadowRadius: 20,
-    elevation: 5,
-  },
-  // --shadow-elevated: 0 20px 60px rgba(15,76,129,0.16)
-  elevated: {
-    shadowColor: '#0F4C81',
-    shadowOffset: { width: 0, height: 20 },
-    shadowOpacity: 0.16,
-    shadowRadius: 30,
-    elevation: 8,
-  },
-  // --shadow-dramatic: 0 32px 80px rgba(15,76,129,0.24)
-  dramatic: {
-    shadowColor: '#0F4C81',
-    shadowOffset: { width: 0, height: 32 },
-    shadowOpacity: 0.24,
-    shadowRadius: 40,
-    elevation: 12,
-  },
-  // Button shadow (for .btn-premium hover)
-  button: {
-    shadowColor: '#2563EB',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
     shadowRadius: 12,
     elevation: 4,
   },
-  // Card shadow
-  card: {
-    shadowColor: '#0F4C81',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    elevation: 4,
-  },
-  // Glassmorphism card shadow (from .glass-premium)
-  glass: {
+
+  // Elevated - for floating elements
+  elevated: {
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.08,
+    shadowRadius: 24,
+    elevation: 6,
+  },
+
+  // Large - for modals
+  large: {
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.10,
+    shadowRadius: 32,
+    elevation: 8,
+  },
+
+  // Glass shadow - subtle for glass cards
+  glass: {
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
     shadowRadius: 16,
+    elevation: 3,
+  },
+
+  // Button shadow
+  button: {
+    shadowColor: PsychiColors.royalBlue,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+
+  // Accent glow
+  glow: {
+    shadowColor: PsychiColors.coral,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.20,
+    shadowRadius: 12,
     elevation: 4,
   },
-  // Modal shadow
-  modal: {
-    shadowColor: '#0F4C81',
-    shadowOffset: { width: 0, height: 24 },
-    shadowOpacity: 0.2,
-    shadowRadius: 32,
-    elevation: 10,
+
+  // Card shadow - for content cards
+  card: {
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    elevation: 3,
   },
-  // Iridescent glow (from .glass-iridescent)
-  iridescent: {
-    shadowColor: '#8B5CF6',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
-    shadowRadius: 20,
-    elevation: 5,
+
+  // Inner shadow effect (simulated with border)
+  inner: {
+    shadowColor: 'transparent',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    elevation: 0,
   },
 };
 
-// Common component styles
+// =============================================================================
+// COMPONENT STYLES - Refined defaults
+// =============================================================================
 export const ComponentStyles = {
-  // Premium button style (pill shape)
+  // Premium button - Soft pill shape
   premiumButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: BorderRadius.full,
-    borderWidth: 2,
-    borderColor: PsychiColors.royalBlue,
+    paddingVertical: Spacing['4'],
+    paddingHorizontal: Spacing['6'],
+    borderRadius: BorderRadius.lg,
   },
 
-  // Primary gradient button
+  // Primary button
   primaryButton: {
-    paddingVertical: 14,
-    borderRadius: BorderRadius['2xl'],
+    paddingVertical: Spacing['4'],
+    paddingHorizontal: Spacing['6'],
+    borderRadius: BorderRadius.lg,
+    backgroundColor: PsychiColors.royalBlue,
   },
 
-  // Card style
+  // Secondary button
+  secondaryButton: {
+    paddingVertical: Spacing['4'],
+    paddingHorizontal: Spacing['6'],
+    borderRadius: BorderRadius.lg,
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: PsychiColors.borderMedium,
+  },
+
+  // Ghost button
+  ghostButton: {
+    paddingVertical: Spacing['3'],
+    paddingHorizontal: Spacing['4'],
+    borderRadius: BorderRadius.md,
+    backgroundColor: 'transparent',
+  },
+
+  // Card style - Glass effect
   card: {
-    borderRadius: BorderRadius['2xl'],
-    padding: Spacing['2xl'],
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: BorderRadius.xl,
+    padding: Spacing['5'],
+    backgroundColor: PsychiColors.glassFrosted,
+    borderWidth: 1,
+    borderColor: PsychiColors.borderUltraLight,
+  },
+
+  // Elevated card
+  cardElevated: {
+    borderRadius: BorderRadius.xl,
+    padding: Spacing['5'],
+    backgroundColor: PsychiColors.cloud,
+    borderWidth: 0,
+    ...Shadows.soft,
   },
 
   // Input field style
   input: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: BorderRadius['2xl'],
-    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    paddingVertical: Spacing['4'],
+    paddingHorizontal: Spacing['4'],
+    borderRadius: BorderRadius.lg,
+    backgroundColor: PsychiColors.frost,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.5)',
+    borderColor: PsychiColors.borderLight,
+    fontSize: Typography.fontSize.base,
+    color: PsychiColors.textPrimary,
   },
 
   // Modal style
   modal: {
-    borderRadius: BorderRadius['3xl'],
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: BorderRadius['2xl'],
+    backgroundColor: PsychiColors.cloud,
+    ...Shadows.large,
   },
+
+  // Badge/Tag style
+  badge: {
+    paddingVertical: Spacing['1.5'],
+    paddingHorizontal: Spacing['3'],
+    borderRadius: BorderRadius.full,
+    backgroundColor: PsychiColors.frost,
+  },
+
+  // Divider
+  divider: {
+    height: 1,
+    backgroundColor: PsychiColors.borderUltraLight,
+  },
+};
+
+// =============================================================================
+// ANIMATION DEFAULTS
+// =============================================================================
+export const Animation = {
+  // Durations
+  duration: {
+    instant: 0,
+    fast: 150,
+    normal: 250,
+    slow: 350,
+    slower: 500,
+  },
+
+  // Easing
+  easing: {
+    linear: 'linear',
+    easeIn: 'ease-in',
+    easeOut: 'ease-out',
+    easeInOut: 'ease-in-out',
+  },
+};
+
+// =============================================================================
+// ICON SIZES
+// =============================================================================
+export const IconSize = {
+  xs: 14,
+  sm: 16,
+  md: 20,
+  lg: 24,
+  xl: 28,
+  '2xl': 32,
+  '3xl': 40,
+};
+
+// =============================================================================
+// Z-INDEX
+// =============================================================================
+export const ZIndex = {
+  base: 0,
+  dropdown: 10,
+  sticky: 20,
+  fixed: 30,
+  overlay: 40,
+  modal: 50,
+  popover: 60,
+  tooltip: 70,
 };

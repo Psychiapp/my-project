@@ -10,10 +10,10 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  SafeAreaView,
   ActivityIndicator,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PsychiColors, Spacing, BorderRadius, Shadows, Typography } from '@/constants/theme';
@@ -572,16 +572,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
+    paddingVertical: Spacing.sm + 2,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.05)',
-    backgroundColor: PsychiColors.white,
+    borderBottomColor: 'rgba(255, 255, 255, 0.5)',
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.05)',
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -590,6 +597,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: PsychiColors.midnight,
     fontFamily: Typography.fontFamily.serif,
+    letterSpacing: 0.3,
   },
   headerSpacer: {
     width: 40,
@@ -599,7 +607,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: Spacing.md,
-    backgroundColor: PsychiColors.white,
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
   },
   progressDot: {
     width: 32,
@@ -640,10 +648,16 @@ const styles = StyleSheet.create({
     padding: Spacing.md,
   },
   stepContent: {
-    backgroundColor: PsychiColors.white,
-    borderRadius: BorderRadius.xl,
-    padding: Spacing.lg,
-    ...Shadows.soft,
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    borderRadius: 24,
+    padding: Spacing.xl,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 16,
+    elevation: 3,
   },
   stepTitle: {
     fontSize: 20,
@@ -652,6 +666,7 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.serif,
     textAlign: 'center',
     marginBottom: Spacing.xs,
+    letterSpacing: 0.5,
   },
   stepSubtitle: {
     fontSize: 14,
@@ -664,10 +679,12 @@ const styles = StyleSheet.create({
   },
   typeCard: {
     flexDirection: 'row',
-    backgroundColor: PsychiColors.cream,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
+    backgroundColor: 'rgba(255, 255, 255, 0.6)',
+    borderRadius: 16,
+    padding: Spacing.md + 2,
     gap: Spacing.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
   },
   typeIcon: {
     width: 48,
@@ -684,6 +701,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: PsychiColors.midnight,
     marginBottom: 2,
+    letterSpacing: 0.3,
   },
   typeDescription: {
     fontSize: 13,
@@ -713,12 +731,15 @@ const styles = StyleSheet.create({
   dateCard: {
     width: 72,
     paddingVertical: Spacing.md,
-    borderRadius: BorderRadius.lg,
-    backgroundColor: PsychiColors.cream,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.6)',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
   },
   dateCardSelected: {
     backgroundColor: PsychiColors.azure,
+    borderColor: PsychiColors.azure,
   },
   dateDay: {
     fontSize: 12,
@@ -774,12 +795,15 @@ const styles = StyleSheet.create({
   },
   timeSlot: {
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.md,
-    backgroundColor: PsychiColors.cream,
+    paddingVertical: Spacing.sm + 2,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.6)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
   },
   timeSlotSelected: {
     backgroundColor: PsychiColors.azure,
+    borderColor: PsychiColors.azure,
   },
   timeSlotText: {
     fontSize: 14,
@@ -790,10 +814,12 @@ const styles = StyleSheet.create({
     color: PsychiColors.white,
   },
   confirmCard: {
-    backgroundColor: PsychiColors.cream,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
-    marginBottom: Spacing.lg,
+    backgroundColor: 'rgba(255, 255, 255, 0.6)',
+    borderRadius: 20,
+    padding: Spacing.lg,
+    marginBottom: Spacing.xl,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
   },
   confirmHeader: {
     flexDirection: 'row',
@@ -802,7 +828,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
     paddingBottom: Spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.1)',
+    borderBottomColor: 'rgba(37, 99, 235, 0.1)',
   },
   confirmAvatar: {
     width: 56,
@@ -823,6 +849,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: PsychiColors.midnight,
+    letterSpacing: 0.3,
   },
   confirmSessionType: {
     fontSize: 14,
@@ -847,7 +874,7 @@ const styles = StyleSheet.create({
     marginTop: Spacing.md,
     paddingTop: Spacing.md,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.1)',
+    borderTopColor: 'rgba(37, 99, 235, 0.1)',
   },
   confirmPriceLabel: {
     fontSize: 15,

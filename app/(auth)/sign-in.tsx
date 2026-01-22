@@ -188,12 +188,6 @@ export default function SignInScreen() {
                 >
                   <Text style={styles.demoButtonText}>Supporter</Text>
                 </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.demoButton}
-                  onPress={() => handleDemoLogin('admin')}
-                >
-                  <Text style={styles.demoButtonText}>Admin</Text>
-                </TouchableOpacity>
               </View>
             </View>
 
@@ -247,10 +241,12 @@ const styles = StyleSheet.create({
     color: PsychiColors.white,
     fontFamily: Typography.fontFamily.serif,
     marginBottom: Spacing.xs,
+    letterSpacing: 0.5,
   },
   headerSubtitle: {
     fontSize: Typography.fontSize.base,
     color: 'rgba(255, 255, 255, 0.85)',
+    letterSpacing: 0.3,
   },
   formCardContainer: {
     flex: 1,
@@ -258,43 +254,59 @@ const styles = StyleSheet.create({
   },
   formCard: {
     flex: 1,
-    backgroundColor: PsychiColors.glassWhiteStrong,
-    borderTopLeftRadius: BorderRadius['3xl'],
-    borderTopRightRadius: BorderRadius['3xl'],
-    paddingTop: Spacing.xl,
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    paddingTop: Spacing['2xl'],
     paddingHorizontal: Spacing.lg,
-    ...Shadows.modal,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+    borderBottomWidth: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 20,
+    elevation: 8,
   },
   inputContainer: {
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.lg,
   },
   label: {
     fontSize: Typography.fontSize.sm,
     fontWeight: '600',
     color: PsychiColors.textPrimary,
-    marginBottom: Spacing.xs,
+    marginBottom: Spacing.sm,
+    letterSpacing: 0.3,
   },
   inputWrapper: {
-    backgroundColor: PsychiColors.white,
-    borderRadius: BorderRadius['2xl'],
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: PsychiColors.borderMedium,
-    ...Shadows.soft,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
   input: {
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.md,
+    paddingVertical: 14,
     fontSize: Typography.fontSize.base,
     color: PsychiColors.textPrimary,
   },
   passwordWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: PsychiColors.white,
-    borderRadius: BorderRadius['2xl'],
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: PsychiColors.borderMedium,
-    ...Shadows.soft,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
   passwordInput: {
     flex: 1,
@@ -334,28 +346,34 @@ const styles = StyleSheet.create({
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: Spacing.lg,
+    marginVertical: Spacing.xl,
   },
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: PsychiColors.borderMedium,
+    backgroundColor: 'rgba(37, 99, 235, 0.1)',
   },
   dividerText: {
     paddingHorizontal: Spacing.md,
     fontSize: Typography.fontSize.sm,
     color: PsychiColors.textMuted,
+    letterSpacing: 0.3,
   },
   socialButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: PsychiColors.white,
-    borderRadius: BorderRadius['2xl'],
-    paddingVertical: Spacing.md,
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    borderRadius: 16,
+    paddingVertical: 14,
     borderWidth: 1,
-    borderColor: PsychiColors.borderMedium,
-    marginBottom: Spacing.md,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+    marginBottom: Spacing.lg,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
   socialIcon: {
     fontSize: Typography.fontSize.lg,
@@ -383,22 +401,26 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   demoSection: {
-    backgroundColor: 'rgba(139, 92, 246, 0.1)',
-    borderRadius: BorderRadius.xl,
-    padding: Spacing.md,
-    marginBottom: Spacing.md,
+    backgroundColor: 'rgba(139, 92, 246, 0.08)',
+    borderRadius: 16,
+    padding: Spacing.lg,
+    marginBottom: Spacing.lg,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(139, 92, 246, 0.15)',
   },
   demoTitle: {
     fontSize: Typography.fontSize.sm,
     fontWeight: '700',
     color: '#8B5CF6',
-    marginBottom: 2,
+    marginBottom: 4,
+    letterSpacing: 0.3,
   },
   demoSubtitle: {
     fontSize: Typography.fontSize.xs,
     color: PsychiColors.textMuted,
-    marginBottom: Spacing.sm,
+    marginBottom: Spacing.md,
+    letterSpacing: 0.2,
   },
   demoButtons: {
     flexDirection: 'row',
@@ -406,7 +428,7 @@ const styles = StyleSheet.create({
   },
   demoButton: {
     backgroundColor: '#8B5CF6',
-    paddingVertical: Spacing.xs,
+    paddingVertical: Spacing.sm,
     paddingHorizontal: Spacing.md,
     borderRadius: BorderRadius.full,
   },
@@ -414,5 +436,6 @@ const styles = StyleSheet.create({
     color: PsychiColors.white,
     fontSize: Typography.fontSize.xs,
     fontWeight: '600',
+    letterSpacing: 0.2,
   },
 });

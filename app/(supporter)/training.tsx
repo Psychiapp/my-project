@@ -1,6 +1,7 @@
 /**
  * Supporter Training Screen
  * Multi-module training system with quizzes and certification
+ * Content matches web version exactly
  */
 
 import React, { useState } from 'react';
@@ -10,14 +11,29 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  SafeAreaView,
   Alert,
-  Modal,
+  Linking,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PsychiColors, Spacing, BorderRadius, Shadows, Typography } from '@/constants/theme';
-import { ChevronLeftIcon, CheckIcon, LockIcon } from '@/components/icons';
+import {
+  ChevronLeftIcon,
+  ChevronDownIcon,
+  CheckIcon,
+  LockIcon,
+  PlayIcon,
+  BookIcon,
+  HeartIcon,
+  BrainIcon,
+  ChatIcon,
+  ShieldIcon,
+  PhoneIcon,
+  CertificateIcon,
+  StarIcon,
+  ExternalLinkIcon,
+} from '@/components/icons';
 
 type Module = 'mindfulness' | 'cbt' | 'validation' | 'crisis' | 'platform';
 
@@ -34,13 +50,105 @@ interface QuizQuestion {
   options: { label: string; value: string }[];
 }
 
+interface ContentSection {
+  id: string;
+  title: string;
+  content: React.ReactNode;
+}
+
+// Clickable link interfaces
+interface VideoLink {
+  title: string;
+  speaker: string;
+  description: string;
+  url: string;
+}
+
+interface ResourceLink {
+  title: string;
+  author?: string;
+  description: string;
+  url: string;
+  type: 'book' | 'app' | 'website';
+}
+
+interface StudyLink {
+  title: string;
+  authors: string;
+  journal: string;
+  finding: string;
+  url: string;
+}
+
+// Clickable card components
+const VideoCard = ({ video }: { video: VideoLink }) => (
+  <TouchableOpacity
+    style={linkStyles.videoCard}
+    onPress={() => Linking.openURL(video.url)}
+    activeOpacity={0.7}
+  >
+    <View style={linkStyles.videoIconContainer}>
+      <PlayIcon size={24} color={PsychiColors.white} />
+    </View>
+    <View style={linkStyles.videoContent}>
+      <Text style={linkStyles.videoTitle}>{video.title}</Text>
+      <Text style={linkStyles.videoSpeaker}>{video.speaker}</Text>
+      <Text style={linkStyles.videoDescription}>{video.description}</Text>
+    </View>
+    <ExternalLinkIcon size={16} color={PsychiColors.textMuted} />
+  </TouchableOpacity>
+);
+
+const ResourceCard = ({ resource }: { resource: ResourceLink }) => (
+  <TouchableOpacity
+    style={linkStyles.resourceCard}
+    onPress={() => Linking.openURL(resource.url)}
+    activeOpacity={0.7}
+  >
+    <View style={[linkStyles.resourceIconContainer, resource.type === 'app' && linkStyles.resourceIconApp]}>
+      <BookIcon size={20} color={resource.type === 'app' ? PsychiColors.coral : PsychiColors.azure} />
+    </View>
+    <View style={linkStyles.resourceContent}>
+      <Text style={linkStyles.resourceTitle}>{resource.title}</Text>
+      {resource.author && <Text style={linkStyles.resourceAuthor}>by {resource.author}</Text>}
+      <Text style={linkStyles.resourceDescription}>{resource.description}</Text>
+    </View>
+    <ExternalLinkIcon size={16} color={PsychiColors.textMuted} />
+  </TouchableOpacity>
+);
+
+const StudyCard = ({ study }: { study: StudyLink }) => (
+  <TouchableOpacity
+    style={linkStyles.studyCard}
+    onPress={() => Linking.openURL(study.url)}
+    activeOpacity={0.7}
+  >
+    <View style={linkStyles.studyHeader}>
+      <Text style={linkStyles.studyTitle}>{study.title}</Text>
+      <ExternalLinkIcon size={14} color={PsychiColors.azure} />
+    </View>
+    <Text style={linkStyles.studyAuthors}>{study.authors}</Text>
+    <Text style={linkStyles.studyJournal}>{study.journal}</Text>
+    <Text style={linkStyles.studyFinding}>Key finding: {study.finding}</Text>
+  </TouchableOpacity>
+);
+
+// Module icons mapping
+const MODULE_ICONS: Record<Module, React.FC<{ size?: number; color?: string }>> = {
+  mindfulness: HeartIcon,
+  cbt: BrainIcon,
+  validation: ChatIcon,
+  crisis: ShieldIcon,
+  platform: PhoneIcon,
+};
+
 // Module metadata
 const MODULES = [
-  { id: 'mindfulness' as Module, title: 'Mindfulness', icon: '🧘', duration: '15 min' },
-  { id: 'cbt' as Module, title: 'Cognitive Behavioral Therapy', icon: '🧠', duration: '20 min' },
-  { id: 'validation' as Module, title: 'Validating Language', icon: '💬', duration: '15 min' },
-  { id: 'crisis' as Module, title: 'Crisis Recognition', icon: '🚨', duration: '25 min' },
-  { id: 'platform' as Module, title: 'Supporting on Psychi', icon: '📱', duration: '20 min' },
+  { id: 'mindfulness' as Module, title: 'Mindfulness', duration: '25 min' },
+  { id: 'cbt' as Module, title: 'Cognitive Behavioral Therapy', duration: '30 min' },
+  { id: 'validation' as Module, title: 'Validating Language', duration: '25 min' },
+  { id: 'crisis' as Module, title: 'Crisis Recognition', duration: '35 min' },
+  { id: 'platform' as Module, title: 'Supporting on Psychi', duration: '30 min' },
 ];
 
 // Correct answers for each module
@@ -58,10 +166,10 @@ const QUIZ_QUESTIONS: Record<Module, QuizQuestion[]> = {
     {
       question: "What is the core practice of mindfulness according to Jon Kabat-Zinn?",
       options: [
-        { label: "Eliminating all negative thoughts", value: "a" },
-        { label: "Paying attention in the present moment, non-judgmentally", value: "b" },
-        { label: "Planning for the future carefully", value: "c" },
-        { label: "Analyzing past experiences", value: "d" },
+        { label: "Eliminating all negative thoughts from your mind", value: "a" },
+        { label: "Paying attention on purpose, in the present moment, non-judgmentally", value: "b" },
+        { label: "Planning for the future carefully and strategically", value: "c" },
+        { label: "Analyzing past experiences to understand patterns", value: "d" },
       ],
     },
     {
@@ -74,30 +182,30 @@ const QUIZ_QUESTIONS: Record<Module, QuizQuestion[]> = {
       ],
     },
     {
-      question: "What brain changes are associated with mindfulness practice?",
+      question: "According to neuroscience research, what brain changes have been associated with mindfulness practice?",
       options: [
-        { label: "Decreased brain activity", value: "a" },
-        { label: "Increased gray matter in regions for emotion regulation", value: "b" },
+        { label: "Decreased brain activity in all regions", value: "a" },
+        { label: "Increased gray matter in regions related to learning, memory, and emotion regulation", value: "b" },
         { label: "Reduced brain size overall", value: "c" },
-        { label: "No measurable changes", value: "d" },
+        { label: "No measurable changes in brain structure", value: "d" },
       ],
     },
     {
-      question: "Which is an example of informal mindfulness practice?",
+      question: "Which of these is an example of informal mindfulness practice?",
       options: [
-        { label: "Eating mindfully, truly tasting food without distractions", value: "a" },
-        { label: "Attending a formal 8-week course", value: "b" },
-        { label: "Using a meditation app", value: "c" },
-        { label: "Participating in a silent retreat", value: "d" },
+        { label: "Eating mindfully by truly tasting your food without distractions", value: "a" },
+        { label: "Attending a formal 8-week MBSR course", value: "b" },
+        { label: "Using a meditation app for a guided session", value: "c" },
+        { label: "Participating in a silent meditation retreat", value: "d" },
       ],
     },
     {
       question: "What is the key difference between mindfulness and relaxation?",
       options: [
-        { label: "They are the same thing", value: "a" },
-        { label: "Mindfulness aims for awareness, not necessarily relaxation", value: "b" },
-        { label: "Relaxation requires more training", value: "c" },
-        { label: "Mindfulness only works for stress", value: "d" },
+        { label: "There is no difference; they are the same thing", value: "a" },
+        { label: "Mindfulness aims for awareness and acceptance, not necessarily relaxation", value: "b" },
+        { label: "Relaxation requires more training than mindfulness", value: "c" },
+        { label: "Mindfulness only works for stress, while relaxation works for all conditions", value: "d" },
       ],
     },
     {
@@ -115,7 +223,7 @@ const QUIZ_QUESTIONS: Record<Module, QuizQuestion[]> = {
       question: "What is the core premise of Cognitive Behavioral Therapy?",
       options: [
         { label: "Childhood experiences determine all behavior", value: "a" },
-        { label: "Psychological distress is influenced by negative thinking patterns", value: "b" },
+        { label: "Psychological distress is influenced by patterns of negative or distorted thinking", value: "b" },
         { label: "Unconscious processes control our actions", value: "c" },
         { label: "Behavior cannot be changed through therapy", value: "d" },
       ],
@@ -123,7 +231,7 @@ const QUIZ_QUESTIONS: Record<Module, QuizQuestion[]> = {
     {
       question: "What is a 'thought record' in CBT?",
       options: [
-        { label: "A technique to monitor and analyze thoughts", value: "a" },
+        { label: "A technique to monitor and analyze thoughts in response to situations", value: "a" },
         { label: "A diary of dreams", value: "b" },
         { label: "A list of positive affirmations", value: "c" },
         { label: "A record of therapy sessions", value: "d" },
@@ -134,12 +242,12 @@ const QUIZ_QUESTIONS: Record<Module, QuizQuestion[]> = {
       options: [
         { label: "It keeps clients busy between sessions", value: "a" },
         { label: "It's not actually important", value: "b" },
-        { label: "Real progress happens when applying techniques in daily life", value: "c" },
+        { label: "Real progress happens when individuals apply CBT techniques in daily life", value: "c" },
         { label: "It replaces the need for therapy sessions", value: "d" },
       ],
     },
     {
-      question: "Which cognitive distortion involves assuming the worst possible outcome?",
+      question: "Which cognitive distortion involves assuming the worst possible outcome will happen?",
       options: [
         { label: "Personalization", value: "a" },
         { label: "Catastrophizing", value: "b" },
@@ -150,14 +258,14 @@ const QUIZ_QUESTIONS: Record<Module, QuizQuestion[]> = {
     {
       question: "What is 'behavioral activation' in CBT?",
       options: [
-        { label: "Forcing someone to confront fears immediately", value: "a" },
-        { label: "Scheduling positive activities to counteract avoidance", value: "b" },
+        { label: "Forcing someone to confront their fears immediately", value: "a" },
+        { label: "Scheduling positive activities to counteract avoidance and increase engagement", value: "b" },
         { label: "A form of deep muscle relaxation", value: "c" },
         { label: "Analyzing brain activity during therapy", value: "d" },
       ],
     },
     {
-      question: "Who are considered the founders of CBT?",
+      question: "Who are considered the founders of Cognitive Behavioral Therapy?",
       options: [
         { label: "Sigmund Freud and Carl Jung", value: "a" },
         { label: "B.F. Skinner and Ivan Pavlov", value: "b" },
@@ -172,7 +280,7 @@ const QUIZ_QUESTIONS: Record<Module, QuizQuestion[]> = {
       options: [
         { label: "Agrees with everything someone says", value: "a" },
         { label: "Fixes someone's problems immediately", value: "b" },
-        { label: "Acknowledges emotions without judgment", value: "c" },
+        { label: "Acknowledges and affirms someone's emotions without judgment", value: "c" },
         { label: "Tells someone their feelings are wrong", value: "d" },
       ],
     },
@@ -206,19 +314,19 @@ const QUIZ_QUESTIONS: Record<Module, QuizQuestion[]> = {
     {
       question: "What is the difference between validation and agreement?",
       options: [
-        { label: "They are the same thing", value: "a" },
-        { label: "Validation acknowledges emotions; agreement means sharing opinion", value: "b" },
+        { label: "There is no difference; they are the same thing", value: "a" },
+        { label: "Validation acknowledges emotions are real; agreement means you share their opinion", value: "b" },
         { label: "Agreement is about feelings; validation is about facts", value: "c" },
         { label: "Validation only works with negative emotions", value: "d" },
       ],
     },
     {
-      question: "Which is TRUE about emotional validation?",
+      question: "Which of the following is TRUE about emotional validation?",
       options: [
-        { label: "It should always be followed by advice", value: "a" },
-        { label: "It only works for mental health diagnoses", value: "b" },
-        { label: "Research shows it reduces emotional distress", value: "c" },
-        { label: "It means you should never disagree", value: "d" },
+        { label: "It should always be followed by advice or solutions", value: "a" },
+        { label: "It only works for people with mental health diagnoses", value: "b" },
+        { label: "Research shows it reduces emotional arousal and distress", value: "c" },
+        { label: "It means you should never disagree with someone", value: "d" },
       ],
     },
   ],
@@ -227,26 +335,26 @@ const QUIZ_QUESTIONS: Record<Module, QuizQuestion[]> = {
       question: "What is the difference between passive and active suicidal ideation?",
       options: [
         { label: "There is no difference", value: "a" },
-        { label: "Passive: wishes to not exist; Active: specific thoughts with planning", value: "b" },
-        { label: "Passive is more dangerous than active", value: "c" },
-        { label: "Active only occurs with depression", value: "d" },
+        { label: "Passive ideation involves wishes to not exist without a plan; active ideation involves specific thoughts about ending one's life with possible planning", value: "b" },
+        { label: "Passive ideation is more dangerous than active ideation", value: "c" },
+        { label: "Active ideation only occurs in people with depression", value: "d" },
       ],
     },
     {
-      question: "Does asking someone directly about suicide increase their risk?",
+      question: "According to research, does asking someone directly about suicide increase their risk?",
       options: [
         { label: "Yes, it plants the idea in their head", value: "a" },
         { label: "No, direct questioning is safe and may reduce distress", value: "b" },
         { label: "It depends on their age", value: "c" },
-        { label: "Only professionals should ever ask", value: "d" },
+        { label: "Only trained professionals should ever ask", value: "d" },
       ],
     },
     {
-      question: "When someone shows HIGH risk indicators, what should you do FIRST?",
+      question: "What is the appropriate response when someone shows HIGH risk indicators (specific plan, access to means, timeline)?",
       options: [
         { label: "Wait and see if they calm down", value: "a" },
         { label: "Try to solve their problems yourself", value: "b" },
-        { label: "Don't leave them alone; call 988 or 911 immediately", value: "c" },
+        { label: "Do not leave them alone; call 988, Crisis Text Line, or 911 immediately", value: "c" },
         { label: "Tell them to think positive thoughts", value: "d" },
       ],
     },
@@ -262,19 +370,19 @@ const QUIZ_QUESTIONS: Record<Module, QuizQuestion[]> = {
     {
       question: "What does 'means restriction' refer to in suicide prevention?",
       options: [
-        { label: "Restricting ability to talk about suicide", value: "a" },
-        { label: "Reducing access to lethal methods like firearms", value: "b" },
+        { label: "Restricting someone's ability to talk about suicide", value: "a" },
+        { label: "Reducing access to lethal methods like firearms or medications", value: "b" },
         { label: "Limiting how much therapy someone can receive", value: "c" },
         { label: "Preventing people from calling crisis hotlines", value: "d" },
       ],
     },
     {
-      question: "What is a peer supporter's role during a mental health crisis?",
+      question: "What is the role of a peer supporter during a mental health crisis?",
       options: [
-        { label: "Diagnose the condition and provide treatment", value: "a" },
-        { label: "Recognize warning signs and connect to professional resources", value: "b" },
-        { label: "Convince the person they are overreacting", value: "c" },
-        { label: "Handle the crisis entirely without outside help", value: "d" },
+        { label: "To diagnose the condition and provide treatment", value: "a" },
+        { label: "To recognize warning signs, provide support, and connect to professional resources", value: "b" },
+        { label: "To convince the person they are overreacting", value: "c" },
+        { label: "To handle the crisis entirely on their own without outside help", value: "d" },
       ],
     },
   ],
@@ -289,85 +397,1390 @@ const QUIZ_QUESTIONS: Record<Module, QuizQuestion[]> = {
       ],
     },
     {
-      question: "A client expresses suicidal thoughts. What should your FIRST response include?",
+      question: "A client sends a long chat message expressing suicidal thoughts. What should your FIRST response include?",
       options: [
         { label: "Immediately end the session and call 911", value: "a" },
-        { label: "Acknowledge their pain and provide crisis resources (988)", value: "b" },
-        { label: "Tell them to think positive", value: "c" },
+        { label: "Acknowledge their pain, ask clarifying questions about safety, and provide crisis resources (988, Crisis Text Line)", value: "b" },
+        { label: "Tell them to think positive and that things will get better", value: "c" },
         { label: "Ignore it and redirect to their original concern", value: "d" },
       ],
     },
     {
-      question: "During a video call, your client becomes tearful and silent. What is MOST appropriate?",
+      question: "During a video call, your client suddenly becomes tearful and silent. What is the MOST appropriate response?",
       options: [
-        { label: "Allow silence, maintain warm presence, say 'I'm here with you'", value: "a" },
-        { label: "Immediately ask what's wrong and demand explanation", value: "b" },
+        { label: "Allow comfortable silence, maintain warm presence, and gently say 'I'm here with you. Take your time.'", value: "a" },
+        { label: "Immediately ask what's wrong and demand they explain", value: "b" },
         { label: "End the session to give them privacy", value: "c" },
-        { label: "Talk about something else to distract them", value: "d" },
+        { label: "Start talking about something else to distract them", value: "d" },
       ],
     },
     {
-      question: "What dress code is required for video sessions?",
+      question: "What dress code is required for Psychi Supporters during video sessions?",
       options: [
-        { label: "Casual clothing is fine", value: "a" },
-        { label: "No specific requirements", value: "b" },
-        { label: "Professional dress (business casual minimum)", value: "c" },
+        { label: "Casual clothing is fine since you're working from home", value: "a" },
+        { label: "No specific requirements as long as you're visible on camera", value: "b" },
+        { label: "Professional dress (business casual minimum, neutral colors recommended)", value: "c" },
         { label: "Formal business attire with suit and tie", value: "d" },
       ],
     },
     {
-      question: "A client wants video but you're in a noisy environment. What should you do?",
+      question: "A client in chat wants to switch to video but you're in a noisy environment. What should you do?",
       options: [
-        { label: "Switch to video anyway since client requested it", value: "a" },
-        { label: "Explain the situation and offer voice, or schedule for later", value: "b" },
+        { label: "Switch to video anyway since the client requested it", value: "a" },
+        { label: "Explain the situation, offer voice as an alternative, or schedule video for when you can ensure privacy", value: "b" },
         { label: "Just decline without explanation", value: "c" },
         { label: "Mute your microphone and proceed with video", value: "d" },
       ],
     },
     {
-      question: "Is it acceptable to check your phone during a video session if client can't see?",
+      question: "True or False: It's acceptable to check your phone during a video session if the client can't see you doing it.",
       options: [
-        { label: "True - what they can't see won't affect session", value: "a" },
-        { label: "False - full attention is required; clients can sense distraction", value: "b" },
+        { label: "True - what they can't see won't affect the session", value: "a" },
+        { label: "False - full attention is required regardless of what's visible; clients can sense distraction", value: "b" },
         { label: "True - as long as it's just a quick glance", value: "c" },
-        { label: "It depends on session length", value: "d" },
+        { label: "It depends on how long the session has been going", value: "d" },
       ],
     },
   ],
 };
 
-// Module content (condensed for mobile)
-const MODULE_CONTENT: Record<Module, { title: string; content: string }[]> = {
+// Learning objectives for each module
+const LEARNING_OBJECTIVES: Record<Module, string[]> = {
   mindfulness: [
-    { title: "What is Mindfulness?", content: "Mindfulness is the practice of paying attention on purpose, in the present moment, non-judgmentally. It was popularized by Jon Kabat-Zinn who founded MBSR in 1979." },
-    { title: "The Science", content: "Research shows mindfulness increases gray matter in brain regions related to learning, memory, and emotion regulation. It reduces stress and improves focus." },
-    { title: "Core Techniques", content: "Key techniques include: focused breathing, body scans, mindful observation, and the 5-4-3-2-1 grounding technique (5 things you see, 4 hear, 3 touch, 2 smell, 1 taste)." },
-    { title: "Informal Practice", content: "Mindfulness can be practiced informally through everyday activities like eating mindfully, walking with awareness, or pausing before responding." },
+    "Define mindfulness and explain its origins in both contemplative traditions and modern psychology",
+    "Describe the neuroscience behind mindfulness and its effects on brain structure and function",
+    "Apply core mindfulness skills (observe, describe, participate, non-judgment) in peer support sessions",
+    "Guide clients through basic mindfulness exercises including breath awareness and grounding techniques",
+    "Differentiate between mindfulness, meditation, and relaxation techniques",
   ],
   cbt: [
-    { title: "Core Premise", content: "CBT is based on the idea that psychological distress is influenced by patterns of negative or distorted thinking. By changing thoughts, we can change feelings and behaviors." },
-    { title: "Founders", content: "Aaron Beck and Albert Ellis are considered the founders of CBT. Beck developed cognitive therapy in the 1960s, focusing on identifying and changing distorted thoughts." },
-    { title: "Key Techniques", content: "Techniques include thought records (monitoring thoughts), cognitive restructuring (challenging distortions), and behavioral activation (scheduling positive activities)." },
-    { title: "Cognitive Distortions", content: "Common distortions: Catastrophizing (assuming worst), All-or-nothing thinking, Mind reading, Personalization, and Emotional reasoning." },
+    "Explain the cognitive model and how thoughts, feelings, and behaviors interact",
+    "Identify common cognitive distortions (all-or-nothing thinking, catastrophizing, etc.)",
+    "Use thought records and Socratic questioning to help clients examine their thoughts",
+    "Apply behavioral activation techniques for clients experiencing depression or low motivation",
+    "Adapt CBT techniques appropriately for peer support (within scope of practice)",
   ],
   validation: [
-    { title: "What is Validation?", content: "Validation acknowledges and affirms someone's emotions without judgment. It doesn't mean agreeing with them, but recognizing their feelings are real and understandable." },
-    { title: "6 Levels of Validation", content: "From DBT: 1) Being present, 2) Accurate reflection, 3) Reading behavior, 4) Understanding history, 5) Normalizing, 6) Radical genuineness." },
-    { title: "Validation vs Agreement", content: "Validation: 'I understand why you feel angry.' Agreement: 'You're right to be angry.' You can validate without agreeing with their perspective." },
-    { title: "What to Avoid", content: "Invalidating responses: 'You'll be fine!', 'Don't worry about it', 'Others have it worse', 'You shouldn't feel that way.'" },
+    "Define validation and distinguish it from agreement, approval, or advice-giving",
+    "Identify the six levels of validation according to DBT",
+    "Recognize common invalidating responses and their impact on emotional well-being",
+    "Apply validation techniques in real-time conversations with clients",
+    "Use validation as a foundation for building trust and therapeutic rapport",
   ],
   crisis: [
-    { title: "Recognizing Warning Signs", content: "Warning signs include: direct statements about wanting to die, expressions of hopelessness or feeling like a burden, talking about having no reason to live, increased substance use or reckless behavior, withdrawing from activities or relationships, giving away possessions or saying goodbye, and sudden calmness after a period of distress." },
-    { title: "Passive vs Active Ideation", content: "Passive: 'I wish I wasn't here' without a plan. Active: Specific thoughts about ending life with possible planning, timeline, or access to means." },
-    { title: "Limits of Confidentiality", content: "Confidentiality has limits when safety is at risk. You may need to break confidentiality for: imminent risk of self-harm or suicide, imminent risk of harm to another person, disclosure of abuse involving a minor or vulnerable adult, or legal requirements." },
-    { title: "Crisis Response Protocol", content: "When you identify a crisis: 1) Stay calm and listen without judgment, 2) Ask directly about self-harm or suicide, 3) NEVER promise to keep safety concerns secret, 4) Encourage professional help, 5) Provide resources: 988 Lifeline or text HOME to 741741, 6) Escalate to Psychi safety team using the in-app report button, 7) Stay with the client until stabilized or escalated." },
-    { title: "What You Must NOT Do", content: "Never promise to keep safety disclosures confidential. Never attempt to handle a crisis alone without escalating to Psychi. Never diagnose, prescribe, or give medical advice. Never meet clients outside the platform or share personal contact information." },
+    "Recognize warning signs and risk factors for suicide and self-harm",
+    "Distinguish between passive and active suicidal ideation",
+    "Understand the limits of confidentiality in crisis situations",
+    "Apply the crisis response protocol for Psychi Supporters",
+    "Know when and how to escalate to emergency services or the Psychi safety team",
   ],
   platform: [
-    { title: "Your Role", content: "As a Psychi Supporter, you provide empathetic peer support using evidence-based techniques. You are NOT a therapist and should never diagnose or prescribe." },
-    { title: "Session Conduct", content: "Maintain professional appearance (business casual), ensure private quiet space, give full attention (no phone checking), and be on time." },
-    { title: "Handling Difficult Moments", content: "When clients become emotional: allow comfortable silence, maintain warm presence, say 'I'm here with you. Take your time.'" },
-    { title: "Crisis Protocol", content: "If client expresses suicidal thoughts: acknowledge their pain, ask clarifying safety questions, provide 988 and Crisis Text Line resources." },
+    "Understand the scope and limitations of your role as a Psychi Supporter",
+    "Apply professional standards for video and voice sessions",
+    "Navigate difficult moments including emotional reactions and technical issues",
+    "Follow Psychi's crisis protocols and escalation procedures",
+    "Maintain ethical boundaries while providing compassionate support",
+  ],
+};
+
+// Module content sections
+const MODULE_CONTENT: Record<Module, ContentSection[]> = {
+  mindfulness: [
+    {
+      id: 'mindfulness-1',
+      title: 'Definition & Origins of Mindfulness',
+      content: `Mindfulness has emerged as one of the most influential concepts in modern mental health treatment, bridging ancient contemplative wisdom with contemporary psychological science. While the practice has roots stretching back over 2,500 years to Buddhist meditation traditions, its integration into Western psychology represents a remarkable synthesis of Eastern philosophy and empirical research.
+
+At its core, mindfulness is the practice of intentionally directing attention to present-moment experience with an attitude of openness, curiosity, and non-judgment. It involves observing thoughts, emotions, bodily sensations, and environmental stimuli as they arise, without attempting to change, suppress, or elaborate upon them.
+
+"Mindfulness is awareness that arises through paying attention, on purpose, in the present moment, non-judgmentally. And then I sometimes add, in the service of self-understanding and wisdom." — Jon Kabat-Zinn, PhD, Founder of MBSR
+
+The modern mindfulness movement began in 1979 when Jon Kabat-Zinn, a molecular biologist trained in Zen Buddhism, established the Stress Reduction Clinic at the University of Massachusetts Medical School. His eight-week Mindfulness-Based Stress Reduction (MBSR) program stripped away the religious and cultural elements of Buddhist meditation, making the practice accessible to secular audiences.
+
+Key Insight for Supporters: Understanding mindfulness's dual heritage—ancient wisdom and modern science—helps you present it credibly to clients. Some may appreciate the philosophical depth; others prefer knowing it's evidence-based. Being able to speak to both dimensions makes you a more effective guide.`,
+    },
+    {
+      id: 'mindfulness-2',
+      title: 'How Mindfulness Works',
+      content: `Mindfulness works by shifting the way we relate to our thoughts and experiences. Rather than getting caught up in automatic reactions—like rumination, avoidance, or emotional reactivity—mindfulness helps us observe our inner world with clarity and equanimity. It creates a mental space between stimulus and response, allowing us to choose how to act rather than react.
+
+Example: Social Anxiety
+Consider the experience of feeling anxious before a social event. Without mindfulness, the mind might spin into "what-if" scenarios: What if I say something awkward? What if no one likes me? These thoughts trigger feelings of panic, and we might avoid the event altogether.
+
+With mindfulness, you notice the anxiety arising, recognize it as a passing mental event, and observe it with compassion instead of judgment. This shift allows you to respond with intention—perhaps by taking a few calming breaths or reminding yourself that it's okay to be nervous.
+
+In short, mindfulness helps us recognize that thoughts are not facts, and feelings don't have to control our behavior.`,
+    },
+    {
+      id: 'mindfulness-3',
+      title: 'Mindfulness in Practice',
+      content: `Mindfulness can be practiced formally through meditation, or informally in everyday activities. Both forms are valuable and can support one another.
+
+1. Formal Practice: Mindfulness Meditation
+Mindfulness meditation typically involves setting aside time to focus your attention on a specific anchor—commonly the breath, body sensations, or sounds. The instructions are simple:
+• Sit or lie down comfortably
+• Focus your attention on your breath—notice the sensation of air moving in and out
+• When your mind wanders (and it will), gently bring it back to the breath
+• Do this again and again, with patience and kindness
+
+This practice helps train your attention and build awareness of your mental habits.
+
+2. Informal Practice: Everyday Mindfulness
+You don't have to sit on a cushion to be mindful. Some of the most powerful mindfulness happens during daily life:
+• Eating mindfully means truly tasting your food, noticing textures, colors, and the act of chewing—without screens or multitasking
+• Walking mindfully means feeling your feet touch the ground, sensing the rhythm of your movement
+• Listening mindfully means giving someone your full attention, without planning what you'll say next
+
+Any moment can become a moment of mindfulness. The key is to bring your awareness fully into the here and now.`,
+    },
+    {
+      id: 'mindfulness-4',
+      title: 'Mindfulness in Therapy and Mental Health',
+      content: `Mindfulness has been integrated into several evidence-based therapies:
+
+Mindfulness-Based Stress Reduction (MBSR)
+An 8-week program developed by Jon Kabat-Zinn to help people manage chronic stress, pain, and illness.
+
+Mindfulness-Based Cognitive Therapy (MBCT)
+Combines mindfulness with cognitive therapy techniques, particularly effective in preventing relapse in depression.
+
+Dialectical Behavior Therapy (DBT)
+Uses mindfulness to help individuals regulate emotions and tolerate distress.
+
+Acceptance and Commitment Therapy (ACT)
+Encourages mindfulness and acceptance of thoughts and feelings while committing to meaningful values and actions.
+
+These approaches share the belief that being present with your experience—rather than avoiding or controlling it—is key to healing. Mindfulness doesn't eliminate difficult feelings, but it gives you a different way to relate to them.`,
+    },
+    {
+      id: 'mindfulness-5',
+      title: 'Getting Started with Mindfulness',
+      content: `If you're new to mindfulness, here are some simple ways to begin:
+• Try a 5-minute breathing meditation each morning
+• Choose one activity a day to do with full attention—like brushing your teeth or making tea
+• Notice your senses throughout the day: What can you hear, see, touch, or smell right now?
+
+Remember: Mindfulness isn't about "clearing your mind" or achieving some perfect state. It's about noticing, again and again, what is here—without judgment.
+
+Key Takeaway: Mindfulness is a powerful and practical skill that helps you live with greater presence, clarity, and compassion. By learning to pay attention with care and openness, you don't just manage stress—you change your relationship to it.`,
+    },
+    {
+      id: 'mindfulness-6',
+      title: 'Educational Videos',
+      content: (
+        <View>
+          <Text style={{ fontSize: 14, color: PsychiColors.textSecondary, marginBottom: Spacing.md, lineHeight: 20 }}>
+            Watch these educational videos from leading experts to deepen your understanding of mindfulness principles and practices:
+          </Text>
+          <VideoCard video={{
+            title: 'All It Takes Is 10 Mindful Minutes',
+            speaker: 'Andy Puddicombe - TED Talk',
+            description: 'Co-founder of Headspace explains how just 10 minutes of daily mindfulness can transform mental well-being.',
+            url: 'https://www.youtube.com/watch?v=qzR62JJCMBQ',
+          }} />
+          <VideoCard video={{
+            title: 'How Mindfulness Changes the Emotional Life of Our Brains',
+            speaker: 'Dr. Richard Davidson - TEDx Talk',
+            description: 'Neuroscientist at University of Wisconsin-Madison covers the neuroscience of mindfulness and meditation.',
+            url: 'https://www.youtube.com/watch?v=7CBfCW67xT8',
+          }} />
+          <VideoCard video={{
+            title: 'Guided Body Scan Meditation',
+            speaker: 'UCLA Mindful Awareness Research Center',
+            description: 'A practical guided body scan meditation you can use with clients.',
+            url: 'https://www.youtube.com/watch?v=u4gZgnCy5ew',
+          }} />
+          <VideoCard video={{
+            title: 'How Meditation Can Reshape Our Brains',
+            speaker: 'Dr. Sara Lazar - TEDx Talk',
+            description: 'Harvard neuroscientist presents fMRI research showing structural brain changes from meditation.',
+            url: 'https://www.youtube.com/watch?v=m8rRzTtP7Tc',
+          }} />
+        </View>
+      ),
+    },
+    {
+      id: 'mindfulness-7',
+      title: 'Research & Evidence Base',
+      content: (
+        <View>
+          <Text style={{ fontSize: 14, color: PsychiColors.textSecondary, marginBottom: Spacing.md, lineHeight: 20 }}>
+            The following peer-reviewed studies provide the scientific foundation for mindfulness-based interventions:
+          </Text>
+          <StudyCard study={{
+            title: 'MBSR Meta-Analysis: Effects on Anxiety and Depression',
+            authors: 'Hofmann, S. G., et al. (2010)',
+            journal: 'Journal of Consulting and Clinical Psychology, 78(2), 169-183',
+            finding: 'Meta-analysis of 39 studies found mindfulness-based therapy was moderately effective for improving anxiety and mood symptoms.',
+            url: 'https://pubmed.ncbi.nlm.nih.gov/20350028/',
+          }} />
+          <StudyCard study={{
+            title: 'Mindfulness and Brain Structure Changes',
+            authors: 'Hölzel, B. K., et al. (2011)',
+            journal: 'Psychiatry Research: Neuroimaging, 191(1), 36-43',
+            finding: '8-week MBSR participation was associated with increases in gray matter concentration in brain regions involved in learning, memory, and emotion regulation.',
+            url: 'https://pubmed.ncbi.nlm.nih.gov/21071182/',
+          }} />
+          <StudyCard study={{
+            title: 'MBCT for Depression Relapse Prevention',
+            authors: 'Kuyken, W., et al. (2016)',
+            journal: 'JAMA Psychiatry, 73(6), 565-574',
+            finding: 'MBCT significantly reduces risk of depressive relapse compared to usual care.',
+            url: 'https://pubmed.ncbi.nlm.nih.gov/27119968/',
+          }} />
+          <StudyCard study={{
+            title: 'Mechanisms of Mindfulness',
+            authors: 'Hölzel, B. K., et al. (2011)',
+            journal: 'Perspectives on Psychological Science, 6(6), 537-559',
+            finding: 'Identifies key mechanisms including attention regulation, body awareness, emotion regulation, and change in perspective on the self.',
+            url: 'https://pubmed.ncbi.nlm.nih.gov/26168376/',
+          }} />
+        </View>
+      ),
+    },
+    {
+      id: 'mindfulness-8',
+      title: 'Resources & Tools',
+      content: (
+        <View>
+          <Text style={{ fontSize: 14, color: PsychiColors.textSecondary, marginBottom: Spacing.md, lineHeight: 20 }}>
+            Use these resources to deepen your own practice and share with clients:
+          </Text>
+          <Text style={{ fontSize: 14, fontWeight: '600', color: '#2A2A2A', marginBottom: Spacing.sm }}>Recommended Books:</Text>
+          <ResourceCard resource={{
+            title: 'Full Catastrophe Living',
+            author: 'Jon Kabat-Zinn',
+            description: 'The definitive guide to MBSR from its creator',
+            url: 'https://www.amazon.com/Full-Catastrophe-Living-Revised-Illness/dp/0345536932',
+            type: 'book',
+          }} />
+          <ResourceCard resource={{
+            title: 'Wherever You Go, There You Are',
+            author: 'Jon Kabat-Zinn',
+            description: 'An accessible introduction to mindfulness in daily life',
+            url: 'https://www.amazon.com/Wherever-You-Go-There-Are/dp/1401307787',
+            type: 'book',
+          }} />
+          <ResourceCard resource={{
+            title: 'The Miracle of Mindfulness',
+            author: 'Thich Nhat Hanh',
+            description: 'A classic guide to mindfulness meditation',
+            url: 'https://www.amazon.com/Miracle-Mindfulness-Introduction-Practice-Meditation/dp/0807012394',
+            type: 'book',
+          }} />
+          <Text style={{ fontSize: 14, fontWeight: '600', color: '#2A2A2A', marginTop: Spacing.md, marginBottom: Spacing.sm }}>Apps & Digital Tools:</Text>
+          <ResourceCard resource={{
+            title: 'Insight Timer',
+            description: 'Free app with thousands of guided meditations',
+            url: 'https://insighttimer.com/',
+            type: 'app',
+          }} />
+          <ResourceCard resource={{
+            title: 'Headspace',
+            description: 'Structured courses for beginners',
+            url: 'https://www.headspace.com/',
+            type: 'app',
+          }} />
+          <ResourceCard resource={{
+            title: 'Calm',
+            description: 'Guided meditations, sleep stories, and breathing exercises',
+            url: 'https://www.calm.com/',
+            type: 'app',
+          }} />
+          <ResourceCard resource={{
+            title: 'UCLA Mindful App',
+            description: 'Free meditations from UCLA Mindful Awareness Research Center',
+            url: 'https://www.uclahealth.org/programs/marc/free-guided-meditations/guided-meditations',
+            type: 'app',
+          }} />
+          <Text style={{ fontSize: 14, color: PsychiColors.textSecondary, marginTop: Spacing.md, lineHeight: 20, fontStyle: 'italic' }}>
+            Reflection Prompt: Before moving on, take a moment to practice what you've learned. Close your eyes, take three deep breaths, and notice what you're experiencing right now—thoughts, feelings, sensations—without trying to change anything. This is mindfulness in action.
+          </Text>
+        </View>
+      ),
+    },
+  ],
+  cbt: [
+    {
+      id: 'cbt-1',
+      title: 'Understanding Cognitive Behavioral Therapy (CBT)',
+      content: `Cognitive Behavioral Therapy (CBT) is one of the most widely researched and practiced forms of psychotherapy in the modern world. It is a structured, time-limited, and goal-oriented form of treatment that focuses on the interplay between thoughts, feelings, and behaviors.
+
+Originally developed in the 1960s by Dr. Aaron Beck for the treatment of depression, CBT has since evolved and is now used to treat a wide variety of mental health conditions, including anxiety disorders, PTSD, OCD, eating disorders, and substance use disorders.
+
+Core Premise: Psychological distress is largely influenced by patterns of negative or distorted thinking. These cognitive distortions—such as catastrophizing, black-and-white thinking, or personalization—can lead to maladaptive emotional responses and unhelpful behaviors.
+
+The goal of CBT is to help individuals identify and challenge these distortions, replace them with more balanced thoughts, and develop healthier behavioral responses.
+
+Unlike some traditional psychotherapies that delve deeply into childhood experiences or unconscious processes, CBT is focused on present-day problems and practical strategies.`,
+    },
+    {
+      id: 'cbt-2',
+      title: 'How CBT Works in Practice',
+      content: `CBT operates on the principle that our thoughts, feelings, and behaviors are interconnected—what we think affects how we feel, and how we feel affects what we do.
+
+The Cognitive Triangle:
+• Thoughts influence feelings
+• Feelings influence behaviors
+• Behaviors influence thoughts (and the cycle continues)
+
+Example: Job Interview Anxiety
+Thought: "I'm going to mess this up and embarrass myself."
+Feeling: Anxiety, dread, tension
+Behavior: Avoid preparing, consider canceling, perform poorly due to nerves
+
+With CBT, you would:
+1. Identify the automatic thought ("I'm going to mess this up")
+2. Examine the evidence for and against this thought
+3. Generate a more balanced alternative ("I've prepared well. Even if I'm nervous, I can still do my best")
+4. Notice how the new thought changes feelings and behaviors
+
+Key Techniques:
+• Thought Records - Documenting situations, thoughts, and emotions to identify patterns
+• Cognitive Restructuring - Challenging and replacing distorted thoughts
+• Behavioral Experiments - Testing beliefs through real-world actions
+• Behavioral Activation - Scheduling positive activities to combat depression`,
+    },
+    {
+      id: 'cbt-3',
+      title: 'Common Cognitive Distortions',
+      content: `Cognitive distortions are systematic errors in thinking that can lead to emotional distress. Learning to recognize these patterns is essential:
+
+All-or-Nothing Thinking
+Seeing things in black and white categories. "If I don't get an A, I'm a complete failure."
+
+Catastrophizing
+Expecting the worst possible outcome. "If I make a mistake at work, I'll definitely get fired."
+
+Mind Reading
+Assuming you know what others are thinking. "Everyone at this party thinks I'm boring."
+
+Fortune Telling
+Predicting negative outcomes without evidence. "I know this won't work out."
+
+Personalization
+Blaming yourself for things outside your control. "The project failed because of me."
+
+Emotional Reasoning
+Believing that feelings reflect reality. "I feel stupid, so I must be stupid."
+
+Should Statements
+Rigid rules about how things must be. "I should always be productive."
+
+Overgeneralization
+Drawing broad conclusions from single events. "I failed once, so I always fail."
+
+Discounting the Positive
+Dismissing good things as if they don't count. "Anyone could have done that."
+
+Labeling
+Attaching fixed labels instead of describing behavior. "I'm a loser" instead of "I made a mistake."`,
+    },
+    {
+      id: 'cbt-4',
+      title: 'CBT Techniques for Peer Support',
+      content: `As a peer supporter, you can use CBT-informed techniques while staying within your scope:
+
+1. Socratic Questioning
+Ask open-ended questions to help clients examine their thoughts:
+• "What evidence supports that thought?"
+• "What evidence goes against it?"
+• "What would you tell a friend in this situation?"
+• "What's another way to look at this?"
+
+2. Behavioral Activation (for low mood)
+Help clients schedule pleasant or meaningful activities:
+• Start small and achievable
+• Focus on activities that align with values
+• Track mood before and after activities
+
+3. Thought Challenging (gentle approach)
+Guide clients to consider alternatives:
+• "I hear that you're thinking X. Have you considered Y?"
+• "What's the best case scenario? The worst? The most likely?"
+
+4. Breaking Down Overwhelming Tasks
+Help clients approach daunting situations step by step:
+• Identify the smallest first step
+• Build momentum through small wins
+
+Important Boundaries:
+• You are not conducting formal CBT therapy
+• Avoid diagnosing or using clinical language
+• Refer to licensed professionals for complex cases
+• Focus on psychoeducation and support, not treatment`,
+    },
+    {
+      id: 'cbt-5',
+      title: 'The Importance of Homework in CBT',
+      content: `One of the distinguishing features of CBT is its emphasis on homework—activities clients do between sessions to practice skills and apply insights.
+
+Why Homework Matters:
+• Real progress happens when skills are applied in daily life
+• Builds self-efficacy and independence
+• Provides data for discussion in future sessions
+• Reinforces learning through repetition
+
+Types of CBT Homework:
+• Thought records: Tracking automatic thoughts and challenging them
+• Activity scheduling: Planning positive activities for the week
+• Behavioral experiments: Testing out new behaviors or beliefs
+• Reading: Learning about CBT concepts and techniques
+• Relaxation practice: Applying breathing or grounding exercises
+
+For Supporters:
+Encourage clients to practice skills between sessions. You might suggest:
+• "What's one small thing you could try this week?"
+• "Would you be willing to notice when this thought comes up?"
+• "Can you track your mood for a few days and we'll discuss it next time?"
+
+Remember: Homework should feel collaborative, not assigned. Let clients choose what feels manageable.`,
+    },
+    {
+      id: 'cbt-6',
+      title: 'Educational Videos',
+      content: (
+        <View>
+          <Text style={{ fontSize: 14, color: PsychiColors.textSecondary, marginBottom: Spacing.md, lineHeight: 20 }}>
+            Watch these videos to deepen your understanding of CBT principles:
+          </Text>
+          <VideoCard video={{
+            title: 'What is Cognitive Behavioral Therapy?',
+            speaker: 'Psych Hub',
+            description: 'Clear explanation of CBT basics, the cognitive model, and how treatment works.',
+            url: 'https://www.youtube.com/watch?v=0ViaCs0k2jM',
+          }} />
+          <VideoCard video={{
+            title: 'Cognitive Restructuring',
+            speaker: 'Therapist Aid',
+            description: 'Practical demonstration of how to challenge and reframe negative thoughts.',
+            url: 'https://www.youtube.com/watch?v=jPXw07kGZuE',
+          }} />
+          <VideoCard video={{
+            title: 'Aaron Beck: The Father of Cognitive Therapy',
+            speaker: 'Beck Institute',
+            description: 'Overview of Aaron Beck\'s contributions and the development of CBT.',
+            url: 'https://www.youtube.com/watch?v=GlZ9CgKfMCo',
+          }} />
+          <VideoCard video={{
+            title: 'Behavioral Activation for Depression',
+            speaker: 'Evidence-Based Mental Health',
+            description: 'Explains how scheduling positive activities can help combat depression.',
+            url: 'https://www.youtube.com/watch?v=F0MkpBIPhKo',
+          }} />
+        </View>
+      ),
+    },
+    {
+      id: 'cbt-7',
+      title: 'Research & Resources',
+      content: (
+        <View>
+          <Text style={{ fontSize: 14, fontWeight: '600', color: '#2A2A2A', marginBottom: Spacing.sm }}>Research Evidence:</Text>
+          <StudyCard study={{
+            title: 'CBT for Depression',
+            authors: 'Butler, A. C., et al. (2006)',
+            journal: 'Journal of Consulting and Clinical Psychology',
+            finding: 'CBT is highly effective for depression, with effects comparable to medication.',
+            url: 'https://pubmed.ncbi.nlm.nih.gov/16551149/',
+          }} />
+          <StudyCard study={{
+            title: 'CBT for Anxiety Disorders',
+            authors: 'Hofmann, S. G., & Smits, J. A. (2008)',
+            journal: 'Journal of Clinical Psychiatry',
+            finding: 'CBT is the gold standard treatment for anxiety disorders.',
+            url: 'https://pubmed.ncbi.nlm.nih.gov/18363421/',
+          }} />
+          <StudyCard study={{
+            title: 'Long-term Effects of CBT',
+            authors: 'Hollon, S. D., et al. (2005)',
+            journal: 'Archives of General Psychiatry',
+            finding: 'CBT has enduring effects that prevent relapse after treatment ends.',
+            url: 'https://pubmed.ncbi.nlm.nih.gov/15809403/',
+          }} />
+          <Text style={{ fontSize: 14, fontWeight: '600', color: '#2A2A2A', marginTop: Spacing.md, marginBottom: Spacing.sm }}>Recommended Books:</Text>
+          <ResourceCard resource={{
+            title: 'Feeling Good',
+            author: 'David Burns',
+            description: 'Classic self-help book on CBT for depression',
+            url: 'https://www.amazon.com/Feeling-Good-New-Mood-Therapy/dp/0380810336',
+            type: 'book',
+          }} />
+          <ResourceCard resource={{
+            title: 'Mind Over Mood',
+            author: 'Greenberger & Padesky',
+            description: 'Practical CBT workbook',
+            url: 'https://www.amazon.com/Mind-Over-Mood-Second-Changing/dp/1462520421',
+            type: 'book',
+          }} />
+          <ResourceCard resource={{
+            title: 'The Feeling Good Handbook',
+            author: 'David Burns',
+            description: 'Comprehensive CBT techniques',
+            url: 'https://www.amazon.com/Feeling-Good-Handbook-David-Burns/dp/0452281326',
+            type: 'book',
+          }} />
+          <Text style={{ fontSize: 14, fontWeight: '600', color: '#2A2A2A', marginTop: Spacing.md, marginBottom: Spacing.sm }}>Apps & Tools:</Text>
+          <ResourceCard resource={{
+            title: 'Woebot',
+            description: 'AI chatbot using CBT techniques',
+            url: 'https://woebothealth.com/',
+            type: 'app',
+          }} />
+          <ResourceCard resource={{
+            title: 'MoodKit',
+            description: 'CBT-based mood improvement app',
+            url: 'https://www.thriveport.com/products/moodkit/',
+            type: 'app',
+          }} />
+          <ResourceCard resource={{
+            title: 'Thought Diary',
+            description: 'Digital thought record tool',
+            url: 'https://apps.apple.com/us/app/thought-diary/id1536063818',
+            type: 'app',
+          }} />
+        </View>
+      ),
+    },
+  ],
+  validation: [
+    {
+      id: 'validation-1',
+      title: 'Understanding Validation',
+      content: `Validation is one of the most powerful tools in a supporter's toolkit. It is the act of acknowledging and affirming another person's internal experience—their thoughts, feelings, and behaviors—as understandable, legitimate, and real.
+
+Validation does NOT mean:
+• Agreeing with someone
+• Approving of their behavior
+• Telling them they're right
+• Solving their problem
+
+Validation DOES mean:
+• Recognizing their feelings are real
+• Communicating understanding
+• Showing that their reaction makes sense given their perspective
+• Creating a safe space for authentic expression
+
+Why Validation Matters:
+Research shows that emotional validation reduces distress, builds trust, and helps people feel understood. When we feel validated, we're more open to exploring our experiences and considering new perspectives.
+
+"Validation communicates to our clients that their feelings, thoughts, and behaviors have causes and are understandable in some way." — Marsha Linehan, PhD, Creator of DBT`,
+    },
+    {
+      id: 'validation-2',
+      title: 'The Six Levels of Validation (DBT)',
+      content: `Marsha Linehan identified six levels of validation, ranging from basic attentiveness to radical genuineness:
+
+Level 1: Being Present
+Pay attention. Put away distractions. Show through your body language that you're listening.
+Example: Making eye contact, nodding, turning toward the person.
+
+Level 2: Accurate Reflection
+Reflect back what you've heard without adding interpretation.
+Example: "So you're saying that when your boss criticized you in the meeting, you felt embarrassed and angry."
+
+Level 3: Reading Behavior
+Articulate what the person hasn't said but may be feeling.
+Example: "It sounds like you might be feeling overwhelmed right now."
+
+Level 4: Understanding History
+Validate based on the person's past experiences.
+Example: "Given what happened with your last job, it makes sense you'd be anxious about this."
+
+Level 5: Normalizing
+Communicate that the reaction is normal and understandable.
+Example: "Anyone in your situation would feel frustrated."
+
+Level 6: Radical Genuineness
+Treat the person as an equal, capable of change and growth.
+Example: Engaging authentically, being honest, believing in their capacity.`,
+    },
+    {
+      id: 'validation-3',
+      title: 'Validation vs. Invalidation',
+      content: `Recognizing invalidation is just as important as practicing validation.
+
+Invalidating Responses to Avoid:
+• "You'll be fine!" (dismissing)
+• "Don't worry about it." (minimizing)
+• "Others have it worse." (comparing)
+• "You shouldn't feel that way." (judging)
+• "Just think positive!" (bypassing)
+• "At least..." (silver lining)
+• "I know exactly how you feel." (assuming)
+• Immediately offering advice (fixing)
+
+Impact of Invalidation:
+When people feel invalidated, they may:
+• Shut down and stop sharing
+• Feel ashamed of their emotions
+• Escalate their expression to be heard
+• Lose trust in the relationship
+• Doubt their own experience
+
+Validating Alternatives:
+Instead of "You'll be fine," try:
+"This sounds really hard. I'm here with you."
+
+Instead of "Don't worry about it," try:
+"It makes sense that you're worried. This matters to you."
+
+Instead of "Just think positive," try:
+"I hear how painful this is. What would feel supportive right now?"`,
+    },
+    {
+      id: 'validation-4',
+      title: 'Validation in Practice',
+      content: `Here's how to apply validation in your sessions:
+
+Step 1: Listen Fully
+Before responding, truly hear what the person is saying. Don't plan your response while they're talking.
+
+Step 2: Identify the Emotion
+What feeling is being expressed? Sometimes it's stated directly; sometimes you need to read between the lines.
+
+Step 3: Validate the Emotion
+Acknowledge the feeling without judgment:
+• "That sounds incredibly frustrating."
+• "I can see why you'd feel hurt by that."
+• "It makes sense that you're anxious about this."
+
+Step 4: Explore if Invited
+Only after validating, and only if appropriate, you might:
+• Ask what they need
+• Offer to explore the situation together
+• Gently introduce other perspectives
+
+Common Validation Phrases:
+• "That sounds really difficult."
+• "I can understand why you'd feel that way."
+• "Of course you're upset—this is a big deal."
+• "Your feelings make sense given what happened."
+• "I hear you. This matters."
+• "It's okay to feel [emotion]."
+
+Remember: Validation often needs to happen multiple times before moving forward. Don't rush to solutions.`,
+    },
+    {
+      id: 'validation-5',
+      title: 'Validation and Agreement Are Different',
+      content: `A common misconception is that validating someone means agreeing with them. This is not true.
+
+Validation = Acknowledging someone's experience is real and understandable
+Agreement = Sharing the same opinion or belief
+
+Example:
+A client says: "My coworker is so annoying. They always interrupt me in meetings."
+
+Validating Response:
+"It sounds really frustrating to be interrupted. I can see why that would bother you."
+(You're acknowledging their feelings without saying the coworker is wrong.)
+
+Agreeing Response:
+"Yeah, your coworker sounds terrible. They shouldn't do that."
+(You're taking their side and making a judgment.)
+
+Why This Matters:
+• You can validate someone's anger without validating aggression
+• You can validate someone's fear without validating avoidance
+• You can validate someone's perception without confirming it as fact
+
+Validation opens the door to exploration. Agreement can sometimes shut it down by ending the conversation prematurely.`,
+    },
+    {
+      id: 'validation-6',
+      title: 'The Science of Validation',
+      content: (
+        <View>
+          <Text style={{ fontSize: 14, color: PsychiColors.textSecondary, marginBottom: Spacing.sm, lineHeight: 20 }}>
+            Research supports the powerful effects of emotional validation:
+          </Text>
+          <Text style={{ fontSize: 14, fontWeight: '600', color: '#2A2A2A', marginTop: Spacing.sm }}>Reduces Emotional Arousal</Text>
+          <Text style={{ fontSize: 14, color: PsychiColors.textSecondary, marginBottom: Spacing.sm, lineHeight: 20 }}>
+            Studies show that validation can reduce physiological stress responses. When people feel heard, their nervous system calms.
+          </Text>
+          <Text style={{ fontSize: 14, fontWeight: '600', color: '#2A2A2A', marginTop: Spacing.sm }}>Builds Trust and Rapport</Text>
+          <Text style={{ fontSize: 14, color: PsychiColors.textSecondary, marginBottom: Spacing.sm, lineHeight: 20 }}>
+            Validation is foundational to therapeutic alliance—the relationship quality that predicts treatment outcomes.
+          </Text>
+          <Text style={{ fontSize: 14, fontWeight: '600', color: '#2A2A2A', marginTop: Spacing.sm }}>Decreases Emotional Suppression</Text>
+          <Text style={{ fontSize: 14, color: PsychiColors.textSecondary, marginBottom: Spacing.sm, lineHeight: 20 }}>
+            When emotions are validated, people are less likely to suppress them, leading to healthier processing.
+          </Text>
+          <Text style={{ fontSize: 14, fontWeight: '600', color: '#2A2A2A', marginTop: Spacing.sm }}>Improves Communication</Text>
+          <Text style={{ fontSize: 14, color: PsychiColors.textSecondary, marginBottom: Spacing.md, lineHeight: 20 }}>
+            Validated individuals are more open to feedback and alternative perspectives.
+          </Text>
+          <Text style={{ fontSize: 14, fontWeight: '600', color: '#2A2A2A', marginBottom: Spacing.sm }}>Key Study:</Text>
+          <StudyCard study={{
+            title: 'The impact of validating and invalidating responses on emotional reactivity',
+            authors: 'Shenk, C. E., & Fruzzetti, A. E. (2011)',
+            journal: 'Journal of Social and Clinical Psychology',
+            finding: 'Validating responses significantly reduced negative emotional intensity compared to invalidating responses.',
+            url: 'https://pubmed.ncbi.nlm.nih.gov/21673876/',
+          }} />
+        </View>
+      ),
+    },
+    {
+      id: 'validation-7',
+      title: 'Educational Videos',
+      content: (
+        <View>
+          <Text style={{ fontSize: 14, color: PsychiColors.textSecondary, marginBottom: Spacing.md, lineHeight: 20 }}>
+            Watch these videos to see validation in action:
+          </Text>
+          <VideoCard video={{
+            title: 'What is Validation?',
+            speaker: 'Kati Morton',
+            description: 'Explains validation basics and why it\'s essential in relationships and therapy.',
+            url: 'https://www.youtube.com/watch?v=l0MMM-kT8Yk',
+          }} />
+          <VideoCard video={{
+            title: 'The Six Levels of Validation',
+            speaker: 'DBT Self Help',
+            description: 'Detailed walkthrough of Marsha Linehan\'s validation framework.',
+            url: 'https://www.youtube.com/watch?v=bI1x2xv7s4g',
+          }} />
+          <VideoCard video={{
+            title: 'Validation vs. Agreement',
+            speaker: 'Therapy in a Nutshell',
+            description: 'Clarifies the difference between validating feelings and agreeing with perspectives.',
+            url: 'https://www.youtube.com/watch?v=ETQN1DY1tZo',
+          }} />
+          <VideoCard video={{
+            title: 'How to Validate Someone\'s Feelings',
+            speaker: 'The School of Life',
+            description: 'Practical guide to offering emotional support through validation.',
+            url: 'https://www.youtube.com/watch?v=_SHWFPEHmaw',
+          }} />
+        </View>
+      ),
+    },
+    {
+      id: 'validation-8',
+      title: 'Resources & Practice',
+      content: (
+        <View>
+          <Text style={{ fontSize: 14, fontWeight: '600', color: '#2A2A2A', marginBottom: Spacing.sm }}>Recommended Reading:</Text>
+          <ResourceCard resource={{
+            title: 'The High-Conflict Couple',
+            author: 'Alan Fruzzetti',
+            description: 'DBT approach to validation in relationships',
+            url: 'https://www.amazon.com/High-Conflict-Couple-Dialectical-Behavior-Therapy/dp/1572244500',
+            type: 'book',
+          }} />
+          <ResourceCard resource={{
+            title: 'DBT Skills Training Manual',
+            author: 'Marsha Linehan',
+            description: 'Comprehensive validation framework',
+            url: 'https://www.amazon.com/DBT-Skills-Training-Manual-Second/dp/1462516998',
+            type: 'book',
+          }} />
+          <ResourceCard resource={{
+            title: 'Nonviolent Communication',
+            author: 'Marshall Rosenberg',
+            description: 'Related approach to empathic communication',
+            url: 'https://www.amazon.com/Nonviolent-Communication-Language-Life-Changing-Relationships/dp/189200528X',
+            type: 'book',
+          }} />
+          <Text style={{ fontSize: 14, fontWeight: '600', color: '#2A2A2A', marginTop: Spacing.md, marginBottom: Spacing.sm }}>Practice Exercise:</Text>
+          <Text style={{ fontSize: 14, color: PsychiColors.textSecondary, marginBottom: Spacing.sm, lineHeight: 20 }}>
+            Think of a recent conversation where someone shared something difficult. How might you have responded with validation?
+          </Text>
+          <Text style={{ fontSize: 14, fontWeight: '600', color: '#2A2A2A', marginTop: Spacing.sm }}>Scenario 1:</Text>
+          <Text style={{ fontSize: 14, color: PsychiColors.textSecondary, lineHeight: 20 }}>
+            Friend says: "I'm so stressed about this presentation tomorrow."
+          </Text>
+          <Text style={{ fontSize: 14, color: PsychiColors.azure, marginBottom: Spacing.sm, lineHeight: 20, fontStyle: 'italic' }}>
+            Validating response: "Presentations can be nerve-wracking. It makes sense you're feeling the pressure."
+          </Text>
+          <Text style={{ fontSize: 14, fontWeight: '600', color: '#2A2A2A', marginTop: Spacing.sm }}>Scenario 2:</Text>
+          <Text style={{ fontSize: 14, color: PsychiColors.textSecondary, lineHeight: 20 }}>
+            Client says: "Nobody understands what I'm going through."
+          </Text>
+          <Text style={{ fontSize: 14, color: PsychiColors.azure, marginBottom: Spacing.sm, lineHeight: 20, fontStyle: 'italic' }}>
+            Validating response: "It sounds like you've been feeling really alone in this. That isolation must be painful."
+          </Text>
+          <Text style={{ fontSize: 14, fontWeight: '600', color: '#2A2A2A', marginTop: Spacing.md }}>Reflection:</Text>
+          <Text style={{ fontSize: 14, color: PsychiColors.textSecondary, lineHeight: 20 }}>
+            Notice this week when you're tempted to fix, advise, or minimize. Pause and try validation first. Observe what happens.
+          </Text>
+        </View>
+      ),
+    },
+  ],
+  crisis: [
+    {
+      id: 'crisis-1',
+      title: 'Understanding Crisis and Suicide Risk',
+      content: `As a peer supporter, you may encounter clients in crisis, including those experiencing suicidal thoughts. Understanding crisis recognition is essential for providing safe, effective support.
+
+What is a Mental Health Crisis?
+A crisis occurs when a person's usual coping mechanisms are overwhelmed by stressors, leading to emotional distress and potential risk to safety.
+
+Key Facts About Suicide:
+• Suicide is preventable—most people who consider suicide don't want to die; they want their pain to stop
+• Most suicidal crises are temporary—the acute phase often passes if the person can be kept safe
+• Asking about suicide does NOT increase risk—research shows it can reduce distress
+• Warning signs are often present—learning to recognize them saves lives
+
+Your Role as a Supporter:
+• Recognize warning signs
+• Ask directly about safety
+• Provide crisis resources
+• Know when to escalate
+• Never promise to keep safety concerns secret`,
+    },
+    {
+      id: 'crisis-2',
+      title: 'Warning Signs of Suicide Risk',
+      content: `Learn to recognize these warning signs:
+
+Verbal Cues:
+• Direct statements: "I want to die," "I wish I wasn't here"
+• Indirect statements: "Everyone would be better off without me," "I can't take this anymore"
+• Talking about death or dying
+• Expressing hopelessness or having no reason to live
+• Describing feeling trapped or in unbearable pain
+
+Behavioral Changes:
+• Giving away prized possessions
+• Saying goodbye to loved ones
+• Putting affairs in order (writing a will, etc.)
+• Withdrawing from friends and activities
+• Increased substance use
+• Reckless or risky behavior
+• Sleep changes (too much or too little)
+• Sudden calmness after a period of distress
+
+Risk Factors:
+• Previous suicide attempt (strongest predictor)
+• Mental health conditions (depression, bipolar, etc.)
+• Access to lethal means (firearms, medications)
+• Recent loss or major life stressor
+• Chronic pain or illness
+• Social isolation
+• Family history of suicide`,
+    },
+    {
+      id: 'crisis-3',
+      title: 'Passive vs. Active Suicidal Ideation',
+      content: `Understanding the spectrum of suicidal thinking helps you assess risk:
+
+Passive Suicidal Ideation:
+• Wishes to not exist or not wake up
+• "I wouldn't mind if I died"
+• No specific plan or intent to act
+• May include thoughts of death as relief
+• Still concerning and requires attention
+
+Active Suicidal Ideation:
+• Specific thoughts about ending one's life
+• May include planning (when, where, how)
+• May have intent to act
+• May have access to means
+• May have a timeline
+• Higher immediate risk
+
+Questions to Assess:
+• "Are you having thoughts of hurting yourself?" (Direct)
+• "Are these thoughts about wishing you weren't here, or about actually ending your life?" (Distinguishing)
+• "Do you have a plan for how you would do it?" (Plan)
+• "Do you have access to [means]?" (Means)
+• "When are you thinking of doing this?" (Timeline)
+
+Important: Asking these questions does not plant ideas. Research shows direct questioning is safe and may reduce distress.`,
+    },
+    {
+      id: 'crisis-4',
+      title: 'Limits of Confidentiality',
+      content: `Confidentiality is essential for trust, but it has limits when safety is at risk.
+
+You May Need to Break Confidentiality When:
+• There is imminent risk of self-harm or suicide
+• There is imminent risk of harm to another person
+• Abuse is disclosed involving a minor or vulnerable adult
+• Required by law
+
+How to Communicate This:
+At the start of your relationship with a client, be clear:
+"Everything we discuss is confidential, with some important exceptions. If I'm concerned about your safety or someone else's safety, I may need to involve others to make sure you get the help you need."
+
+When Breaking Confidentiality:
+• Explain why you're doing it
+• Involve the client as much as possible
+• Be compassionate, not punitive
+• Focus on care, not consequences
+
+Remember: Breaking confidentiality to save a life is always the right choice. A client may be upset in the moment, but you are prioritizing their wellbeing.`,
+    },
+    {
+      id: 'crisis-5',
+      title: 'Crisis Response Protocol',
+      content: `When you identify a crisis, follow these steps:
+
+Step 1: Stay Calm
+Your calm presence is stabilizing. Take a breath before responding.
+
+Step 2: Listen Without Judgment
+Let them share. Don't interrupt or try to fix immediately.
+
+Step 3: Ask Directly About Safety
+"Are you thinking about hurting yourself?"
+"Do you have a plan?"
+"Do you have access to [means]?"
+
+Step 4: Validate Their Pain
+"I'm so sorry you're feeling this way. This sounds incredibly painful."
+
+Step 5: NEVER Promise to Keep It Secret
+"I care about you too much to keep this to myself. I want to make sure you're safe."
+
+Step 6: Provide Crisis Resources
+• 988 Suicide & Crisis Lifeline (call or text)
+• Crisis Text Line (text HOME to 741741)
+• 911 for immediate danger
+
+Step 7: Escalate to Psychi Safety Team
+Use the in-app report button to alert Psychi's safety team.
+
+Step 8: Stay With Them
+Don't end the session abruptly. Stay until they're stabilized or help arrives.`,
+    },
+    {
+      id: 'crisis-6',
+      title: 'What You Must NOT Do',
+      content: `Critical Boundaries in Crisis Situations:
+
+NEVER promise to keep safety disclosures confidential.
+If someone says "Promise you won't tell anyone," you must explain that safety comes first.
+
+NEVER attempt to handle a crisis alone without escalating.
+You are not an emergency responder. Use the resources available.
+
+NEVER diagnose or provide clinical assessments.
+You can recognize warning signs, but diagnosis is beyond your scope.
+
+NEVER give medical advice or suggest medication changes.
+Refer to licensed professionals for clinical decisions.
+
+NEVER meet clients outside the platform.
+Maintain boundaries even in crisis situations.
+
+NEVER share personal contact information.
+Keep all communication within Psychi.
+
+NEVER minimize or dismiss suicidal thoughts.
+Even passive ideation deserves attention and care.
+
+NEVER use guilt or shame to prevent self-harm.
+Statements like "Think about your family" can backfire.
+
+NEVER leave someone alone if they're in immediate danger.
+Stay on the call while emergency services are contacted.`,
+    },
+    {
+      id: 'crisis-7',
+      title: 'Self-Harm (Non-Suicidal Self-Injury)',
+      content: `Self-harm, or non-suicidal self-injury (NSSI), is distinct from suicidal behavior but requires understanding and compassionate response.
+
+What is NSSI?
+Intentional self-inflicted harm without intent to die. Common forms include cutting, burning, hitting, or scratching.
+
+Why Do People Self-Harm?
+• Emotional regulation: To cope with overwhelming feelings
+• Self-punishment: In response to shame or guilt
+• Communication: To express pain that feels inexpressible
+• Feeling something: To combat numbness or dissociation
+• Control: To feel a sense of agency over one's body
+
+How to Respond:
+• Don't react with shock or disgust
+• Validate the pain underneath: "It sounds like you've been dealing with a lot of difficult emotions"
+• Ask about safety without judgment: "Are you currently safe?"
+• Explore what's driving the behavior
+• Encourage professional support for underlying issues
+• Focus on harm reduction if stopping isn't immediately possible
+
+Important: Self-harm is often a coping mechanism. The goal is to understand the function it serves and support development of healthier alternatives.`,
+    },
+    {
+      id: 'crisis-8',
+      title: 'Means Restriction',
+      content: `Means restriction is one of the most effective suicide prevention strategies.
+
+What is Means Restriction?
+Reducing access to methods that could be used for suicide or self-harm. This includes:
+• Firearms (securing or removing from home)
+• Medications (locking up or limiting quantities)
+• Sharp objects
+• Other lethal means
+
+Why It Works:
+• Many suicidal crises are impulsive
+• Putting time and distance between urge and means can save lives
+• People rarely substitute methods—if one means is unavailable, the crisis often passes
+• Research shows means restriction significantly reduces suicide rates
+
+How to Address It:
+"I want to ask about your safety at home. Do you have access to anything that could be used to hurt yourself?"
+
+If yes:
+"Would you be willing to have someone hold onto those items for now, or put them somewhere harder to access?"
+
+You're not asking them to give up everything forever—just creating a safety buffer during the crisis period.`,
+    },
+    {
+      id: 'crisis-9',
+      title: 'Crisis Resources & Self-Care',
+      content: (
+        <View>
+          <Text style={{ fontSize: 14, fontWeight: '600', color: '#2A2A2A', marginBottom: Spacing.sm }}>Essential Crisis Resources:</Text>
+          <ResourceCard resource={{
+            title: '988 Suicide & Crisis Lifeline',
+            description: 'Call or text 988 (US) - 24/7 support for anyone in crisis',
+            url: 'https://988lifeline.org/',
+            type: 'website',
+          }} />
+          <ResourceCard resource={{
+            title: 'Crisis Text Line',
+            description: 'Text HOME to 741741 - Free, 24/7 text-based crisis support',
+            url: 'https://www.crisistextline.org/',
+            type: 'website',
+          }} />
+          <ResourceCard resource={{
+            title: 'International Association for Suicide Prevention',
+            description: 'Directory of crisis centers worldwide',
+            url: 'https://www.iasp.info/resources/Crisis_Centres/',
+            type: 'website',
+          }} />
+          <ResourceCard resource={{
+            title: 'The Trevor Project (LGBTQ+ Youth)',
+            description: '1-866-488-7386 or text START to 678-678',
+            url: 'https://www.thetrevorproject.org/',
+            type: 'website',
+          }} />
+          <ResourceCard resource={{
+            title: 'Trans Lifeline',
+            description: '877-565-8860 - Peer support for trans individuals',
+            url: 'https://translifeline.org/',
+            type: 'website',
+          }} />
+          <Text style={{ fontSize: 14, fontWeight: '600', color: '#2A2A2A', marginTop: Spacing.lg, marginBottom: Spacing.sm }}>Self-Care After Crisis Work:</Text>
+          <Text style={{ fontSize: 14, color: PsychiColors.textSecondary, marginBottom: Spacing.sm, lineHeight: 20 }}>
+            Supporting someone in crisis is emotionally demanding. Take care of yourself:
+          </Text>
+          <Text style={{ fontSize: 14, color: PsychiColors.textSecondary, lineHeight: 22 }}>
+            {'\u2022'} Debrief with a supervisor or peer{'\n'}
+            {'\u2022'} Take breaks between difficult sessions{'\n'}
+            {'\u2022'} Practice your own grounding and self-care{'\n'}
+            {'\u2022'} Recognize signs of vicarious trauma{'\n'}
+            {'\u2022'} Seek support if you're struggling
+          </Text>
+          <Text style={{ fontSize: 14, color: PsychiColors.azure, marginTop: Spacing.md, lineHeight: 20, fontStyle: 'italic' }}>
+            Remember: You cannot pour from an empty cup. Your wellbeing matters too.
+          </Text>
+        </View>
+      ),
+    },
+  ],
+  platform: [
+    {
+      id: 'platform-1',
+      title: 'Your Role as a Psychi Supporter',
+      content: `As a Psychi Supporter, you provide empathetic, evidence-based peer support to clients navigating mental health challenges.
+
+What You ARE:
+• A trained peer supporter using evidence-based techniques
+• A compassionate listener and guide
+• A resource connector who can direct clients to professional help
+• A safe space for processing emotions and experiences
+
+What You Are NOT:
+• A licensed therapist, counselor, or psychologist
+• A medical professional who can diagnose or prescribe
+• A crisis intervention specialist (though you know how to escalate)
+• The client's only support resource
+
+Scope of Practice:
+DO:
+• Listen actively and validate emotions
+• Teach coping skills (mindfulness, CBT-informed techniques)
+• Provide psychoeducation about mental health topics
+• Encourage professional treatment when appropriate
+• Follow crisis protocols when needed
+
+DON'T:
+• Diagnose mental health conditions
+• Provide medical advice or discuss medications
+• Make promises about outcomes
+• Share your personal contact information
+• Continue sessions beyond scheduled times without boundaries`,
+    },
+    {
+      id: 'platform-2',
+      title: 'Session Conduct Standards',
+      content: `Professionalism in sessions builds trust and ensures quality support.
+
+Video Session Requirements:
+• Professional appearance: Business casual minimum, neutral colors recommended
+• Clean, private background: No clutter, no other people visible
+• Good lighting: Face clearly visible, avoid backlighting
+• Stable internet: Test connection before sessions
+• Audio quality: Use headphones to reduce echo
+
+Environment Standards:
+• Private space: No one should overhear the conversation
+• Quiet location: Minimize background noise
+• No interruptions: Silence notifications, inform household members
+
+Time Management:
+• Be on time—log in a few minutes early
+• Don't exceed scheduled session length without clear reason
+• If you need to end early, explain why and reschedule
+
+Technical Issues:
+• Have a backup plan (switch to voice, reschedule)
+• Communicate clearly if issues arise
+• Don't let technical problems derail the session—adapt`,
+    },
+    {
+      id: 'platform-3',
+      title: 'Attention and Presence',
+      content: `Full attention is non-negotiable in peer support sessions.
+
+What Full Attention Looks Like:
+• Eye contact with the camera (not the screen)
+• No multitasking—ever
+• Phone away and on silent
+• No checking other tabs or applications
+• Focused body language (leaning in, nodding)
+
+Why It Matters:
+Clients can sense distraction even when they can't see it. Divided attention:
+• Damages trust
+• Makes clients feel unimportant
+• Reduces effectiveness of support
+• Can lead to missing important cues
+
+Staying Present:
+• If your mind wanders, gently bring it back
+• Take notes mindfully, not excessively
+• Use reflections to stay engaged: "What I'm hearing is..."
+• If you're tired or distracted, acknowledge it honestly
+
+True or False: It's acceptable to check your phone during a video session if the client can't see you doing it.
+
+FALSE. Full attention is required regardless of what's visible. Clients can sense distraction, and you may miss critical information.`,
+    },
+    {
+      id: 'platform-4',
+      title: 'Handling Difficult Moments',
+      content: `You will encounter emotional and challenging moments. Here's how to navigate them:
+
+When a Client Becomes Tearful and Silent:
+• Allow comfortable silence—don't rush to fill it
+• Maintain warm, open presence
+• Gently say: "I'm here with you. Take your time."
+• Offer tissue if in person; acknowledge the tears if virtual
+• Resume when they're ready, following their lead
+
+When a Client Expresses Strong Emotion:
+• Stay calm and grounded
+• Validate: "I can see this is bringing up a lot of feelings."
+• Don't try to stop or calm the emotion—let it be
+• Check in: "What do you need right now?"
+
+When a Client Shares Something Shocking:
+• Maintain composure—your reaction matters
+• Acknowledge without judgment
+• If it's a safety concern, follow crisis protocol
+• Process your own reaction after the session
+
+When You Don't Know What to Say:
+• It's okay to pause
+• You can say: "I want to make sure I respond thoughtfully. Give me a moment."
+• Reflection is always appropriate: "That sounds really significant."`,
+    },
+    {
+      id: 'platform-5',
+      title: 'Crisis Protocol on Psychi',
+      content: `When a client expresses suicidal thoughts or shows high-risk indicators, follow this protocol:
+
+Step 1: Acknowledge and Validate
+"Thank you for trusting me with this. I'm glad you told me. What you're feeling sounds incredibly painful."
+
+Step 2: Ask Clarifying Safety Questions
+"Are you thinking about hurting yourself right now?"
+"Do you have a plan?"
+"Do you have access to [means]?"
+
+Step 3: Provide Crisis Resources
+"I want to make sure you have support right now. Have you heard of the 988 Suicide & Crisis Lifeline?"
+Provide: 988 (call or text) and Crisis Text Line (text HOME to 741741)
+
+Step 4: Escalate to Psychi
+Use the in-app report/flag feature to alert Psychi's safety team. They can provide additional support and follow-up.
+
+Step 5: Stay With Them
+Don't end the session abruptly. Stay until they've connected with resources or the crisis has de-escalated.
+
+Step 6: Document
+After the session, document what happened according to Psychi's protocols.`,
+    },
+    {
+      id: 'platform-6',
+      title: 'Maintaining Boundaries',
+      content: `Healthy boundaries protect both you and your clients.
+
+Key Boundaries:
+• No personal contact information exchange
+• No social media connections with clients
+• No meetings outside the platform
+• No gifts or financial exchanges
+• No romantic or sexual interactions—ever
+
+Time Boundaries:
+• Sessions start and end on time
+• Don't be available 24/7
+• Emergencies go to crisis resources, not you personally
+
+Emotional Boundaries:
+• Care about your clients without carrying their pain
+• Recognize when countertransference is happening
+• Seek supervision when you're overinvested
+
+What If a Client Pushes Boundaries?
+• Gently but firmly reinforce the boundary
+• Explain it's for their benefit and yours
+• Don't apologize for having boundaries
+• Document if it continues
+
+Example:
+Client: "Can I have your phone number in case I need you?"
+Response: "I understand wanting support outside sessions. For emergencies, the 988 Lifeline is available 24/7. Within our sessions, I'm fully here for you."`,
+    },
+    {
+      id: 'platform-7',
+      title: 'Adapting to Different Communication Modes',
+      content: `Psychi supports chat, voice, and video. Each mode requires different skills.
+
+Chat Sessions:
+• Be mindful of tone—text can be misread
+• Use empathetic language and emojis sparingly
+• Don't rush responses—thoughtfulness over speed
+• Acknowledge delays: "Taking a moment to respond fully..."
+• Check in about understanding: "Does that make sense?"
+
+Voice Sessions:
+• Pay attention to vocal tone and pace
+• Use verbal acknowledgments: "Mm-hmm," "I hear you"
+• Describe what you're doing if there's silence: "I'm thinking about what you said..."
+• Pauses are okay—they give space to process
+
+Video Sessions:
+• All voice skills apply, plus visual attention
+• Make "eye contact" with the camera
+• Be aware of your facial expressions
+• Use body language intentionally
+
+Switching Modes:
+If a client requests video but you can't provide it:
+"I'd love to do video, but I'm not in a private space right now. Can we do voice today, or schedule video for another time?"`,
+    },
+    {
+      id: 'platform-8',
+      title: 'Self-Care for Supporters',
+      content: `Supporting others emotionally is rewarding but draining. Protect your own wellbeing.
+
+Signs You Need Self-Care:
+• Feeling emotionally exhausted after sessions
+• Thinking about clients outside of work
+• Difficulty sleeping or intrusive thoughts
+• Decreased empathy or patience
+• Physical symptoms (headaches, tension)
+
+Daily Practices:
+• Set clear boundaries between work and personal time
+• Practice what you teach (mindfulness, grounding)
+• Exercise and maintain physical health
+• Stay connected with your own support system
+
+After Difficult Sessions:
+• Take a break before the next session
+• Use grounding techniques
+• Debrief with a supervisor or peer
+• Don't isolate—talk about your experiences
+
+Ongoing Support:
+• Regular supervision or peer consultation
+• Professional therapy if needed
+• Continuing education to build skills
+• Community with other supporters
+
+Remember: You cannot pour from an empty cup. Taking care of yourself is part of taking care of your clients.`,
+    },
+    {
+      id: 'platform-9',
+      title: 'Documentation and Follow-Up',
+      content: `Proper documentation supports continuity of care and protects everyone.
+
+What to Document:
+• Key themes discussed in the session
+• Techniques used and client response
+• Any safety concerns and actions taken
+• Goals for next session
+• Follow-up items
+
+How to Document:
+• Be factual and objective
+• Avoid judgmental language
+• Note client's own words when relevant
+• Document immediately after sessions when memory is fresh
+
+Confidentiality in Documentation:
+• Store notes securely
+• Follow Psychi's data protection protocols
+• Don't include unnecessary identifying details
+
+Follow-Up Between Sessions:
+• Review notes before the next session
+• Follow up on homework or goals
+• Check in about crisis situations as appropriate
+• Coordinate with Psychi team when needed`,
+    },
+    {
+      id: 'platform-10',
+      title: 'Continuing Your Growth',
+      content: `Becoming an excellent peer supporter is an ongoing journey.
+
+Ways to Grow:
+• Seek feedback from supervisors and clients
+• Reflect on sessions—what went well, what could improve?
+• Continue learning through reading, courses, and training
+• Practice the techniques you teach
+
+Areas to Develop:
+• Deepening understanding of specific mental health topics
+• Expanding your toolkit of techniques
+• Improving cultural competence
+• Building crisis intervention skills
+
+Self-Reflection Questions:
+• What patterns do I notice in my sessions?
+• Where do I feel most/least confident?
+• What client populations do I connect with best?
+• What triggers my own reactions?
+
+Resources for Growth:
+• Psychi's ongoing training modules
+• Professional development webinars
+• Peer support networks
+• Relevant books and research
+
+Congratulations on completing this training! You are now equipped with the foundational knowledge and skills to provide compassionate, evidence-based peer support on Psychi. Remember: learning never stops, and every session is an opportunity to grow.`,
+    },
   ],
 };
 
@@ -380,6 +1793,8 @@ export default function TrainingScreen() {
     platform: false,
   });
   const [currentModule, setCurrentModule] = useState<Module | null>(null);
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
+  const [viewedSections, setViewedSections] = useState<Record<string, boolean>>({});
   const [showQuiz, setShowQuiz] = useState(false);
   const [quizAnswers, setQuizAnswers] = useState<Record<string, string>>({});
   const [showResults, setShowResults] = useState(false);
@@ -396,6 +1811,29 @@ export default function TrainingScreen() {
     return moduleProgress[moduleOrder[index - 1]];
   };
 
+  const toggleSection = (sectionId: string) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [sectionId]: !prev[sectionId],
+    }));
+    if (!viewedSections[sectionId]) {
+      setViewedSections(prev => ({
+        ...prev,
+        [sectionId]: true,
+      }));
+    }
+  };
+
+  const allSectionsViewed = (module: Module): boolean => {
+    const sections = MODULE_CONTENT[module];
+    return sections.every(section => viewedSections[section.id]);
+  };
+
+  const getViewedSectionCount = (module: Module): number => {
+    const sections = MODULE_CONTENT[module];
+    return sections.filter(section => viewedSections[section.id]).length;
+  };
+
   const handleStartModule = (moduleId: Module) => {
     if (!isModuleUnlocked(moduleId)) {
       Alert.alert('Module Locked', 'Complete the previous module first.');
@@ -408,6 +1846,10 @@ export default function TrainingScreen() {
   };
 
   const handleStartQuiz = () => {
+    if (!currentModule || !allSectionsViewed(currentModule)) {
+      Alert.alert('Complete All Sections', 'Please read all sections before taking the quiz.');
+      return;
+    }
     setShowQuiz(true);
     setQuizAnswers({});
     setShowResults(false);
@@ -428,7 +1870,6 @@ export default function TrainingScreen() {
     setQuizScore(score);
     setShowResults(true);
 
-    // Need 5/6 (83%) to pass
     if (score >= 5) {
       setModuleProgress((prev) => ({ ...prev, [currentModule]: true }));
     }
@@ -448,8 +1889,8 @@ export default function TrainingScreen() {
       setShowQuiz(false);
       setQuizAnswers({});
       setShowResults(false);
+      setExpandedSections({});
     } else {
-      // All modules complete
       setCurrentModule(null);
       setShowCertificate(true);
     }
@@ -460,6 +1901,7 @@ export default function TrainingScreen() {
     setShowQuiz(false);
     setQuizAnswers({});
     setShowResults(false);
+    setExpandedSections({});
   };
 
   // Certificate Modal
@@ -471,13 +1913,23 @@ export default function TrainingScreen() {
             colors={[PsychiColors.azure, PsychiColors.deep] as const}
             style={styles.certificateCard}
           >
-            <Text style={styles.certificateEmoji}>🎓</Text>
+            <View style={styles.certificateIconContainer}>
+              <CertificateIcon size={64} color={PsychiColors.white} />
+            </View>
             <Text style={styles.certificateTitle}>Congratulations!</Text>
             <Text style={styles.certificateSubtitle}>
               You have completed all training modules
             </Text>
             <View style={styles.certificateBadge}>
               <Text style={styles.certificateBadgeText}>Certified Psychi Supporter</Text>
+            </View>
+            <View style={styles.certificateModules}>
+              <Text style={styles.certificateModulesTitle}>Proficiency Demonstrated In:</Text>
+              <Text style={styles.certificateModuleItem}>• Mindfulness Techniques</Text>
+              <Text style={styles.certificateModuleItem}>• Cognitive Behavioral Therapy (CBT)</Text>
+              <Text style={styles.certificateModuleItem}>• Validating Language Skills</Text>
+              <Text style={styles.certificateModuleItem}>• Crisis Recognition & Response</Text>
+              <Text style={styles.certificateModuleItem}>• Supporting Clients on Psychi</Text>
             </View>
             <Text style={styles.certificateDate}>
               Completed on {new Date().toLocaleDateString('en-US', {
@@ -503,6 +1955,9 @@ export default function TrainingScreen() {
     const moduleInfo = MODULES.find((m) => m.id === currentModule)!;
     const content = MODULE_CONTENT[currentModule];
     const questions = QUIZ_QUESTIONS[currentModule];
+    const objectives = LEARNING_OBJECTIVES[currentModule];
+    const viewedCount = getViewedSectionCount(currentModule);
+    const totalSections = content.length;
 
     return (
       <SafeAreaView style={styles.container}>
@@ -511,7 +1966,7 @@ export default function TrainingScreen() {
           <TouchableOpacity style={styles.backButton} onPress={handleBackToModules}>
             <ChevronLeftIcon size={24} color={PsychiColors.midnight} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>{moduleInfo.title}</Text>
+          <Text style={styles.headerTitle} numberOfLines={1}>{moduleInfo.title}</Text>
           <View style={styles.headerSpacer} />
         </View>
 
@@ -519,28 +1974,89 @@ export default function TrainingScreen() {
           {!showQuiz ? (
             // Module Content
             <View style={styles.moduleContent}>
-              <View style={styles.moduleHeader}>
-                <Text style={styles.moduleEmoji}>{moduleInfo.icon}</Text>
-                <Text style={styles.moduleDuration}>{moduleInfo.duration} read</Text>
+              {/* Progress indicator */}
+              <View style={styles.moduleProgressCard}>
+                <Text style={styles.moduleProgressText}>
+                  {viewedCount} of {totalSections} sections completed
+                </Text>
+                <View style={styles.moduleProgressBar}>
+                  <View style={[styles.moduleProgressFill, { width: `${(viewedCount / totalSections) * 100}%` }]} />
+                </View>
               </View>
 
+              {/* Learning Objectives */}
+              <View style={styles.objectivesCard}>
+                <View style={styles.objectivesHeader}>
+                  <View style={styles.objectivesIcon}>
+                    <CheckIcon size={20} color={PsychiColors.violet} />
+                  </View>
+                  <Text style={styles.objectivesTitle}>Learning Objectives</Text>
+                </View>
+                <Text style={styles.objectivesSubtitle}>After completing this module, you will be able to:</Text>
+                {objectives.map((objective, index) => (
+                  <View key={index} style={styles.objectiveItem}>
+                    <CheckIcon size={16} color={PsychiColors.success} />
+                    <Text style={styles.objectiveText}>{objective}</Text>
+                  </View>
+                ))}
+              </View>
+
+              {/* Content Sections */}
               {content.map((section, index) => (
-                <View key={index} style={styles.contentSection}>
-                  <Text style={styles.sectionTitle}>{section.title}</Text>
-                  <Text style={styles.sectionContent}>{section.content}</Text>
+                <View key={section.id} style={styles.sectionCard}>
+                  <TouchableOpacity
+                    style={styles.sectionHeader}
+                    onPress={() => toggleSection(section.id)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.sectionHeaderLeft}>
+                      <View style={[
+                        styles.sectionNumber,
+                        viewedSections[section.id] && styles.sectionNumberViewed
+                      ]}>
+                        {viewedSections[section.id] ? (
+                          <CheckIcon size={14} color={PsychiColors.white} />
+                        ) : (
+                          <Text style={styles.sectionNumberText}>{index + 1}</Text>
+                        )}
+                      </View>
+                      <Text style={styles.sectionTitle}>{section.title}</Text>
+                    </View>
+                    <View style={expandedSections[section.id] ? { transform: [{ rotate: '180deg' }] } : undefined}>
+                      <ChevronDownIcon size={20} color={PsychiColors.azure} />
+                    </View>
+                  </TouchableOpacity>
+                  {expandedSections[section.id] && (
+                    <View style={styles.sectionContent}>
+                      <Text style={styles.sectionText}>{section.content}</Text>
+                    </View>
+                  )}
                 </View>
               ))}
 
+              {/* Take Quiz Button */}
               <TouchableOpacity
-                style={styles.quizButton}
+                style={[
+                  styles.quizButton,
+                  !allSectionsViewed(currentModule) && styles.quizButtonDisabled
+                ]}
                 onPress={handleStartQuiz}
                 activeOpacity={0.8}
+                disabled={!allSectionsViewed(currentModule)}
               >
                 <LinearGradient
-                  colors={[PsychiColors.azure, PsychiColors.deep] as const}
+                  colors={
+                    allSectionsViewed(currentModule)
+                      ? [PsychiColors.azure, PsychiColors.deep] as const
+                      : ['#ccc', '#aaa'] as const
+                  }
                   style={styles.quizButtonGradient}
                 >
-                  <Text style={styles.quizButtonText}>Take Quiz</Text>
+                  <Text style={styles.quizButtonText}>
+                    {allSectionsViewed(currentModule)
+                      ? 'Take Quiz'
+                      : `Complete all ${totalSections} sections to unlock quiz`}
+                  </Text>
                 </LinearGradient>
               </TouchableOpacity>
             </View>
@@ -548,7 +2064,13 @@ export default function TrainingScreen() {
             // Quiz Results
             <View style={styles.resultsContainer}>
               <View style={[styles.resultsCard, quizScore >= 5 ? styles.resultsCardPass : styles.resultsCardFail]}>
-                <Text style={styles.resultsEmoji}>{quizScore >= 5 ? '🎉' : '📚'}</Text>
+                <View style={styles.resultsIconContainer}>
+                  {quizScore >= 5 ? (
+                    <StarIcon size={48} color={PsychiColors.success} />
+                  ) : (
+                    <BookIcon size={48} color={PsychiColors.coral} />
+                  )}
+                </View>
                 <Text style={styles.resultsTitle}>
                   {quizScore >= 5 ? 'Congratulations!' : 'Keep Learning'}
                 </Text>
@@ -693,13 +2215,16 @@ export default function TrainingScreen() {
                     styles.moduleIconContainer,
                     isComplete && styles.moduleIconContainerComplete,
                   ]}>
-                    {isComplete ? (
-                      <CheckIcon size={24} color={PsychiColors.white} />
-                    ) : !isUnlocked ? (
-                      <LockIcon size={24} color={PsychiColors.textMuted} />
-                    ) : (
-                      <Text style={styles.moduleIconEmoji}>{module.icon}</Text>
-                    )}
+                    {(() => {
+                      const IconComponent = MODULE_ICONS[module.id];
+                      if (isComplete) {
+                        return <CheckIcon size={24} color={PsychiColors.white} />;
+                      } else if (!isUnlocked) {
+                        return <LockIcon size={24} color={PsychiColors.textMuted} />;
+                      } else {
+                        return <IconComponent size={24} color={PsychiColors.azure} />;
+                      }
+                    })()}
                   </View>
                   <View style={styles.moduleInfo}>
                     <Text style={[styles.moduleTitle, !isUnlocked && styles.moduleTitleLocked]}>
@@ -765,6 +2290,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: PsychiColors.midnight,
     fontFamily: Typography.fontFamily.serif,
+    flex: 1,
+    textAlign: 'center',
   },
   headerSpacer: {
     width: 40,
@@ -837,9 +2364,6 @@ const styles = StyleSheet.create({
   moduleIconContainerComplete: {
     backgroundColor: PsychiColors.success,
   },
-  moduleIconEmoji: {
-    fontSize: 24,
-  },
   moduleInfo: {
     flex: 1,
   },
@@ -862,37 +2386,123 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   moduleContent: {
+    gap: Spacing.md,
+  },
+  moduleProgressCard: {
     backgroundColor: PsychiColors.white,
     borderRadius: BorderRadius.lg,
-    padding: Spacing.lg,
+    padding: Spacing.md,
     ...Shadows.soft,
   },
-  moduleHeader: {
+  moduleProgressText: {
+    fontSize: 13,
+    color: PsychiColors.textMuted,
+    marginBottom: Spacing.xs,
+  },
+  moduleProgressBar: {
+    height: 6,
+    backgroundColor: 'rgba(74, 144, 226, 0.2)',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  moduleProgressFill: {
+    height: '100%',
+    backgroundColor: PsychiColors.azure,
+    borderRadius: 3,
+  },
+  objectivesCard: {
+    backgroundColor: 'rgba(139, 107, 150, 0.1)',
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.md,
+    borderWidth: 2,
+    borderColor: 'rgba(139, 107, 150, 0.3)',
+  },
+  objectivesHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: Spacing.sm,
+  },
+  objectivesIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: BorderRadius.sm,
+    backgroundColor: 'rgba(139, 107, 150, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: Spacing.sm,
+  },
+  objectivesTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: PsychiColors.violet,
+  },
+  objectivesSubtitle: {
+    fontSize: 13,
+    color: PsychiColors.azure,
+    marginBottom: Spacing.sm,
+  },
+  objectiveItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: Spacing.xs,
+  },
+  objectiveCheckIcon: {
+    marginRight: Spacing.xs,
+    marginTop: 2,
+  },
+  objectiveText: {
+    fontSize: 14,
+    color: PsychiColors.azure,
+    flex: 1,
+    lineHeight: 20,
+  },
+  sectionCard: {
+    backgroundColor: PsychiColors.white,
+    borderRadius: BorderRadius.lg,
+    overflow: 'hidden',
+    ...Shadows.soft,
+  },
+  sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: Spacing.lg,
-    paddingBottom: Spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.1)',
+    padding: Spacing.md,
   },
-  moduleEmoji: {
-    fontSize: 32,
+  sectionHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
   },
-  moduleDuration: {
-    fontSize: 13,
-    color: PsychiColors.textMuted,
+  sectionNumber: {
+    width: 28,
+    height: 28,
+    borderRadius: BorderRadius.sm,
+    backgroundColor: 'rgba(139, 107, 150, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: Spacing.sm,
   },
-  contentSection: {
-    marginBottom: Spacing.lg,
+  sectionNumberViewed: {
+    backgroundColor: PsychiColors.success,
+  },
+  sectionNumberText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: PsychiColors.violet,
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     color: PsychiColors.midnight,
-    marginBottom: Spacing.xs,
+    flex: 1,
   },
   sectionContent: {
+    padding: Spacing.md,
+    paddingTop: 0,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.05)',
+  },
+  sectionText: {
     fontSize: 14,
     color: PsychiColors.textSecondary,
     lineHeight: 22,
@@ -901,6 +2511,9 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.lg,
     overflow: 'hidden',
     marginTop: Spacing.md,
+  },
+  quizButtonDisabled: {
+    opacity: 0.7,
   },
   quizButtonGradient: {
     paddingVertical: Spacing.md,
@@ -954,7 +2567,7 @@ const styles = StyleSheet.create({
   },
   optionButton: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     padding: Spacing.sm,
     borderRadius: BorderRadius.md,
     backgroundColor: PsychiColors.cream,
@@ -971,6 +2584,7 @@ const styles = StyleSheet.create({
     marginRight: Spacing.sm,
     justifyContent: 'center',
     alignItems: 'center',
+    marginTop: 2,
   },
   optionRadioSelected: {
     borderColor: PsychiColors.azure,
@@ -985,6 +2599,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     color: PsychiColors.textSecondary,
+    lineHeight: 20,
   },
   optionTextSelected: {
     color: PsychiColors.midnight,
@@ -1026,8 +2641,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: PsychiColors.error,
   },
-  resultsEmoji: {
-    fontSize: 48,
+  resultsIconContainer: {
     marginBottom: Spacing.md,
   },
   resultsTitle: {
@@ -1097,8 +2711,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: Spacing.lg,
   },
-  certificateEmoji: {
-    fontSize: 64,
+  certificateIconContainer: {
     marginBottom: Spacing.md,
   },
   certificateTitle: {
@@ -1125,6 +2738,20 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: PsychiColors.white,
   },
+  certificateModules: {
+    alignItems: 'center',
+    marginBottom: Spacing.md,
+  },
+  certificateModulesTitle: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.9)',
+    marginBottom: Spacing.sm,
+  },
+  certificateModuleItem: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.8)',
+    marginBottom: 4,
+  },
   certificateDate: {
     fontSize: 13,
     color: 'rgba(255,255,255,0.7)',
@@ -1139,5 +2766,125 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: PsychiColors.azure,
+  },
+});
+
+// Styles for clickable link components
+const linkStyles = StyleSheet.create({
+  videoCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: PsychiColors.white,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    marginBottom: Spacing.sm,
+    ...Shadows.soft,
+  },
+  videoIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: BorderRadius.md,
+    backgroundColor: PsychiColors.coral,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: Spacing.md,
+  },
+  videoContent: {
+    flex: 1,
+  },
+  videoTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2A2A2A',
+    marginBottom: 2,
+  },
+  videoSpeaker: {
+    fontSize: 12,
+    color: PsychiColors.azure,
+    marginBottom: 4,
+  },
+  videoDescription: {
+    fontSize: 12,
+    color: PsychiColors.textMuted,
+    lineHeight: 16,
+  },
+  resourceCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: PsychiColors.white,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    marginBottom: Spacing.sm,
+    ...Shadows.soft,
+  },
+  resourceIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: BorderRadius.sm,
+    backgroundColor: 'rgba(74, 144, 226, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: Spacing.md,
+  },
+  resourceIconApp: {
+    backgroundColor: 'rgba(255, 107, 107, 0.1)',
+  },
+  resourceContent: {
+    flex: 1,
+  },
+  resourceTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2A2A2A',
+    marginBottom: 2,
+  },
+  resourceAuthor: {
+    fontSize: 12,
+    color: PsychiColors.textMuted,
+    fontStyle: 'italic',
+    marginBottom: 4,
+  },
+  resourceDescription: {
+    fontSize: 12,
+    color: PsychiColors.textMuted,
+    lineHeight: 16,
+  },
+  studyCard: {
+    backgroundColor: PsychiColors.white,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    marginBottom: Spacing.sm,
+    borderLeftWidth: 3,
+    borderLeftColor: PsychiColors.azure,
+    ...Shadows.soft,
+  },
+  studyHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  studyTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2A2A2A',
+    flex: 1,
+    marginRight: Spacing.sm,
+  },
+  studyAuthors: {
+    fontSize: 12,
+    color: PsychiColors.textMuted,
+    marginBottom: 2,
+  },
+  studyJournal: {
+    fontSize: 12,
+    color: PsychiColors.azure,
+    fontStyle: 'italic',
+    marginBottom: 6,
+  },
+  studyFinding: {
+    fontSize: 12,
+    color: PsychiColors.textSecondary,
+    lineHeight: 18,
   },
 });

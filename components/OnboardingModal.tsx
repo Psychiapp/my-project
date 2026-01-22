@@ -30,7 +30,6 @@ interface UserPreferences {
   scheduling_preference: string;
   preferred_times: string[];
   personality_preference: string;
-  experience_level: string;
   goals: string[];
   urgency: string;
   timezone: string;
@@ -102,11 +101,6 @@ const personalities = [
   { id: 'analytical', label: 'Analytical & Thoughtful', description: 'Logical, insightful, and methodical' },
 ];
 
-const experienceLevels = [
-  { id: 'no_preference', label: 'No Preference', description: 'Open to all experience levels' },
-  { id: 'newer', label: 'Newer Supporters', description: 'Fresh perspectives, often more available' },
-  { id: 'experienced', label: 'Experienced Supporters', description: 'More sessions completed, higher ratings' },
-];
 
 const goalOptions = [
   { id: 'relief', label: 'Immediate Relief', description: 'Help with current crisis or distress' },
@@ -123,7 +117,14 @@ const urgencyOptions = [
   { id: 'exploring', label: 'Just Exploring', description: 'Taking my time to find the right fit', color: '#B0E0E6' },
 ];
 
-const moodEmojis = ['😢', '😕', '😐', '🙂', '😊'];
+// Mood levels with colors (no emojis)
+const moodLevels = [
+  { level: 1, color: '#E57373', label: 'Very Low' },
+  { level: 2, color: '#FFB74D', label: 'Low' },
+  { level: 3, color: '#FFF176', label: 'Okay' },
+  { level: 4, color: '#AED581', label: 'Good' },
+  { level: 5, color: '#81C784', label: 'Great' },
+];
 
 export default function OnboardingModal({
   visible,
@@ -143,7 +144,6 @@ export default function OnboardingModal({
   const [schedulingPref, setSchedulingPref] = useState<string>('');
   const [selectedTimes, setSelectedTimes] = useState<string[]>([]);
   const [personalityPref, setPersonalityPref] = useState<string>('');
-  const [experienceLevel, setExperienceLevel] = useState<string>('');
   const [selectedGoals, setSelectedGoals] = useState<string[]>([]);
   const [urgency, setUrgency] = useState<string>('');
 
@@ -174,8 +174,7 @@ export default function OnboardingModal({
       case 1: return selectedTopics.length > 0;
       case 2: return communicationStyle && selectedSessionTypes.length > 0;
       case 3: return schedulingPref && selectedTimes.length > 0 && timezone;
-      case 4: return personalityPref && experienceLevel;
-      case 5: return selectedGoals.length > 0 && urgency;
+      case 4: return personalityPref && selectedGoals.length > 0 && urgency;
       default: return false;
     }
   };
@@ -192,7 +191,6 @@ export default function OnboardingModal({
         scheduling_preference: schedulingPref,
         preferred_times: selectedTimes,
         personality_preference: personalityPref,
-        experience_level: experienceLevel,
         goals: selectedGoals,
         urgency,
         timezone,
@@ -209,9 +207,9 @@ export default function OnboardingModal({
   // Render progress bar
   const renderProgressBar = () => (
     <View style={styles.progressContainer}>
-      <Text style={styles.progressText}>Step {step} of 5</Text>
+      <Text style={styles.progressText}>Step {step} of 4</Text>
       <View style={styles.progressBar}>
-        {[1, 2, 3, 4, 5].map((s) => (
+        {[1, 2, 3, 4].map((s) => (
           <View
             key={s}
             style={[
@@ -231,20 +229,20 @@ export default function OnboardingModal({
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>How are you feeling today?</Text>
         <View style={styles.moodContainer}>
-          {[1, 2, 3, 4, 5].map((m) => (
+          {moodLevels.map((m) => (
             <TouchableOpacity
-              key={m}
+              key={m.level}
               style={[
                 styles.moodButton,
-                mood === m && styles.moodButtonSelected,
+                mood === m.level && styles.moodButtonSelected,
               ]}
-              onPress={() => setMood(m)}
+              onPress={() => setMood(m.level)}
               activeOpacity={0.7}
             >
-              <Text style={styles.moodEmoji}>{moodEmojis[m - 1]}</Text>
-              <Text style={styles.moodLabel}>
-                {m === 1 ? 'Very Low' : m === 2 ? 'Low' : m === 3 ? 'Okay' : m === 4 ? 'Good' : 'Great'}
-              </Text>
+              <View style={[styles.moodIndicator, { backgroundColor: m.color }]}>
+                {mood === m.level && <View style={styles.moodIndicatorInner} />}
+              </View>
+              <Text style={styles.moodLabel}>{m.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -424,7 +422,7 @@ export default function OnboardingModal({
     </View>
   );
 
-  // Render Step 4: Supporter Preferences
+  // Render Step 4: Supporter Preferences, Goals & Urgency
   const renderStep4 = () => (
     <View style={styles.stepContent}>
       {/* Personality Preference */}
@@ -453,35 +451,6 @@ export default function OnboardingModal({
         </View>
       </View>
 
-      {/* Experience Level */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Experience level preference</Text>
-        {experienceLevels.map((level) => (
-          <TouchableOpacity
-            key={level.id}
-            style={[
-              styles.optionCard,
-              experienceLevel === level.id && styles.optionCardSelected,
-            ]}
-            onPress={() => setExperienceLevel(level.id)}
-            activeOpacity={0.7}
-          >
-            <View style={styles.radioOuter}>
-              {experienceLevel === level.id && <View style={styles.radioInner} />}
-            </View>
-            <View style={styles.optionContent}>
-              <Text style={styles.optionLabel}>{level.label}</Text>
-              <Text style={styles.optionDescription}>{level.description}</Text>
-            </View>
-          </TouchableOpacity>
-        ))}
-      </View>
-    </View>
-  );
-
-  // Render Step 5: Goals & Urgency
-  const renderStep5 = () => (
-    <View style={styles.stepContent}>
       {/* Goals */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>What are your goals?</Text>
@@ -543,7 +512,6 @@ export default function OnboardingModal({
       case 2: return renderStep2();
       case 3: return renderStep3();
       case 4: return renderStep4();
-      case 5: return renderStep5();
       default: return renderStep1();
     }
   };
@@ -561,7 +529,7 @@ export default function OnboardingModal({
         </TouchableOpacity>
       )}
 
-      {step < 5 ? (
+      {step < 4 ? (
         <TouchableOpacity
           style={[styles.nextButton, !canProceed() && styles.buttonDisabled]}
           onPress={() => canProceed() && setStep(step + 1)}
@@ -656,15 +624,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
-    backgroundColor: PsychiColors.white,
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.05)',
+    borderBottomColor: 'rgba(255, 255, 255, 0.5)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
   closeButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.05)',
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: Spacing.md,
@@ -677,6 +652,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '600',
     color: PsychiColors.textPrimary,
+    letterSpacing: 0.3,
   },
   headerSubtitle: {
     fontFamily: Typography.fontFamily.sans,
@@ -689,7 +665,7 @@ const styles = StyleSheet.create({
   progressContainer: {
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
-    backgroundColor: PsychiColors.white,
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
   },
   progressText: {
     fontFamily: Typography.fontFamily.sans,
@@ -735,6 +711,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: PsychiColors.textPrimary,
     marginBottom: Spacing.xs,
+    letterSpacing: 0.3,
   },
   sectionSubtitle: {
     fontFamily: Typography.fontFamily.sans,
@@ -762,9 +739,19 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(37, 99, 235, 0.1)',
     transform: [{ scale: 1.05 }],
   },
-  moodEmoji: {
-    fontSize: 28,
+  moodIndicator: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     marginBottom: Spacing.xs,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  moodIndicatorInner: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: PsychiColors.white,
   },
   moodLabel: {
     fontFamily: Typography.fontFamily.sans,
@@ -1094,19 +1081,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
-    backgroundColor: PsychiColors.white,
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
     borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.05)',
+    borderTopColor: 'rgba(255, 255, 255, 0.5)',
     gap: Spacing.md,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
   backButton: {
     flex: 1,
     borderWidth: 1,
-    borderColor: 'rgba(176, 224, 230, 0.5)',
-    borderRadius: BorderRadius.xl,
+    borderColor: 'rgba(37, 99, 235, 0.2)',
+    borderRadius: 16,
     paddingVertical: Spacing.md,
     alignItems: 'center',
-    backgroundColor: PsychiColors.white,
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
   },
   backButtonText: {
     fontFamily: Typography.fontFamily.sans,

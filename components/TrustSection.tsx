@@ -28,7 +28,7 @@ const trainingSteps = [
     id: 'verified',
     icon: ShieldIcon,
     title: 'Identity Verified',
-    description: 'All supporters submit government-issued ID and official transcripts for verification',
+    description: 'All supporters submit government-issued ID',
   },
   {
     id: 'supervision',
@@ -44,11 +44,9 @@ const trainingSteps = [
   },
 ];
 
-// Safety features - matches web exactly
+// Safety features
 const safetyFeatures = [
   'End-to-end encrypted conversations',
-  'Anonymous username option',
-  'Block & report functionality',
   'No session recordings stored',
 ];
 

@@ -391,7 +391,7 @@ export default function AuthModal({
       <View style={styles.roleFooter}>
         <Text style={styles.roleFooterText}>
           {userType === 'client'
-            ? 'You can browse supporters and book sessions after creating your account.'
+            ? 'Complete the matching quiz to be paired with your supporter.'
             : userType === 'supporter'
             ? 'You\'ll need to complete training before accepting sessions.'
             : 'Select how you\'d like to use Psychi'}

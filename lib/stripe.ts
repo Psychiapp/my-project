@@ -1,6 +1,6 @@
 import { Alert } from 'react-native';
 import { initPaymentSheet, presentPaymentSheet } from '@stripe/stripe-react-native';
-import { StripeConfig, Config } from '@/constants/config';
+import { StripeConfig, Config, SupabaseConfig } from '@/constants/config';
 
 // Stripe integration with payment sheet support
 
@@ -16,23 +16,29 @@ interface CreatePaymentParams {
   metadata?: Record<string, string>;
 }
 
-// Create a payment intent via your backend
+// Create a payment intent via Supabase Edge Function
 export async function createPaymentIntent(params: CreatePaymentParams): Promise<PaymentIntentResponse> {
   const { amount, currency = 'usd', customerId, metadata } = params;
 
-  // In production, this would call your Supabase Edge Function
-  // For now, return mock data
-  console.log('Creating payment intent:', { amount, currency, customerId, metadata });
+  if (!SupabaseConfig.url || !SupabaseConfig.anonKey) {
+    throw new Error('Supabase configuration missing');
+  }
 
-  // Simulate API call
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        clientSecret: 'pi_mock_client_secret',
-        paymentIntentId: 'pi_' + Date.now(),
-      });
-    }, 1000);
+  const response = await fetch(`${SupabaseConfig.url}/functions/v1/create-payment-intent`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${SupabaseConfig.anonKey}`,
+    },
+    body: JSON.stringify({ amount, currency, customerId, metadata }),
   });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to create payment intent');
+  }
+
+  return response.json();
 }
 
 // Confirm payment

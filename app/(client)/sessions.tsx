@@ -391,7 +391,7 @@ export default function SessionsScreen() {
               <TouchableOpacity
                 style={styles.emptyButton}
                 activeOpacity={0.8}
-                onPress={() => router.push('/(client)/browse')}
+                onPress={() => router.push('/(client)/book')}
               >
                 <LinearGradient
                   colors={[PsychiColors.azure, PsychiColors.deep]}

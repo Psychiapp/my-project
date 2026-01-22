@@ -49,8 +49,8 @@ export default function HelpSupportScreen() {
       answer: 'All sessions use end-to-end encryption. Your conversations are never stored on our servers and cannot be accessed by anyone except you and your supporter during the session.',
     },
     {
-      question: 'Can I choose my supporter?',
-      answer: 'Yes! You can browse supporter profiles, view their specialties and ratings, and choose who you\'d like to connect with. You can also save favorite supporters for easy rebooking.',
+      question: 'How am I matched with a supporter?',
+      answer: 'After completing our matching quiz, we pair you with a supporter who aligns with your preferences, communication style, and areas of focus. Your matched supporter is carefully selected to be the best fit for your needs.',
     },
     {
       question: 'What if I need to cancel a session?',

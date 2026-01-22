@@ -392,6 +392,113 @@ export async function sendSessionRescheduledNotification(params: {
   });
 }
 
+/**
+ * Send reschedule request notification to client
+ */
+export async function sendRescheduleRequestNotification(params: {
+  sessionId: string;
+  supporterName: string;
+  proposedDate: string;
+  proposedTime: string;
+  responseDeadline: string;
+}): Promise<void> {
+  // Format the deadline for display
+  const deadline = new Date(params.responseDeadline);
+  const deadlineStr = deadline.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
+
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: 'Reschedule Request',
+      body: `${params.supporterName} wants to reschedule your session to ${params.proposedDate} at ${params.proposedTime}. Please respond by ${deadlineStr} or the session will be cancelled.`,
+      data: {
+        type: 'reschedule_request',
+        sessionId: params.sessionId,
+        action: 'view_reschedule_request',
+      },
+      sound: true,
+      priority: Notifications.AndroidNotificationPriority.HIGH,
+    },
+    trigger: null,
+  });
+}
+
+/**
+ * Send notification when reschedule request is accepted
+ */
+export async function sendRescheduleAcceptedNotification(params: {
+  sessionId: string;
+  clientName: string;
+  newDate: string;
+  newTime: string;
+}): Promise<void> {
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: 'Reschedule Confirmed',
+      body: `${params.clientName} accepted your reschedule request. Your session is now on ${params.newDate} at ${params.newTime}.`,
+      data: {
+        type: 'reschedule_accepted',
+        sessionId: params.sessionId,
+      },
+      sound: true,
+    },
+    trigger: null,
+  });
+}
+
+/**
+ * Send notification when reschedule request is declined
+ */
+export async function sendRescheduleDeclinedNotification(params: {
+  sessionId: string;
+  clientName: string;
+  originalDate: string;
+  originalTime: string;
+}): Promise<void> {
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: 'Reschedule Declined',
+      body: `${params.clientName} declined your reschedule request. The session remains at ${params.originalDate} at ${params.originalTime}.`,
+      data: {
+        type: 'reschedule_declined',
+        sessionId: params.sessionId,
+      },
+      sound: true,
+    },
+    trigger: null,
+  });
+}
+
+/**
+ * Send notification when session is auto-cancelled due to expired reschedule request
+ */
+export async function sendAutoCancelledNotification(params: {
+  sessionId: string;
+  recipientType: 'client' | 'supporter';
+  refundAmount?: string;
+}): Promise<void> {
+  const isClient = params.recipientType === 'client';
+  const body = isClient
+    ? `Your session has been automatically cancelled because you didn't respond to the reschedule request in time.${params.refundAmount ? ` A refund of ${params.refundAmount} has been processed.` : ''}`
+    : `Your session has been automatically cancelled because the client didn't respond to your reschedule request in time.`;
+
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: 'Session Auto-Cancelled',
+      body,
+      data: {
+        type: 'session_auto_cancelled',
+        sessionId: params.sessionId,
+      },
+      sound: true,
+    },
+    trigger: null,
+  });
+}
+
 // ============================================
 // Booking Notifications (for Supporters)
 // ============================================
@@ -689,6 +796,10 @@ export default {
   sendSessionStartingNotification,
   sendSessionCancelledNotification,
   sendSessionRescheduledNotification,
+  sendRescheduleRequestNotification,
+  sendRescheduleAcceptedNotification,
+  sendRescheduleDeclinedNotification,
+  sendAutoCancelledNotification,
   sendNewBookingNotification,
   sendBookingConfirmedNotification,
   scheduleWeeklyAvailabilityReminder,

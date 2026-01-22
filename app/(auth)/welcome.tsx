@@ -3,7 +3,7 @@
  * Full scrollable landing page with all sections
  */
 
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   View,
   StyleSheet,
@@ -12,7 +12,9 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PsychiColors } from '@/constants/theme';
+import { useAuth } from '@/contexts/AuthContext';
 
 // Import all section components
 import Hero from '@/components/Hero';
@@ -22,16 +24,43 @@ import TrustSection from '@/components/TrustSection';
 import AboutSection from '@/components/AboutSection';
 import FAQ from '@/components/FAQ';
 import Footer from '@/components/Footer';
+import OnboardingModal from '@/components/OnboardingModal';
+
+// Key for storing quiz preferences before account creation
+export const PENDING_QUIZ_PREFERENCES_KEY = 'pending_quiz_preferences';
 
 export default function WelcomeScreen() {
   const insets = useSafeAreaInsets();
   const scrollViewRef = useRef<ScrollView>(null);
+  const { isAuthenticated, profile } = useAuth();
+  const [showOnboardingModal, setShowOnboardingModal] = useState(false);
 
   // Track section positions for scrolling
   const sectionPositions = useRef<{ [key: string]: number }>({});
 
+  // Navigate to dashboard based on user role
+  const goToDashboard = () => {
+    if (profile?.role === 'supporter') {
+      router.push('/(supporter)');
+    } else {
+      router.push('/(client)');
+    }
+  };
+
   const handleTakeQuiz = () => {
-    // Navigate to sign up / onboarding
+    if (isAuthenticated) {
+      goToDashboard();
+    } else {
+      // Show the onboarding modal for unauthenticated users
+      setShowOnboardingModal(true);
+    }
+  };
+
+  const handleQuizComplete = async (preferences: any) => {
+    // Save preferences to AsyncStorage for retrieval after sign-up
+    await AsyncStorage.setItem(PENDING_QUIZ_PREFERENCES_KEY, JSON.stringify(preferences));
+    setShowOnboardingModal(false);
+    // Navigate to sign-up page - preferences will be applied after account creation
     router.push('/(auth)/sign-up');
   };
 
@@ -41,21 +70,37 @@ export default function WelcomeScreen() {
   };
 
   const handleSignIn = () => {
-    router.push('/(auth)/sign-in');
+    if (isAuthenticated) {
+      goToDashboard();
+    } else {
+      router.push('/(auth)/sign-in');
+    }
   };
 
   const handleSignUp = () => {
-    router.push('/(auth)/sign-up');
+    if (isAuthenticated) {
+      goToDashboard();
+    } else {
+      router.push('/(auth)/sign-up');
+    }
   };
 
   const handleSelectSupportType = (type: 'chat' | 'phone' | 'video') => {
     console.log('Selected support type:', type);
-    router.push('/(auth)/sign-up');
+    if (isAuthenticated) {
+      goToDashboard();
+    } else {
+      router.push('/(auth)/sign-up');
+    }
   };
 
   const handleSelectPlan = (planId: string) => {
     console.log('Selected plan:', planId);
-    router.push('/(auth)/sign-up');
+    if (isAuthenticated) {
+      goToDashboard();
+    } else {
+      router.push('/(auth)/sign-up');
+    }
   };
 
   const handleFooterNavigate = (screen: string) => {
@@ -141,6 +186,13 @@ export default function WelcomeScreen() {
           onScrollToSection={handleScrollToSection}
         />
       </ScrollView>
+
+      {/* Onboarding Modal for unauthenticated users */}
+      <OnboardingModal
+        visible={showOnboardingModal}
+        onClose={() => setShowOnboardingModal(false)}
+        onComplete={handleQuizComplete}
+      />
     </View>
   );
 }

@@ -43,7 +43,7 @@ CREATE POLICY "Users can manage their own public key"
 -- =====================================================
 CREATE TABLE IF NOT EXISTS encrypted_messages (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    session_id UUID NOT NULL,
+    session_id TEXT NOT NULL,  -- TEXT to support various session ID formats
     sender_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     recipient_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
 
@@ -97,13 +97,13 @@ ALTER PUBLICATION supabase_realtime ADD TABLE encrypted_messages;
 -- Optional: Function to get conversation messages
 -- =====================================================
 CREATE OR REPLACE FUNCTION get_conversation_messages(
-    p_session_id UUID,
+    p_session_id TEXT,
     p_limit INTEGER DEFAULT 50,
     p_offset INTEGER DEFAULT 0
 )
 RETURNS TABLE (
     id UUID,
-    session_id UUID,
+    session_id TEXT,
     sender_id UUID,
     recipient_id UUID,
     ciphertext TEXT,

@@ -44,7 +44,6 @@ export interface SupporterProfile extends UserProfile {
   communicationStyles: CommunicationStyle[];
   supportTypes: SupportType[];
   hourlyRate: number;
-  rating: number;
   totalSessions: number;
   isAvailable: boolean;
   applicationStatus: ApplicationStatus;

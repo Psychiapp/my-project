@@ -1,8 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, ReactNode } from 'react';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { StripeProvider } from '@stripe/stripe-react-native';
+import { Platform } from 'react-native';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -14,6 +14,15 @@ import ErrorBoundary from '@/components/ErrorBoundary';
 import OfflineBanner from '@/components/OfflineBanner';
 import DemoModeBanner from '@/components/DemoModeBanner';
 import { setupDeepLinkListener, setupNotificationResponseListener } from '@/lib/deep-linking';
+
+// Conditionally import Stripe to avoid crash in Expo Go
+let StripeProvider: any = ({ children }: { children: ReactNode }) => children;
+try {
+  const stripe = require('@stripe/stripe-react-native');
+  StripeProvider = stripe.StripeProvider;
+} catch (e) {
+  console.log('Stripe native module not available (running in Expo Go)');
+}
 
 // Custom Psychi theme
 const PsychiLightTheme = {
