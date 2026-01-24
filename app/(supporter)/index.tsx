@@ -10,8 +10,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Switch,
-  ActivityIndicator,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -23,17 +21,12 @@ import {
   CalendarIcon,
   ChartIcon,
   BookIcon,
-  ClockIcon,
   DollarIcon,
-  UsersIcon,
   EditIcon,
-  PauseIcon,
-  PlayIcon,
   ChevronRightIcon,
 } from '@/components/icons';
-import { getSupporterAvailability, updateAcceptingClients } from '@/lib/database';
 import DashboardTutorial from '@/components/DashboardTutorial';
-import { PremiumCard, Divider } from '@/components/ui/PremiumCard';
+import { Divider } from '@/components/ui/PremiumCard';
 
 const TUTORIAL_COMPLETED_KEY = '@psychi_supporter_tutorial_completed';
 
@@ -43,11 +36,6 @@ export default function SupporterHomeScreen() {
 
   // Dashboard tutorial state
   const [showTutorial, setShowTutorial] = useState(false);
-
-  // Accepting new clients toggle
-  const [acceptingClients, setAcceptingClients] = useState(true);
-  const [isLoadingToggle, setIsLoadingToggle] = useState(true);
-  const [isUpdatingToggle, setIsUpdatingToggle] = useState(false);
 
   // Check if tutorial has been completed on mount
   useEffect(() => {
@@ -86,40 +74,6 @@ export default function SupporterHomeScreen() {
     }
   };
 
-  // Fetch initial accepting clients status
-  useEffect(() => {
-    const fetchAcceptingStatus = async () => {
-      if (!user?.id) {
-        setIsLoadingToggle(false);
-        return;
-      }
-
-      const availability = await getSupporterAvailability(user.id);
-      if (availability) {
-        setAcceptingClients(availability.acceptingClients);
-      }
-      setIsLoadingToggle(false);
-    };
-
-    fetchAcceptingStatus();
-  }, [user?.id]);
-
-  // Handle toggle change
-  const handleAcceptingClientsToggle = async (value: boolean) => {
-    if (!user?.id || isUpdatingToggle) return;
-
-    setAcceptingClients(value);
-    setIsUpdatingToggle(true);
-
-    const success = await updateAcceptingClients(user.id, value);
-
-    if (!success) {
-      setAcceptingClients(!value);
-    }
-
-    setIsUpdatingToggle(false);
-  };
-
   // Real data - no mock data
   const todaysSessions = 0;
   const weeklyGross = 0;
@@ -143,44 +97,6 @@ export default function SupporterHomeScreen() {
           <Text style={styles.greetingLabel}>{greeting.toUpperCase()}</Text>
           <Text style={styles.userName}>{profile?.firstName || 'there'}</Text>
           <Text style={styles.headerSubtitle}>Your support dashboard</Text>
-        </View>
-
-        {/* Accepting Clients Status */}
-        <View style={styles.statusCard}>
-          <LinearGradient
-            colors={Gradients.glassCard}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.statusGradient}
-          >
-            <View style={styles.statusContent}>
-              {isLoadingToggle ? (
-                <ActivityIndicator size="small" color={PsychiColors.royalBlue} />
-              ) : acceptingClients ? (
-                <PlayIcon size={22} color={PsychiColors.success} />
-              ) : (
-                <PauseIcon size={22} color={PsychiColors.error} />
-              )}
-              <View style={styles.statusInfo}>
-                <Text style={styles.statusTitle}>
-                  {isLoadingToggle ? 'Loading...' : acceptingClients ? 'Accepting Clients' : 'Paused'}
-                </Text>
-                <Text style={styles.statusSubtitle}>
-                  {acceptingClients ? 'New clients can match with you' : 'Existing clients can still book'}
-                </Text>
-              </View>
-              {!isLoadingToggle && (
-                <Switch
-                  value={acceptingClients}
-                  onValueChange={handleAcceptingClientsToggle}
-                  disabled={isUpdatingToggle}
-                  trackColor={{ false: PsychiColors.frost, true: PsychiColors.successMuted }}
-                  thumbColor={acceptingClients ? PsychiColors.success : PsychiColors.textMuted}
-                  ios_backgroundColor={PsychiColors.frost}
-                />
-              )}
-            </View>
-          </LinearGradient>
         </View>
 
         {/* Launch Notice Card */}
@@ -407,36 +323,6 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.base,
     color: PsychiColors.textSecondary,
     letterSpacing: Typography.letterSpacing.normal,
-  },
-
-  // Status Card (Accepting Clients)
-  statusCard: {
-    marginHorizontal: Spacing['6'],
-    marginBottom: Spacing['4'],
-    borderRadius: 20,
-    overflow: 'hidden',
-    ...Shadows.soft,
-  },
-  statusGradient: {
-    padding: Spacing['4'],
-  },
-  statusContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing['3'],
-  },
-  statusInfo: {
-    flex: 1,
-  },
-  statusTitle: {
-    fontSize: Typography.fontSize.md,
-    fontWeight: Typography.fontWeight.semibold,
-    color: PsychiColors.textPrimary,
-    marginBottom: 2,
-  },
-  statusSubtitle: {
-    fontSize: Typography.fontSize.sm,
-    color: PsychiColors.textMuted,
   },
 
   // Launch Notice Card

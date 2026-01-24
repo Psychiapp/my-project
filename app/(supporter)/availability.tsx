@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,11 +8,14 @@ import {
   Switch,
   Modal,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PsychiColors, Spacing, BorderRadius, Shadows, Typography } from '@/constants/theme';
-import { CloseIcon, PlusIcon, ClockIcon, InfoIcon, CheckIcon } from '@/components/icons';
+import { CloseIcon, PlusIcon, ClockIcon, InfoIcon, CheckIcon, PlayIcon, PauseIcon } from '@/components/icons';
+import { useAuth } from '@/contexts/AuthContext';
+import { getSupporterAvailability, updateAcceptingClients } from '@/lib/database';
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -37,6 +40,8 @@ interface DayAvailability {
 }
 
 export default function AvailabilityScreen() {
+  const { user } = useAuth();
+
   const [availability, setAvailability] = useState<Record<string, DayAvailability>>({
     Monday: { enabled: true, slots: [{ start: '09:00', end: '17:00' }] },
     Tuesday: { enabled: true, slots: [{ start: '09:00', end: '17:00' }] },
@@ -52,6 +57,45 @@ export default function AvailabilityScreen() {
   const [editingSlotIndex, setEditingSlotIndex] = useState<number | null>(null);
   const [editingField, setEditingField] = useState<'start' | 'end'>('start');
   const [selectedTime, setSelectedTime] = useState('09:00');
+
+  // Accepting new clients toggle state
+  const [acceptingClients, setAcceptingClients] = useState(true);
+  const [isLoadingToggle, setIsLoadingToggle] = useState(true);
+  const [isUpdatingToggle, setIsUpdatingToggle] = useState(false);
+
+  // Fetch initial accepting clients status
+  useEffect(() => {
+    const fetchAcceptingStatus = async () => {
+      if (!user?.id) {
+        setIsLoadingToggle(false);
+        return;
+      }
+
+      const availabilityData = await getSupporterAvailability(user.id);
+      if (availabilityData) {
+        setAcceptingClients(availabilityData.acceptingClients);
+      }
+      setIsLoadingToggle(false);
+    };
+
+    fetchAcceptingStatus();
+  }, [user?.id]);
+
+  // Handle accepting clients toggle change
+  const handleAcceptingClientsToggle = async (value: boolean) => {
+    if (!user?.id || isUpdatingToggle) return;
+
+    setAcceptingClients(value);
+    setIsUpdatingToggle(true);
+
+    const success = await updateAcceptingClients(user.id, value);
+
+    if (!success) {
+      setAcceptingClients(!value);
+    }
+
+    setIsUpdatingToggle(false);
+  };
 
   const toggleDay = (day: string) => {
     const currentEnabled = availability[day]?.enabled || false;
@@ -199,6 +243,37 @@ export default function AvailabilityScreen() {
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Availability</Text>
           <Text style={styles.headerSubtitle}>Set your weekly schedule</Text>
+        </View>
+
+        {/* Accepting Clients Toggle */}
+        <View style={styles.acceptingCard}>
+          <View style={styles.acceptingContent}>
+            {isLoadingToggle ? (
+              <ActivityIndicator size="small" color={PsychiColors.royalBlue} />
+            ) : acceptingClients ? (
+              <PlayIcon size={22} color={PsychiColors.success} />
+            ) : (
+              <PauseIcon size={22} color={PsychiColors.error} />
+            )}
+            <View style={styles.acceptingInfo}>
+              <Text style={styles.acceptingTitle}>
+                {isLoadingToggle ? 'Loading...' : acceptingClients ? 'Accepting New Clients' : 'Paused'}
+              </Text>
+              <Text style={styles.acceptingSubtitle}>
+                {acceptingClients ? 'New clients can match with you' : 'Existing clients can still book'}
+              </Text>
+            </View>
+            {!isLoadingToggle && (
+              <Switch
+                value={acceptingClients}
+                onValueChange={handleAcceptingClientsToggle}
+                disabled={isUpdatingToggle}
+                trackColor={{ false: PsychiColors.frost, true: PsychiColors.successMuted }}
+                thumbColor={acceptingClients ? PsychiColors.success : PsychiColors.textMuted}
+                ios_backgroundColor={PsychiColors.frost}
+              />
+            )}
+          </View>
         </View>
 
         {/* Info Card */}
@@ -360,6 +435,32 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.sm,
     color: PsychiColors.textMuted,
     marginTop: 4,
+  },
+  acceptingCard: {
+    marginHorizontal: Spacing.lg,
+    marginBottom: Spacing.md,
+    backgroundColor: PsychiColors.cloud,
+    borderRadius: BorderRadius.xl,
+    ...Shadows.soft,
+  },
+  acceptingContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.md,
+    gap: Spacing.md,
+  },
+  acceptingInfo: {
+    flex: 1,
+  },
+  acceptingTitle: {
+    fontSize: Typography.fontSize.base,
+    fontWeight: Typography.fontWeight.semibold,
+    color: PsychiColors.textPrimary,
+    marginBottom: 2,
+  },
+  acceptingSubtitle: {
+    fontSize: Typography.fontSize.sm,
+    color: PsychiColors.textMuted,
   },
   infoCard: {
     flexDirection: 'row',
