@@ -21,11 +21,32 @@ import { PsychiColors, Spacing, BorderRadius, Shadows, Typography } from '@/cons
 import { BankIcon, DocumentIcon, ChevronRightIcon } from '@/components/icons';
 import { ChevronLeftIcon, CheckIcon, LockIcon } from '@/components/icons';
 
-type PayoutSchedule = 'weekly' | 'biweekly' | 'monthly';
+type PayoutSchedule = 'manual' | 'daily' | 'weekly' | 'monthly';
+
+const DAYS_OF_WEEK = [
+  { value: 'monday', label: 'Monday' },
+  { value: 'tuesday', label: 'Tuesday' },
+  { value: 'wednesday', label: 'Wednesday' },
+  { value: 'thursday', label: 'Thursday' },
+  { value: 'friday', label: 'Friday' },
+];
+
+const DAYS_OF_MONTH = Array.from({ length: 28 }, (_, i) => ({
+  value: i + 1,
+  label: `${i + 1}${getOrdinalSuffix(i + 1)}`,
+}));
+
+function getOrdinalSuffix(n: number): string {
+  const s = ['th', 'st', 'nd', 'rd'];
+  const v = n % 100;
+  return s[(v - 20) % 10] || s[v] || s[0];
+}
 
 export default function PayoutSettingsScreen() {
   const [bankAccountLinked, setBankAccountLinked] = useState(false);
   const [payoutSchedule, setPayoutSchedule] = useState<PayoutSchedule>('weekly');
+  const [weeklyDay, setWeeklyDay] = useState('friday');
+  const [monthlyDay, setMonthlyDay] = useState(1);
   const [isLinking, setIsLinking] = useState(false);
 
   // Bank account form
@@ -65,13 +86,28 @@ export default function PayoutSettingsScreen() {
 
   const handleUpdateSchedule = (schedule: PayoutSchedule) => {
     setPayoutSchedule(schedule);
-    Alert.alert('Updated', `Payout schedule set to ${schedule}`);
+  };
+
+  const getScheduleDescription = (schedule: PayoutSchedule): string => {
+    switch (schedule) {
+      case 'manual':
+        return 'You trigger payouts manually';
+      case 'daily':
+        return 'Every business day';
+      case 'weekly':
+        return `Every ${DAYS_OF_WEEK.find(d => d.value === weeklyDay)?.label || 'Friday'}`;
+      case 'monthly':
+        return `${monthlyDay}${getOrdinalSuffix(monthlyDay)} of each month`;
+      default:
+        return '';
+    }
   };
 
   const scheduleOptions = [
-    { id: 'weekly' as PayoutSchedule, label: 'Weekly', description: 'Every Friday' },
-    { id: 'biweekly' as PayoutSchedule, label: 'Bi-weekly', description: 'Every other Friday' },
-    { id: 'monthly' as PayoutSchedule, label: 'Monthly', description: '1st of each month' },
+    { id: 'manual' as PayoutSchedule, label: 'Manual', description: 'Trigger payouts yourself' },
+    { id: 'daily' as PayoutSchedule, label: 'Daily', description: 'Every business day (2-day delay)' },
+    { id: 'weekly' as PayoutSchedule, label: 'Weekly', description: 'Choose your payout day' },
+    { id: 'monthly' as PayoutSchedule, label: 'Monthly', description: 'Choose your payout date' },
   ];
 
   return (
@@ -201,12 +237,13 @@ export default function PayoutSettingsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Payout Schedule</Text>
           <View style={styles.scheduleCard}>
-            {scheduleOptions.map((option) => (
+            {scheduleOptions.map((option, index) => (
               <TouchableOpacity
                 key={option.id}
                 style={[
                   styles.scheduleOption,
                   payoutSchedule === option.id && styles.scheduleOptionActive,
+                  index === scheduleOptions.length - 1 && styles.scheduleOptionLast,
                 ]}
                 onPress={() => handleUpdateSchedule(option.id)}
               >
@@ -229,6 +266,74 @@ export default function PayoutSettingsScreen() {
                 </View>
               </TouchableOpacity>
             ))}
+          </View>
+
+          {/* Weekly Day Picker */}
+          {payoutSchedule === 'weekly' && (
+            <View style={styles.dayPickerCard}>
+              <Text style={styles.dayPickerLabel}>Payout Day</Text>
+              <View style={styles.dayPickerOptions}>
+                {DAYS_OF_WEEK.map((day) => (
+                  <TouchableOpacity
+                    key={day.value}
+                    style={[
+                      styles.dayOption,
+                      weeklyDay === day.value && styles.dayOptionActive,
+                    ]}
+                    onPress={() => setWeeklyDay(day.value)}
+                  >
+                    <Text style={[
+                      styles.dayOptionText,
+                      weeklyDay === day.value && styles.dayOptionTextActive,
+                    ]}>
+                      {day.label.slice(0, 3)}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <Text style={styles.dayPickerNote}>
+                Payouts will be sent every {DAYS_OF_WEEK.find(d => d.value === weeklyDay)?.label}
+              </Text>
+            </View>
+          )}
+
+          {/* Monthly Day Picker */}
+          {payoutSchedule === 'monthly' && (
+            <View style={styles.dayPickerCard}>
+              <Text style={styles.dayPickerLabel}>Payout Date</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.monthlyDayScroll}
+              >
+                {DAYS_OF_MONTH.map((day) => (
+                  <TouchableOpacity
+                    key={day.value}
+                    style={[
+                      styles.monthDayOption,
+                      monthlyDay === day.value && styles.monthDayOptionActive,
+                    ]}
+                    onPress={() => setMonthlyDay(day.value)}
+                  >
+                    <Text style={[
+                      styles.monthDayText,
+                      monthlyDay === day.value && styles.monthDayTextActive,
+                    ]}>
+                      {day.value}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+              <Text style={styles.dayPickerNote}>
+                Payouts will be sent on the {monthlyDay}{getOrdinalSuffix(monthlyDay)} of each month
+              </Text>
+            </View>
+          )}
+
+          {/* Current Schedule Summary */}
+          <View style={styles.scheduleSummary}>
+            <Text style={styles.scheduleSummaryLabel}>Current Schedule:</Text>
+            <Text style={styles.scheduleSummaryValue}>{getScheduleDescription(payoutSchedule)}</Text>
           </View>
         </View>
 
@@ -452,6 +557,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0,0,0,0.05)',
   },
+  scheduleOptionLast: {
+    borderBottomWidth: 0,
+  },
   scheduleOptionActive: {
     backgroundColor: 'rgba(74, 144, 226, 0.05)',
   },
@@ -553,5 +661,92 @@ const styles = StyleSheet.create({
   taxArrow: {
     fontSize: 24,
     color: PsychiColors.textSoft,
+  },
+  dayPickerCard: {
+    backgroundColor: PsychiColors.white,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.md,
+    marginTop: Spacing.md,
+    ...Shadows.soft,
+  },
+  dayPickerLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: PsychiColors.midnight,
+    marginBottom: Spacing.sm,
+  },
+  dayPickerOptions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: Spacing.xs,
+  },
+  dayOption: {
+    flex: 1,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.xs,
+    borderRadius: BorderRadius.md,
+    backgroundColor: PsychiColors.cream,
+    alignItems: 'center',
+  },
+  dayOptionActive: {
+    backgroundColor: PsychiColors.azure,
+  },
+  dayOptionText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: PsychiColors.textSecondary,
+  },
+  dayOptionTextActive: {
+    color: PsychiColors.white,
+    fontWeight: '600',
+  },
+  dayPickerNote: {
+    fontSize: 12,
+    color: PsychiColors.textMuted,
+    marginTop: Spacing.sm,
+    textAlign: 'center',
+  },
+  monthlyDayScroll: {
+    paddingVertical: Spacing.xs,
+    gap: Spacing.xs,
+  },
+  monthDayOption: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: PsychiColors.cream,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: Spacing.xs,
+  },
+  monthDayOptionActive: {
+    backgroundColor: PsychiColors.azure,
+  },
+  monthDayText: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: PsychiColors.textSecondary,
+  },
+  monthDayTextActive: {
+    color: PsychiColors.white,
+    fontWeight: '600',
+  },
+  scheduleSummary: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: 'rgba(74, 144, 226, 0.1)',
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    marginTop: Spacing.md,
+  },
+  scheduleSummaryLabel: {
+    fontSize: 14,
+    color: PsychiColors.textSecondary,
+  },
+  scheduleSummaryValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: PsychiColors.azure,
   },
 });
