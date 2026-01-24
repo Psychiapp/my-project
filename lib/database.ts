@@ -398,10 +398,17 @@ export async function updateAcceptingClients(
 ): Promise<boolean> {
   if (!supabase) return false;
 
+  // Use upsert to create row if it doesn't exist
   const { error } = await supabase
     .from('supporter_details')
-    .update({ accepting_clients: acceptingClients })
-    .eq('supporter_id', supporterId);
+    .upsert(
+      {
+        supporter_id: supporterId,
+        accepting_clients: acceptingClients,
+        updated_at: new Date().toISOString()
+      },
+      { onConflict: 'supporter_id' }
+    );
 
   if (error) {
     console.error('Error updating accepting clients status:', error);
@@ -1037,14 +1044,22 @@ export async function getSupporterAvailability(supporterId: string): Promise<{
     .single();
 
   if (error) {
+    // If no row exists (PGRST116), return defaults
+    if (error.code === 'PGRST116') {
+      return {
+        availability: {},
+        isAvailable: true,
+        acceptingClients: true,
+      };
+    }
     console.error('Error fetching supporter availability:', error);
     return null;
   }
 
   return {
     availability: data.availability || {},
-    isAvailable: data.is_available || false,
-    acceptingClients: data.accepting_clients || false,
+    isAvailable: data.is_available ?? true,
+    acceptingClients: data.accepting_clients ?? true,
   };
 }
 
