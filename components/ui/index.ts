@@ -7,7 +7,7 @@
 export { GlassCard, GlassCardSimple, CompactCard, SectionCard } from './GlassCard';
 
 // Buttons
-export { PremiumButton, CircularButton, TextButton, IconButton } from './PremiumButton';
+export { PremiumButton, TextButton } from './PremiumButton';
 
 // Inputs
 export { PremiumInput, SimpleInput, InlineInput, Textarea } from './PremiumInput';

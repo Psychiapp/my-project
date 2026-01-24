@@ -10,6 +10,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   PsychiColors,
@@ -17,6 +18,7 @@ import {
   Spacing,
   BorderRadius,
   Shadows,
+  Gradients,
 } from '@/constants/theme';
 import {
   CalendarIcon,
@@ -26,6 +28,7 @@ import {
   SparkleIcon,
   ArrowRightIcon,
   PlusIcon,
+  ChevronRightIcon,
 } from '@/components/icons';
 import DashboardTutorial from '@/components/DashboardTutorial';
 
@@ -62,7 +65,6 @@ export default function ClientHomeScreen() {
       try {
         const completed = await AsyncStorage.getItem(TUTORIAL_COMPLETED_KEY);
         if (!completed) {
-          // Small delay to let the dashboard render first
           setTimeout(() => setShowTutorial(true), 500);
         }
       } catch (error) {
@@ -72,7 +74,6 @@ export default function ClientHomeScreen() {
     checkTutorialStatus();
   }, []);
 
-  // Handle tutorial completion
   const handleTutorialComplete = async () => {
     try {
       await AsyncStorage.setItem(TUTORIAL_COMPLETED_KEY, 'true');
@@ -83,7 +84,6 @@ export default function ClientHomeScreen() {
     }
   };
 
-  // Handle tutorial skip (same as complete - they've seen it)
   const handleTutorialClose = async () => {
     try {
       await AsyncStorage.setItem(TUTORIAL_COMPLETED_KEY, 'true');
@@ -110,12 +110,15 @@ export default function ClientHomeScreen() {
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: insets.top + Spacing['4'], paddingBottom: Spacing['8'] }}
+        contentContainerStyle={{
+          paddingTop: insets.top + Spacing['6'],
+          paddingBottom: Spacing['12']
+        }}
       >
-        {/* Header */}
+        {/* Editorial Header */}
         <View style={styles.header}>
-          <View>
-            <Text style={styles.greeting}>Welcome back,</Text>
+          <View style={styles.headerLeft}>
+            <Text style={styles.greeting}>Welcome back</Text>
             <Text style={styles.userName}>{profile?.firstName || 'there'}</Text>
           </View>
           <TouchableOpacity
@@ -123,68 +126,95 @@ export default function ClientHomeScreen() {
             onPress={() => router.push('/(client)/profile')}
             activeOpacity={0.7}
           >
-            <SettingsIcon size={22} color={PsychiColors.textMuted} />
+            <SettingsIcon size={20} color={PsychiColors.textSecondary} />
           </TouchableOpacity>
         </View>
 
-        {/* Hero Card */}
+        {/* Premium Hero Card */}
         <View style={styles.heroCard}>
-          <View style={styles.heroContent}>
-            <View style={styles.heroIconContainer}>
-              <SparkleIcon size={24} color={PsychiColors.royalBlue} weight="regular" />
+          <LinearGradient
+            colors={Gradients.glassCard}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.heroGradient}
+          >
+            <View style={styles.heroContent}>
+              <View style={styles.heroIconContainer}>
+                <SparkleIcon size={22} color={PsychiColors.royalBlue} weight="regular" />
+              </View>
+              <Text style={styles.heroTitle}>
+                {assignedSupporter
+                  ? 'Ready for your next session?'
+                  : 'Your wellness journey starts here'}
+              </Text>
+              <Text style={styles.heroSubtitle}>
+                {assignedSupporter !== null
+                  ? `You're connected with ${(assignedSupporter as AssignedSupporter).name}`
+                  : 'Connect with a trained peer supporter who understands'}
+              </Text>
+              <TouchableOpacity
+                style={styles.heroCta}
+                onPress={() => router.push('/(client)/book')}
+                activeOpacity={0.8}
+              >
+                <LinearGradient
+                  colors={Gradients.primaryButton}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.heroCtaGradient}
+                >
+                  <Text style={styles.heroCtaText}>Book a Session</Text>
+                  <ArrowRightIcon size={16} color={PsychiColors.white} />
+                </LinearGradient>
+              </TouchableOpacity>
             </View>
-            <Text style={styles.heroTitle}>
-              {assignedSupporter
-                ? `Ready for your next session?`
-                : 'Your wellness journey starts here'}
-            </Text>
-            <Text style={styles.heroSubtitle}>
-              {assignedSupporter !== null
-                ? `You're connected with ${(assignedSupporter as AssignedSupporter).name}`
-                : 'Book a session to connect with a trained peer supporter'}
-            </Text>
-            <TouchableOpacity
-              style={styles.heroCta}
-              onPress={() => router.push('/(client)/book')}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.heroCtaText}>Book a Session</Text>
-              <ArrowRightIcon size={18} color={PsychiColors.white} />
-            </TouchableOpacity>
+          </LinearGradient>
+        </View>
+
+        {/* Stats Section */}
+        <View style={styles.statsSection}>
+          <Text style={styles.sectionLabel}>YOUR PROGRESS</Text>
+          <View style={styles.statsGrid}>
+            <View style={styles.statCard}>
+              <View style={[styles.statIconBg, { backgroundColor: `${PsychiColors.royalBlue}10` }]}>
+                <CalendarIcon size={18} color={PsychiColors.royalBlue} />
+              </View>
+              <Text style={styles.statValue}>{upcomingSessions}</Text>
+              <Text style={styles.statLabel}>Upcoming</Text>
+            </View>
+
+            <View style={styles.statCard}>
+              <View style={[styles.statIconBg, { backgroundColor: `${PsychiColors.success}10` }]}>
+                <CheckCircleIcon size={18} color={PsychiColors.success} />
+              </View>
+              <Text style={styles.statValue}>{completedSessions}</Text>
+              <Text style={styles.statLabel}>Completed</Text>
+            </View>
+
+            <View style={styles.statCard}>
+              <View style={[styles.statIconBg, { backgroundColor: `${PsychiColors.lavender}15` }]}>
+                <CardIcon size={18} color={PsychiColors.violet} />
+              </View>
+              <Text style={styles.statValueSmall}>
+                {selectedPlan ? planLabels[selectedPlan] : 'Free'}
+              </Text>
+              <Text style={styles.statLabel}>Plan</Text>
+            </View>
           </View>
         </View>
 
-        {/* Stats Grid */}
-        <View style={styles.statsGrid}>
-          <View style={styles.statCard}>
-            <View style={[styles.statIconBg, { backgroundColor: `${PsychiColors.royalBlue}12` }]}>
-              <CalendarIcon size={20} color={PsychiColors.royalBlue} />
-            </View>
-            <Text style={styles.statValue}>{upcomingSessions}</Text>
-            <Text style={styles.statLabel}>Upcoming</Text>
-          </View>
-
-          <View style={styles.statCard}>
-            <View style={[styles.statIconBg, { backgroundColor: `${PsychiColors.success}12` }]}>
-              <CheckCircleIcon size={20} color={PsychiColors.success} />
-            </View>
-            <Text style={styles.statValue}>{completedSessions}</Text>
-            <Text style={styles.statLabel}>Completed</Text>
-          </View>
-
-          <View style={styles.statCard}>
-            <View style={[styles.statIconBg, { backgroundColor: `${PsychiColors.lavender}20` }]}>
-              <CardIcon size={20} color={PsychiColors.violet} />
-            </View>
-            <Text style={styles.statValueSmall}>{selectedPlan ? planLabels[selectedPlan] : 'None'}</Text>
-            <Text style={styles.statLabel}>Plan</Text>
-          </View>
-        </View>
+        {/* Divider */}
+        <View style={styles.divider} />
 
         {/* Your Supporter - shown when assigned */}
         {assignedSupporter !== null && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Your Supporter</Text>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Your Supporter</Text>
+              <TouchableOpacity activeOpacity={0.7}>
+                <Text style={styles.sectionAction}>View Profile</Text>
+              </TouchableOpacity>
+            </View>
             <View style={styles.supporterCard}>
               <Image
                 source={{ uri: (assignedSupporter as AssignedSupporter).image }}
@@ -192,13 +222,17 @@ export default function ClientHomeScreen() {
               />
               <View style={styles.supporterInfo}>
                 <View style={styles.supporterHeader}>
-                  <Text style={styles.supporterName}>{(assignedSupporter as AssignedSupporter).name}</Text>
+                  <Text style={styles.supporterName}>
+                    {(assignedSupporter as AssignedSupporter).name}
+                  </Text>
                   <View style={styles.matchBadge}>
-                    <Text style={styles.matchBadgeText}>{(assignedSupporter as AssignedSupporter).compatibilityScore}%</Text>
+                    <Text style={styles.matchBadgeText}>
+                      {(assignedSupporter as AssignedSupporter).compatibilityScore}% match
+                    </Text>
                   </View>
                 </View>
                 <Text style={styles.supporterMeta}>
-                  {(assignedSupporter as AssignedSupporter).year} at {(assignedSupporter as AssignedSupporter).university}
+                  {(assignedSupporter as AssignedSupporter).year} · {(assignedSupporter as AssignedSupporter).university}
                 </Text>
                 <View style={styles.specialtiesRow}>
                   {(assignedSupporter as AssignedSupporter).specialties.slice(0, 3).map((specialty: string, idx: number) => (
@@ -214,18 +248,23 @@ export default function ClientHomeScreen() {
 
         {/* Quick Actions */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <View style={styles.actionsGrid}>
+          <Text style={styles.sectionLabel}>QUICK ACTIONS</Text>
+          <View style={styles.actionsContainer}>
             <TouchableOpacity
               style={styles.actionCard}
               onPress={() => router.push('/(client)/book')}
               activeOpacity={0.7}
             >
-              <View style={[styles.actionIconBg, { backgroundColor: `${PsychiColors.royalBlue}10` }]}>
-                <PlusIcon size={22} color={PsychiColors.royalBlue} />
+              <View style={styles.actionLeft}>
+                <View style={[styles.actionIconBg, { backgroundColor: `${PsychiColors.royalBlue}08` }]}>
+                  <PlusIcon size={20} color={PsychiColors.royalBlue} />
+                </View>
+                <View style={styles.actionText}>
+                  <Text style={styles.actionTitle}>Book Session</Text>
+                  <Text style={styles.actionSubtitle}>Schedule your next session</Text>
+                </View>
               </View>
-              <Text style={styles.actionTitle}>Book Session</Text>
-              <Text style={styles.actionSubtitle}>Schedule support</Text>
+              <ChevronRightIcon size={18} color={PsychiColors.textSoft} />
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -233,11 +272,16 @@ export default function ClientHomeScreen() {
               onPress={() => router.push('/(client)/sessions')}
               activeOpacity={0.7}
             >
-              <View style={[styles.actionIconBg, { backgroundColor: `${PsychiColors.coral}10` }]}>
-                <CalendarIcon size={22} color={PsychiColors.coral} />
+              <View style={styles.actionLeft}>
+                <View style={[styles.actionIconBg, { backgroundColor: `${PsychiColors.coral}08` }]}>
+                  <CalendarIcon size={20} color={PsychiColors.coral} />
+                </View>
+                <View style={styles.actionText}>
+                  <Text style={styles.actionTitle}>Sessions</Text>
+                  <Text style={styles.actionSubtitle}>View upcoming & past</Text>
+                </View>
               </View>
-              <Text style={styles.actionTitle}>Sessions</Text>
-              <Text style={styles.actionSubtitle}>View history</Text>
+              <ChevronRightIcon size={18} color={PsychiColors.textSoft} />
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -245,11 +289,16 @@ export default function ClientHomeScreen() {
               onPress={() => router.push('/(client)/profile')}
               activeOpacity={0.7}
             >
-              <View style={[styles.actionIconBg, { backgroundColor: `${PsychiColors.lavender}20` }]}>
-                <SettingsIcon size={22} color={PsychiColors.violet} />
+              <View style={styles.actionLeft}>
+                <View style={[styles.actionIconBg, { backgroundColor: `${PsychiColors.lavender}12` }]}>
+                  <SettingsIcon size={20} color={PsychiColors.violet} />
+                </View>
+                <View style={styles.actionText}>
+                  <Text style={styles.actionTitle}>Settings</Text>
+                  <Text style={styles.actionSubtitle}>Preferences & account</Text>
+                </View>
               </View>
-              <Text style={styles.actionTitle}>Settings</Text>
-              <Text style={styles.actionSubtitle}>Preferences</Text>
+              <ChevronRightIcon size={18} color={PsychiColors.textSoft} />
             </TouchableOpacity>
           </View>
         </View>
@@ -276,126 +325,153 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  // Header
+  // Editorial Header
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: Spacing['5'],
-    marginBottom: Spacing['5'],
+    alignItems: 'flex-start',
+    paddingHorizontal: Spacing['6'],
+    marginBottom: Spacing['7'],
+  },
+  headerLeft: {
+    flex: 1,
   },
   greeting: {
     fontSize: Typography.fontSize.sm,
     color: PsychiColors.textMuted,
     fontWeight: Typography.fontWeight.medium,
-    letterSpacing: Typography.letterSpacing.wide,
+    letterSpacing: Typography.letterSpacing.wider,
+    textTransform: 'uppercase',
+    marginBottom: Spacing['1'],
   },
   userName: {
-    fontSize: Typography.fontSize['2xl'],
+    fontSize: Typography.fontSize['4xl'],
     color: PsychiColors.textPrimary,
-    fontWeight: Typography.fontWeight.semibold,
-    marginTop: Spacing['0.5'],
+    fontWeight: Typography.fontWeight.bold,
+    letterSpacing: Typography.letterSpacing.tighter,
+    fontFamily: Typography.fontFamily.serif,
   },
   settingsButton: {
     width: 44,
     height: 44,
-    borderRadius: BorderRadius.lg,
+    borderRadius: 14,
     backgroundColor: PsychiColors.cloud,
     alignItems: 'center',
     justifyContent: 'center',
-    ...Shadows.sm,
+    borderWidth: 1,
+    borderColor: PsychiColors.borderUltraLight,
   },
 
-  // Hero Card
+  // Premium Hero Card
   heroCard: {
     marginHorizontal: Spacing['5'],
-    marginBottom: Spacing['6'],
-    backgroundColor: PsychiColors.cloud,
-    borderRadius: BorderRadius.xl,
+    marginBottom: Spacing['7'],
+    borderRadius: 24,
     overflow: 'hidden',
-    ...Shadows.soft,
+    ...Shadows.premium,
+  },
+  heroGradient: {
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: PsychiColors.borderGlass,
   },
   heroContent: {
-    padding: Spacing['5'],
+    padding: Spacing['6'],
   },
   heroIconContainer: {
     width: 48,
     height: 48,
-    borderRadius: BorderRadius.lg,
-    backgroundColor: `${PsychiColors.royalBlue}10`,
+    borderRadius: 16,
+    backgroundColor: `${PsychiColors.royalBlue}08`,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: Spacing['4'],
+    marginBottom: Spacing['5'],
   },
   heroTitle: {
-    fontSize: Typography.fontSize.xl,
+    fontSize: Typography.fontSize['2xl'],
     color: PsychiColors.textPrimary,
-    fontWeight: Typography.fontWeight.semibold,
+    fontWeight: Typography.fontWeight.bold,
+    letterSpacing: Typography.letterSpacing.tight,
     marginBottom: Spacing['2'],
+    lineHeight: Typography.fontSize['2xl'] * Typography.lineHeight.tight,
   },
   heroSubtitle: {
     fontSize: Typography.fontSize.base,
-    color: PsychiColors.textMuted,
+    color: PsychiColors.textSecondary,
     lineHeight: Typography.fontSize.base * Typography.lineHeight.relaxed,
-    marginBottom: Spacing['5'],
+    marginBottom: Spacing['6'],
   },
   heroCta: {
+    borderRadius: BorderRadius.full,
+    overflow: 'hidden',
+    alignSelf: 'flex-start',
+  },
+  heroCtaGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: PsychiColors.royalBlue,
-    paddingVertical: Spacing['3'],
-    paddingHorizontal: Spacing['5'],
-    borderRadius: BorderRadius.lg,
+    paddingVertical: 14,
+    paddingHorizontal: Spacing['6'],
     gap: Spacing['2'],
     ...Shadows.button,
   },
   heroCtaText: {
     fontSize: Typography.fontSize.base,
     color: PsychiColors.white,
-    fontWeight: Typography.fontWeight.medium,
+    fontWeight: Typography.fontWeight.semibold,
   },
 
-  // Stats Grid
-  statsGrid: {
-    flexDirection: 'row',
+  // Stats Section
+  statsSection: {
     paddingHorizontal: Spacing['5'],
     marginBottom: Spacing['6'],
+  },
+  statsGrid: {
+    flexDirection: 'row',
     gap: Spacing['3'],
   },
   statCard: {
     flex: 1,
     backgroundColor: PsychiColors.cloud,
-    borderRadius: BorderRadius.xl,
+    borderRadius: 18,
     padding: Spacing['4'],
-    alignItems: 'center',
-    ...Shadows.sm,
+    alignItems: 'flex-start',
+    borderWidth: 1,
+    borderColor: PsychiColors.borderUltraLight,
   },
   statIconBg: {
-    width: 40,
-    height: 40,
-    borderRadius: BorderRadius.lg,
+    width: 36,
+    height: 36,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: Spacing['2'],
+    marginBottom: Spacing['3'],
   },
   statValue: {
-    fontSize: Typography.fontSize['2xl'],
-    fontWeight: Typography.fontWeight.semibold,
+    fontSize: Typography.fontSize['3xl'],
+    fontWeight: Typography.fontWeight.bold,
     color: PsychiColors.textPrimary,
-    marginBottom: Spacing['0.5'],
+    letterSpacing: Typography.letterSpacing.tighter,
   },
   statValueSmall: {
-    fontSize: Typography.fontSize.sm,
+    fontSize: Typography.fontSize.base,
     fontWeight: Typography.fontWeight.semibold,
     color: PsychiColors.textPrimary,
-    marginBottom: Spacing['0.5'],
   },
   statLabel: {
     fontSize: Typography.fontSize.xs,
     color: PsychiColors.textMuted,
     fontWeight: Typography.fontWeight.medium,
     letterSpacing: Typography.letterSpacing.wide,
+    marginTop: Spacing['0.5'],
+  },
+
+  // Divider
+  divider: {
+    height: 1,
+    backgroundColor: PsychiColors.divider,
+    marginHorizontal: Spacing['6'],
+    marginVertical: Spacing['5'],
   },
 
   // Section
@@ -403,26 +479,44 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing['5'],
     marginBottom: Spacing['6'],
   },
-  sectionTitle: {
-    fontSize: Typography.fontSize.lg,
-    fontWeight: Typography.fontWeight.semibold,
-    color: PsychiColors.textPrimary,
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: Spacing['4'],
+  },
+  sectionLabel: {
+    fontSize: Typography.fontSize.xs,
+    color: PsychiColors.textMuted,
+    fontWeight: Typography.fontWeight.semibold,
+    letterSpacing: Typography.letterSpacing.widest,
+    marginBottom: Spacing['4'],
+  },
+  sectionTitle: {
+    fontSize: Typography.fontSize.xl,
+    fontWeight: Typography.fontWeight.bold,
+    color: PsychiColors.textPrimary,
     letterSpacing: Typography.letterSpacing.tight,
+  },
+  sectionAction: {
+    fontSize: Typography.fontSize.sm,
+    color: PsychiColors.royalBlue,
+    fontWeight: Typography.fontWeight.medium,
   },
 
   // Supporter Card
   supporterCard: {
     flexDirection: 'row',
     backgroundColor: PsychiColors.cloud,
-    borderRadius: BorderRadius.xl,
-    padding: Spacing['4'],
-    ...Shadows.soft,
+    borderRadius: 20,
+    padding: Spacing['5'],
+    borderWidth: 1,
+    borderColor: PsychiColors.borderUltraLight,
   },
   supporterImage: {
     width: 72,
     height: 72,
-    borderRadius: BorderRadius.lg,
+    borderRadius: 16,
     marginRight: Spacing['4'],
   },
   supporterInfo: {
@@ -440,20 +534,20 @@ const styles = StyleSheet.create({
     color: PsychiColors.textPrimary,
   },
   matchBadge: {
-    backgroundColor: `${PsychiColors.success}15`,
-    paddingHorizontal: Spacing['2'],
-    paddingVertical: Spacing['0.5'],
+    backgroundColor: `${PsychiColors.success}12`,
+    paddingHorizontal: Spacing['2.5'],
+    paddingVertical: Spacing['1'],
     borderRadius: BorderRadius.full,
   },
   matchBadgeText: {
-    fontSize: Typography.fontSize.xs,
+    fontSize: Typography.fontSize['2xs'],
     fontWeight: Typography.fontWeight.semibold,
     color: PsychiColors.success,
   },
   supporterMeta: {
     fontSize: Typography.fontSize.sm,
     color: PsychiColors.textMuted,
-    marginBottom: Spacing['2'],
+    marginBottom: Spacing['3'],
   },
   specialtiesRow: {
     flexDirection: 'row',
@@ -472,35 +566,44 @@ const styles = StyleSheet.create({
     fontWeight: Typography.fontWeight.medium,
   },
 
-  // Quick Actions
-  actionsGrid: {
-    flexDirection: 'row',
-    gap: Spacing['3'],
+  // Quick Actions - Editorial List Style
+  actionsContainer: {
+    gap: Spacing['2'],
   },
   actionCard: {
-    flex: 1,
-    backgroundColor: PsychiColors.cloud,
-    borderRadius: BorderRadius.xl,
-    padding: Spacing['4'],
+    flexDirection: 'row',
     alignItems: 'center',
-    ...Shadows.sm,
+    justifyContent: 'space-between',
+    backgroundColor: PsychiColors.cloud,
+    borderRadius: 16,
+    padding: Spacing['4'],
+    borderWidth: 1,
+    borderColor: PsychiColors.borderUltraLight,
+  },
+  actionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
   },
   actionIconBg: {
-    width: 48,
-    height: 48,
-    borderRadius: BorderRadius.lg,
+    width: 44,
+    height: 44,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: Spacing['3'],
+    marginRight: Spacing['4'],
+  },
+  actionText: {
+    flex: 1,
   },
   actionTitle: {
-    fontSize: Typography.fontSize.sm,
+    fontSize: Typography.fontSize.base,
     fontWeight: Typography.fontWeight.semibold,
     color: PsychiColors.textPrimary,
     marginBottom: Spacing['0.5'],
   },
   actionSubtitle: {
-    fontSize: Typography.fontSize.xs,
+    fontSize: Typography.fontSize.sm,
     color: PsychiColors.textMuted,
   },
 });

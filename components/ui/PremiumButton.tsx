@@ -1,7 +1,6 @@
 /**
- * PremiumButton Component
- * Elegant, minimal buttons with refined styling
- * Tactile but subtle design
+ * PremiumButton - Editorial-quality button with arrow affordance
+ * Pill-shaped with subtle animations
  */
 
 import React from 'react';
@@ -9,208 +8,164 @@ import {
   TouchableOpacity,
   Text,
   StyleSheet,
-  ActivityIndicator,
-  View,
   ViewStyle,
   TextStyle,
+  ActivityIndicator,
 } from 'react-native';
-import {
-  PsychiColors,
-  BorderRadius,
-  Spacing,
-  Typography,
-  Shadows,
-} from '@/constants/theme';
+import { LinearGradient } from 'expo-linear-gradient';
+import { PsychiColors, Shadows, Spacing, Typography, Gradients, BorderRadius } from '@/constants/theme';
+import { ArrowRightIcon, ChevronRightIcon } from '@/components/icons';
 
 interface PremiumButtonProps {
   title: string;
   onPress: () => void;
   variant?: 'primary' | 'secondary' | 'ghost' | 'accent' | 'outline';
   size?: 'sm' | 'md' | 'lg';
+  showArrow?: boolean;
+  arrowType?: 'arrow' | 'chevron';
   disabled?: boolean;
   loading?: boolean;
-  icon?: React.ReactNode;
-  iconPosition?: 'left' | 'right';
   fullWidth?: boolean;
   style?: ViewStyle;
   textStyle?: TextStyle;
+  icon?: React.ReactNode;
 }
 
-// Size configurations
-const sizeConfig = {
-  sm: {
-    paddingVertical: Spacing['2'],
-    paddingHorizontal: Spacing['4'],
-    fontSize: Typography.fontSize.sm,
-    iconSpacing: Spacing['1.5'],
-  },
-  md: {
-    paddingVertical: Spacing['3'],
-    paddingHorizontal: Spacing['5'],
-    fontSize: Typography.fontSize.base,
-    iconSpacing: Spacing['2'],
-  },
-  lg: {
-    paddingVertical: Spacing['4'],
-    paddingHorizontal: Spacing['6'],
-    fontSize: Typography.fontSize.lg,
-    iconSpacing: Spacing['2.5'],
-  },
-};
-
-// Variant configurations
-const variantConfig = {
-  primary: {
-    backgroundColor: PsychiColors.royalBlue,
-    borderColor: 'transparent',
-    borderWidth: 0,
-    textColor: PsychiColors.white,
-    fontWeight: Typography.fontWeight.medium,
-    shadow: Shadows.button,
-    loadingColor: PsychiColors.white,
-  },
-  secondary: {
-    backgroundColor: PsychiColors.frost,
-    borderColor: PsychiColors.borderLight,
-    borderWidth: 1,
-    textColor: PsychiColors.textPrimary,
-    fontWeight: Typography.fontWeight.medium,
-    shadow: Shadows.sm,
-    loadingColor: PsychiColors.textPrimary,
-  },
-  ghost: {
-    backgroundColor: 'transparent',
-    borderColor: 'transparent',
-    borderWidth: 0,
-    textColor: PsychiColors.textSecondary,
-    fontWeight: Typography.fontWeight.medium,
-    shadow: Shadows.none,
-    loadingColor: PsychiColors.textSecondary,
-  },
-  accent: {
-    backgroundColor: PsychiColors.coral,
-    borderColor: 'transparent',
-    borderWidth: 0,
-    textColor: PsychiColors.white,
-    fontWeight: Typography.fontWeight.medium,
-    shadow: Shadows.glow,
-    loadingColor: PsychiColors.white,
-  },
-  outline: {
-    backgroundColor: 'transparent',
-    borderColor: PsychiColors.borderMedium,
-    borderWidth: 1,
-    textColor: PsychiColors.textPrimary,
-    fontWeight: Typography.fontWeight.medium,
-    shadow: Shadows.none,
-    loadingColor: PsychiColors.textPrimary,
-  },
-};
-
-export const PremiumButton: React.FC<PremiumButtonProps> = ({
+export function PremiumButton({
   title,
   onPress,
   variant = 'primary',
   size = 'md',
+  showArrow = true,
+  arrowType = 'arrow',
   disabled = false,
   loading = false,
-  icon,
-  iconPosition = 'left',
   fullWidth = false,
   style,
   textStyle,
-}) => {
-  const sizeStyles = sizeConfig[size];
-  const variantStyles = variantConfig[variant];
+  icon,
+}: PremiumButtonProps) {
+  const sizeStyles = {
+    sm: {
+      paddingVertical: Spacing['2.5'],
+      paddingHorizontal: Spacing['4'],
+      fontSize: Typography.fontSize.sm,
+      iconSize: 14,
+    },
+    md: {
+      paddingVertical: 14,
+      paddingHorizontal: Spacing['6'],
+      fontSize: Typography.fontSize.base,
+      iconSize: 16,
+    },
+    lg: {
+      paddingVertical: Spacing['4'],
+      paddingHorizontal: Spacing['8'],
+      fontSize: Typography.fontSize.lg,
+      iconSize: 18,
+    },
+  };
 
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      disabled={disabled || loading}
-      activeOpacity={0.7}
-      style={[
-        styles.container,
-        {
-          backgroundColor: variantStyles.backgroundColor,
-          borderColor: variantStyles.borderColor,
-          borderWidth: variantStyles.borderWidth,
-          paddingVertical: sizeStyles.paddingVertical,
-          paddingHorizontal: sizeStyles.paddingHorizontal,
-        },
-        variantStyles.shadow,
-        fullWidth && styles.fullWidth,
-        disabled && styles.disabled,
-        style,
-      ]}
-    >
+  const currentSize = sizeStyles[size];
+  const ArrowComponent = arrowType === 'chevron' ? ChevronRightIcon : ArrowRightIcon;
+
+  const renderContent = () => (
+    <>
+      {icon && <>{icon}</>}
       {loading ? (
         <ActivityIndicator
-          color={variantStyles.loadingColor}
+          color={variant === 'primary' || variant === 'accent' ? PsychiColors.white : PsychiColors.textPrimary}
           size="small"
         />
       ) : (
-        <View style={styles.content}>
-          {icon && iconPosition === 'left' && (
-            <View style={{ marginRight: sizeStyles.iconSpacing }}>{icon}</View>
-          )}
+        <>
           <Text
             style={[
               styles.text,
-              {
-                color: variantStyles.textColor,
-                fontSize: sizeStyles.fontSize,
-                fontWeight: variantStyles.fontWeight,
-              },
+              { fontSize: currentSize.fontSize },
+              variant === 'primary' && styles.textPrimary,
+              variant === 'accent' && styles.textAccent,
+              variant === 'secondary' && styles.textSecondary,
+              variant === 'ghost' && styles.textGhost,
+              variant === 'outline' && styles.textOutline,
+              disabled && styles.textDisabled,
               textStyle,
             ]}
           >
             {title}
           </Text>
-          {icon && iconPosition === 'right' && (
-            <View style={{ marginLeft: sizeStyles.iconSpacing }}>{icon}</View>
+          {showArrow && !loading && (
+            <ArrowComponent
+              size={currentSize.iconSize}
+              color={
+                variant === 'primary' || variant === 'accent'
+                  ? PsychiColors.white
+                  : disabled
+                  ? PsychiColors.textDisabled
+                  : PsychiColors.textPrimary
+              }
+            />
           )}
-        </View>
+        </>
       )}
-    </TouchableOpacity>
+    </>
   );
-};
 
-// Circular icon button
-interface CircularButtonProps {
-  onPress: () => void;
-  icon: React.ReactNode;
-  size?: number;
-  variant?: 'primary' | 'secondary' | 'ghost';
-  disabled?: boolean;
-  loading?: boolean;
-  style?: ViewStyle;
-}
+  if (variant === 'primary') {
+    return (
+      <TouchableOpacity
+        onPress={onPress}
+        disabled={disabled || loading}
+        activeOpacity={0.8}
+        style={[fullWidth && styles.fullWidth, style]}
+      >
+        <LinearGradient
+          colors={disabled ? [PsychiColors.textDisabled, PsychiColors.textDisabled] : Gradients.primaryButton}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={[
+            styles.button,
+            styles.buttonPrimary,
+            {
+              paddingVertical: currentSize.paddingVertical,
+              paddingHorizontal: currentSize.paddingHorizontal,
+            },
+            !disabled && Shadows.button,
+          ]}
+        >
+          {renderContent()}
+        </LinearGradient>
+      </TouchableOpacity>
+    );
+  }
 
-export const CircularButton: React.FC<CircularButtonProps> = ({
-  onPress,
-  icon,
-  size = 48,
-  variant = 'primary',
-  disabled = false,
-  loading = false,
-  style,
-}) => {
-  const variantStyles = {
-    primary: {
-      backgroundColor: PsychiColors.royalBlue,
-      shadow: Shadows.button,
-    },
-    secondary: {
-      backgroundColor: PsychiColors.frost,
-      shadow: Shadows.sm,
-    },
-    ghost: {
-      backgroundColor: 'transparent',
-      shadow: Shadows.none,
-    },
-  };
-
-  const config = variantStyles[variant];
+  if (variant === 'accent') {
+    return (
+      <TouchableOpacity
+        onPress={onPress}
+        disabled={disabled || loading}
+        activeOpacity={0.8}
+        style={[fullWidth && styles.fullWidth, style]}
+      >
+        <LinearGradient
+          colors={disabled ? [PsychiColors.textDisabled, PsychiColors.textDisabled] : Gradients.accentButton}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={[
+            styles.button,
+            styles.buttonAccent,
+            {
+              paddingVertical: currentSize.paddingVertical,
+              paddingHorizontal: currentSize.paddingHorizontal,
+            },
+            !disabled && Shadows.glow,
+          ]}
+        >
+          {renderContent()}
+        </LinearGradient>
+      </TouchableOpacity>
+    );
+  }
 
   return (
     <TouchableOpacity
@@ -218,170 +173,113 @@ export const CircularButton: React.FC<CircularButtonProps> = ({
       disabled={disabled || loading}
       activeOpacity={0.7}
       style={[
-        styles.circularContainer,
+        styles.button,
+        variant === 'secondary' && styles.buttonSecondary,
+        variant === 'ghost' && styles.buttonGhost,
+        variant === 'outline' && styles.buttonOutline,
         {
-          width: size,
-          height: size,
-          borderRadius: size / 2,
-          backgroundColor: config.backgroundColor,
+          paddingVertical: currentSize.paddingVertical,
+          paddingHorizontal: currentSize.paddingHorizontal,
         },
-        config.shadow,
-        disabled && styles.disabled,
+        disabled && styles.buttonDisabled,
+        fullWidth && styles.fullWidth,
         style,
       ]}
     >
-      {loading ? (
-        <ActivityIndicator
-          color={variant === 'primary' ? PsychiColors.white : PsychiColors.textPrimary}
-          size="small"
-        />
-      ) : (
-        icon
-      )}
+      {renderContent()}
     </TouchableOpacity>
   );
-};
+}
 
-// Text link button
+// Text link button for inline actions
 interface TextButtonProps {
   title: string;
   onPress: () => void;
   color?: string;
-  size?: 'sm' | 'md' | 'lg';
-  underline?: boolean;
-  disabled?: boolean;
-  style?: TextStyle;
-}
-
-export const TextButton: React.FC<TextButtonProps> = ({
-  title,
-  onPress,
-  color = PsychiColors.royalBlue,
-  size = 'md',
-  underline = false,
-  disabled = false,
-  style,
-}) => {
-  const fontSizeMap = {
-    sm: Typography.fontSize.sm,
-    md: Typography.fontSize.base,
-    lg: Typography.fontSize.lg,
-  };
-
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      disabled={disabled}
-      activeOpacity={0.6}
-    >
-      <Text
-        style={[
-          {
-            color: disabled ? PsychiColors.textDisabled : color,
-            fontSize: fontSizeMap[size],
-            fontWeight: Typography.fontWeight.medium,
-            textDecorationLine: underline ? 'underline' : 'none',
-            letterSpacing: Typography.letterSpacing.wide,
-          },
-          style,
-        ]}
-      >
-        {title}
-      </Text>
-    </TouchableOpacity>
-  );
-};
-
-// Icon button (no text, minimal padding)
-interface IconButtonProps {
-  onPress: () => void;
-  icon: React.ReactNode;
-  size?: 'sm' | 'md' | 'lg';
-  variant?: 'default' | 'filled' | 'tinted';
-  disabled?: boolean;
+  showArrow?: boolean;
   style?: ViewStyle;
 }
 
-export const IconButton: React.FC<IconButtonProps> = ({
+export function TextButton({
+  title,
   onPress,
-  icon,
-  size = 'md',
-  variant = 'default',
-  disabled = false,
+  color = PsychiColors.royalBlue,
+  showArrow = false,
   style,
-}) => {
-  const sizeMap = {
-    sm: { padding: Spacing['1.5'], hitSlop: 8 },
-    md: { padding: Spacing['2'], hitSlop: 6 },
-    lg: { padding: Spacing['3'], hitSlop: 4 },
-  };
-
-  const variantMap = {
-    default: {
-      backgroundColor: 'transparent',
-    },
-    filled: {
-      backgroundColor: PsychiColors.frost,
-    },
-    tinted: {
-      backgroundColor: `${PsychiColors.royalBlue}15`,
-    },
-  };
-
-  const sizeStyles = sizeMap[size];
-  const variantStyles = variantMap[variant];
-
+}: TextButtonProps) {
   return (
     <TouchableOpacity
       onPress={onPress}
-      disabled={disabled}
-      activeOpacity={0.6}
-      hitSlop={{
-        top: sizeStyles.hitSlop,
-        bottom: sizeStyles.hitSlop,
-        left: sizeStyles.hitSlop,
-        right: sizeStyles.hitSlop,
-      }}
-      style={[
-        {
-          padding: sizeStyles.padding,
-          borderRadius: BorderRadius.md,
-          backgroundColor: variantStyles.backgroundColor,
-        },
-        disabled && styles.disabled,
-        style,
-      ]}
+      activeOpacity={0.7}
+      style={[styles.textButton, style]}
     >
-      {icon}
+      <Text style={[styles.textButtonLabel, { color }]}>{title}</Text>
+      {showArrow && <ArrowRightIcon size={14} color={color} />}
     </TouchableOpacity>
   );
-};
+}
 
 const styles = StyleSheet.create({
-  container: {
-    borderRadius: BorderRadius.lg,
+  button: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    borderRadius: BorderRadius.full,
+    gap: Spacing['2'],
+  },
+  buttonPrimary: {
+    backgroundColor: PsychiColors.royalBlue,
+  },
+  buttonAccent: {
+    backgroundColor: PsychiColors.coral,
+  },
+  buttonSecondary: {
+    backgroundColor: PsychiColors.frost,
+  },
+  buttonGhost: {
+    backgroundColor: 'transparent',
+  },
+  buttonOutline: {
+    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+    borderColor: PsychiColors.borderMedium,
+  },
+  buttonDisabled: {
+    backgroundColor: PsychiColors.frost,
+    opacity: 0.6,
   },
   fullWidth: {
     width: '100%',
   },
-  disabled: {
-    opacity: 0.4,
+  text: {
+    fontWeight: '600',
+    letterSpacing: 0.2,
   },
-  content: {
+  textPrimary: {
+    color: PsychiColors.white,
+  },
+  textAccent: {
+    color: PsychiColors.white,
+  },
+  textSecondary: {
+    color: PsychiColors.textPrimary,
+  },
+  textGhost: {
+    color: PsychiColors.textPrimary,
+  },
+  textOutline: {
+    color: PsychiColors.textPrimary,
+  },
+  textDisabled: {
+    color: PsychiColors.textDisabled,
+  },
+  textButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: Spacing['1'],
   },
-  text: {
-    textAlign: 'center',
-    letterSpacing: Typography.letterSpacing.wide,
-  },
-  circularContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
+  textButtonLabel: {
+    fontSize: Typography.fontSize.base,
+    fontWeight: '500',
   },
 });
-
-export default PremiumButton;

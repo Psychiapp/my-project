@@ -1,122 +1,141 @@
 /**
  * Psychi Mobile App Theme
- * Premium, modern aesthetic with refined design tokens
- * Inspired by top-tier graphic design principles
+ * Haute, editorial-quality design that feels expensive and hand-crafted
+ * Think luxury brand meets modern tech - every element intentional
  */
 
 import { Platform } from 'react-native';
 
 // =============================================================================
-// COLOR PALETTE - Soft, muted, sophisticated
+// COLOR PALETTE - Warm, muted, sophisticated luxury
 // =============================================================================
 export const PsychiColors = {
-  // Primary Blues - Softer, more refined
-  midnight: '#0A1628',        // Deep navy for text
-  deep: '#1E3A5F',            // Deep ocean accent
-  sapphire: '#2E4A6E',        // Muted sapphire
-  royalBlue: '#4A7BC7',       // Primary blue - softer, less saturated
-  azure: '#6B9BD1',           // Softer azure
-  sky: '#8BB8E8',             // Light sky accent
+  // Primary Blues - Refined, less saturated
+  midnight: '#1A1F2E',        // Deep navy for headlines
+  deep: '#2D3748',            // Deep charcoal accent
+  sapphire: '#3D5A80',        // Muted sapphire
+  royalBlue: '#4A6FA5',       // Primary blue - sophisticated, muted
+  azure: '#6B8CAE',           // Softer azure
+  sky: '#89A7C4',             // Light sky accent
 
   // Warm Accent Colors - Muted and elegant
-  periwinkle: '#C9A69D',      // Muted peachy-brown
-  lavender: '#B8A0C8',        // Soft lavender
-  violet: '#9B8AA8',          // Muted violet
-  coral: '#E8A07A',           // Soft coral (primary accent)
-  peach: '#F5D5C8',           // Very soft peach
-  rose: '#E8C4C4',            // Muted rose
+  periwinkle: '#C4A69B',      // Muted peachy-brown
+  lavender: '#B5A3BD',        // Soft lavender
+  violet: '#8E7D99',          // Muted violet
+  coral: '#D4977A',           // Soft terracotta (primary accent)
+  peach: '#EDD5C8',           // Very soft peach
+  rose: '#DBBFBF',            // Muted rose
+  gold: '#C5A572',            // Subtle gold for premium accents
 
-  // Background Colors - Off-white, cream tones
-  ivory: '#FAFAF8',           // Near white with warmth
-  cream: '#F7F6F3',           // Primary background
-  mist: '#F2F1ED',            // Soft mist
-  frost: '#EDECE8',           // Light frost (card backgrounds)
-  cloud: '#FFFFFF',           // Pure white for elevated surfaces
-  warmWhite: '#FFFFFE',       // Warm white
+  // Background Colors - Warm off-whites, cream tones (no pure white)
+  ivory: '#FAF9F7',           // Warmest near-white
+  cream: '#F5F4F1',           // Primary background - warm cream
+  mist: '#EFEEEA',            // Soft mist
+  frost: '#E8E7E3',           // Card backgrounds
+  cloud: '#FDFCFA',           // Elevated surfaces (warm white, not pure)
+  warmWhite: '#FEFDFB',       // Warmest white
 
-  // Text Colors - Refined hierarchy
-  textPrimary: '#1A1F26',     // Almost black, not pure black
-  textSecondary: '#4A5568',   // Medium gray-blue
-  textMuted: '#718096',       // Soft gray
-  textSoft: '#A0AEC0',        // Very soft for hints
-  textDisabled: '#CBD5E0',    // Disabled state
+  // Text Colors - Warm blacks and grays
+  textPrimary: '#2D2926',     // Warm charcoal, not harsh black
+  textSecondary: '#5C564F',   // Warm medium gray
+  textMuted: '#8A847B',       // Soft warm gray
+  textSoft: '#ADA89F',        // Very soft for hints
+  textDisabled: '#C8C4BC',    // Disabled state
 
-  // Functional Colors - Softened
-  success: '#68D391',         // Soft green
-  successMuted: 'rgba(104, 211, 145, 0.12)',
-  warning: '#F6AD55',         // Soft orange
-  warningMuted: 'rgba(246, 173, 85, 0.12)',
-  error: '#FC8181',           // Soft red
-  errorMuted: 'rgba(252, 129, 129, 0.12)',
-  white: '#FFFFFF',
-  black: '#000000',
+  // Functional Colors - Softened, less saturated
+  success: '#7CB590',         // Sage green
+  successMuted: 'rgba(124, 181, 144, 0.12)',
+  warning: '#D4A574',         // Warm amber
+  warningMuted: 'rgba(212, 165, 116, 0.12)',
+  error: '#C98B8B',           // Muted rose-red
+  errorMuted: 'rgba(201, 139, 139, 0.12)',
+  white: '#FDFCFA',           // Warm white (not pure)
+  black: '#1A1714',           // Warm black
 
-  // Glassmorphism Colors - Subtle transparency
-  glassWhite: 'rgba(255, 255, 255, 0.72)',
-  glassWhiteStrong: 'rgba(255, 255, 255, 0.88)',
-  glassPremium: 'rgba(255, 255, 255, 0.56)',
-  glassFrosted: 'rgba(255, 255, 255, 0.80)',
-  glassSubtle: 'rgba(255, 255, 255, 0.40)',
+  // Premium Glassmorphism - Refined transparency
+  glassWhite: 'rgba(253, 252, 250, 0.78)',
+  glassWhiteStrong: 'rgba(253, 252, 250, 0.92)',
+  glassPremium: 'rgba(253, 252, 250, 0.64)',
+  glassFrosted: 'rgba(253, 252, 250, 0.85)',
+  glassSubtle: 'rgba(253, 252, 250, 0.48)',
+  glassCard: 'rgba(255, 255, 255, 0.72)',
 
-  // Border Colors - Delicate, almost invisible
-  borderUltraLight: 'rgba(0, 0, 0, 0.04)',
-  borderLight: 'rgba(0, 0, 0, 0.06)',
-  borderMedium: 'rgba(0, 0, 0, 0.08)',
-  borderAccent: 'rgba(74, 123, 199, 0.15)',
-  borderGlass: 'rgba(255, 255, 255, 0.20)',
+  // Border Colors - Delicate, warm
+  borderUltraLight: 'rgba(45, 41, 38, 0.04)',
+  borderLight: 'rgba(45, 41, 38, 0.06)',
+  borderMedium: 'rgba(45, 41, 38, 0.10)',
+  borderAccent: 'rgba(74, 111, 165, 0.12)',
+  borderGlass: 'rgba(255, 255, 255, 0.24)',
+  borderWarm: 'rgba(197, 165, 114, 0.20)',
+
+  // Editorial Divider
+  divider: 'rgba(45, 41, 38, 0.08)',
 
   // Support Type Card Accents - Softer
-  chatAccent: '#C9A69D',
-  phoneAccent: '#B8A0C8',
-  videoAccent: '#8BB8E8',
+  chatAccent: '#C4A69B',
+  phoneAccent: '#B5A3BD',
+  videoAccent: '#89A7C4',
 
   // Legacy aliases for backwards compatibility
-  pureWhite: '#FFFFFF',
-  textBody: '#4A5568',
-  warmBrown: '#C9A69D',
+  pureWhite: '#FDFCFA',
+  textBody: '#5C564F',
+  warmBrown: '#C4A69B',
 };
 
 // =============================================================================
-// GRADIENTS - Subtle and atmospheric
+// GRADIENTS - Subtle, atmospheric, premium
 // =============================================================================
 export const Gradients = {
-  // Hero/Header gradients - Softer transitions
-  hero: ['#6B9BD1', '#4A7BC7'] as [string, string],
-  heroSoft: ['#F7F6F3', '#FFFFFF'] as [string, string],
-  heroBlue: ['#6B9BD1', '#4A7BC7'] as [string, string],
-  heroText: ['#4A7BC7', '#6B9BD1'] as [string, string],
+  // Hero/Header gradients - Refined
+  hero: ['#6B8CAE', '#4A6FA5'] as [string, string],
+  heroSoft: ['#FAF9F7', '#F5F4F1'] as [string, string],
+  heroBlue: ['#6B8CAE', '#4A6FA5'] as [string, string],
+  heroText: ['#4A6FA5', '#6B8CAE'] as [string, string],
 
-  // Button gradients - Subtle
-  primaryButton: ['#4A7BC7', '#5A8BD4'] as [string, string],
-  accentButton: ['#E8A07A', '#F0B896'] as [string, string],
+  // Editorial page background - warm cream
+  editorial: ['#FAF9F7', '#F5F4F1', '#EFEEEA'] as [string, string, string],
 
-  // Background gradients
-  pageBackground: ['#FAFAF8', '#F7F6F3', '#F2F1ED'] as [string, string, string],
-  cardShimmer: ['rgba(255,255,255,0)', 'rgba(255,255,255,0.5)', 'rgba(255,255,255,0)'] as [string, string, string],
+  // Button gradients - Sophisticated
+  primaryButton: ['#4A6FA5', '#5A7FB5'] as [string, string],
+  accentButton: ['#D4977A', '#E0A88C'] as [string, string],
+  premiumButton: ['#4A6FA5', '#3D5A80'] as [string, string],
 
-  // Glass gradients
-  glassPremium: ['rgba(255,255,255,0.80)', 'rgba(255,255,255,0.60)'] as [string, string],
-  glassSubtle: ['rgba(255,255,255,0.56)', 'rgba(255,255,255,0.40)'] as [string, string],
+  // Background gradients - Warm
+  pageBackground: ['#FAF9F7', '#F5F4F1', '#EFEEEA'] as [string, string, string],
+  cardShimmer: ['rgba(253,252,250,0)', 'rgba(253,252,250,0.6)', 'rgba(253,252,250,0)'] as [string, string, string],
+
+  // Premium Glass gradients - Within cards
+  glassPremium: ['rgba(255,255,255,0.85)', 'rgba(248,247,244,0.70)'] as [string, string],
+  glassSubtle: ['rgba(253,252,250,0.60)', 'rgba(248,247,244,0.45)'] as [string, string],
+  glassCard: ['rgba(255,255,255,0.75)', 'rgba(250,249,247,0.60)'] as [string, string],
+
+  // Glass card internal gradient - Light gray to slightly darker
+  glassInternal: ['rgba(255,255,255,0.40)', 'rgba(240,239,235,0.30)'] as [string, string],
 
   // Footer/Dark sections
-  footer: ['#2E4A6E', '#1E3A5F'] as [string, string],
-  crisisBanner: ['#FC8181', '#F56565'] as [string, string],
+  footer: ['#3D5A80', '#2D3748'] as [string, string],
+  crisisBanner: ['#C98B8B', '#B87A7A'] as [string, string],
 
-  // Role gradients - Softer
-  supporter: ['#C9A69D', '#B8A0C8'] as [string, string],
-  client: ['#8BB8E8', '#6B9BD1'] as [string, string],
+  // Role gradients - Warm
+  supporter: ['#C4A69B', '#B5A3BD'] as [string, string],
+  client: ['#89A7C4', '#6B8CAE'] as [string, string],
 
-  // Active indicator
-  activeIndicator: ['#E8A07A', '#F0B896'] as [string, string],
+  // Active indicator - Gold accent
+  activeIndicator: ['#C5A572', '#B89860'] as [string, string],
 
-  // Pricing
-  pricing: ['#F7F6F3', '#EDECE8'] as [string, string],
+  // Pricing - Premium feel
+  pricing: ['#FAF9F7', '#EFEEEA'] as [string, string],
+  pricingPremium: ['#F5F4F1', '#E8E7E3'] as [string, string],
 
   // Support type cards
-  chatCard: ['#C9A69D', '#B8A0C8'] as [string, string],
-  phoneCard: ['#B8A0C8', '#9B8AA8'] as [string, string],
-  videoCard: ['#8BB8E8', '#6B9BD1'] as [string, string],
-  supportTypes: ['#F7F6F3', '#EDECE8'] as [string, string],
+  chatCard: ['#C4A69B', '#B5A3BD'] as [string, string],
+  phoneCard: ['#B5A3BD', '#8E7D99'] as [string, string],
+  videoCard: ['#89A7C4', '#6B8CAE'] as [string, string],
+  supportTypes: ['#FAF9F7', '#EFEEEA'] as [string, string],
+
+  // Premium accents
+  gold: ['#C5A572', '#A88B5A'] as [string, string],
+  subtle: ['#F5F4F1', '#EFEEEA'] as [string, string],
 };
 
 // =============================================================================
@@ -154,30 +173,31 @@ export const Colors = {
 };
 
 // =============================================================================
-// TYPOGRAPHY - Clean, modern sans-serif
+// TYPOGRAPHY - Editorial, magazine-quality hierarchy
+// Mix of refined serif for headlines + clean sans for body
 // =============================================================================
 export const Typography = {
-  // Font families - SF Pro / Inter style
+  // Font families
   fontFamily: {
-    // Primary sans-serif
+    // Primary sans-serif for body text
     sans: Platform.select({
       ios: 'System',         // SF Pro on iOS
       android: 'Roboto',
       default: 'System',
     }),
-    // Display/heading font
+    // Display/heading font - use system with specific weights
     display: Platform.select({
       ios: 'System',
       android: 'Roboto',
       default: 'System',
     }),
-    // Serif font for elegant headings
+    // Serif font for elegant editorial headings
     serif: Platform.select({
       ios: 'Georgia',
       android: 'serif',
       default: 'Georgia',
     }),
-    // Mono for numbers/code
+    // Mono for numbers/stats - premium monospace feel
     mono: Platform.select({
       ios: 'Menlo',
       android: 'monospace',
@@ -185,47 +205,55 @@ export const Typography = {
     }),
   },
 
-  // Font sizes - Refined scale
+  // Font sizes - Editorial scale with larger display sizes
   fontSize: {
-    xs: 11,        // Tiny labels
-    sm: 13,        // Small text, captions
-    base: 15,      // Body text
-    md: 16,        // Default
-    lg: 17,        // Slightly larger body
-    xl: 20,        // Section headers
-    '2xl': 24,     // Page titles
-    '3xl': 28,     // Hero text
-    '4xl': 34,     // Large display
-    '5xl': 42,     // Extra large
+    '2xs': 10,       // Superscript, micro labels
+    xs: 11,          // Tiny labels, badges
+    sm: 13,          // Captions, secondary text
+    base: 15,        // Body text - generous
+    md: 16,          // Default
+    lg: 18,          // Slightly larger body
+    xl: 21,          // Section subheaders
+    '2xl': 26,       // Section headers
+    '3xl': 32,       // Page titles - editorial
+    '4xl': 38,       // Large display headlines
+    '5xl': 46,       // Hero headlines
+    '6xl': 56,       // Extra large display
+    '7xl': 72,       // Massive editorial headlines
   },
 
-  // Font weights - Prefer lighter weights
+  // Font weights - Premium feels lighter
   fontWeight: {
+    thin: '200' as const,
     light: '300' as const,
     normal: '400' as const,
     medium: '500' as const,
     semibold: '600' as const,
     bold: '700' as const,
+    black: '900' as const,
   },
 
-  // Line heights
+  // Line heights - Generous for readability
   lineHeight: {
     none: 1,
-    tight: 1.2,
-    snug: 1.375,
-    normal: 1.5,
-    relaxed: 1.625,
-    loose: 2,
+    tight: 1.15,     // Headlines
+    snug: 1.3,       // Subheadlines
+    normal: 1.5,     // Body text
+    relaxed: 1.6,    // Body text - more space
+    loose: 1.8,      // Editorial body
+    editorial: 1.75, // Magazine-style body text
   },
 
   // Letter spacing - Key for premium feel
   letterSpacing: {
-    tighter: -0.5,
-    tight: -0.25,
+    tightest: -1.5,  // Large headlines
+    tighter: -0.75,  // Headlines
+    tight: -0.25,    // Subheadlines
     normal: 0,
-    wide: 0.5,
-    wider: 1,
-    widest: 2,
+    wide: 0.5,       // Small caps
+    wider: 1.5,      // Labels
+    widest: 3,       // Uppercase labels
+    editorial: -0.5, // Editorial headlines
   },
 };
 
@@ -280,7 +308,7 @@ export const BorderRadius = {
 };
 
 // =============================================================================
-// SHADOWS - Natural, not harsh
+// SHADOWS - Deep but soft, grounds elements in physical space
 // =============================================================================
 export const Shadows = {
   // No shadow
@@ -292,97 +320,115 @@ export const Shadows = {
     elevation: 0,
   },
 
-  // Ambient glow - very subtle
+  // Ambient glow - barely perceptible
   ambient: {
-    shadowColor: '#000000',
+    shadowColor: '#1A1714',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.03,
-    shadowRadius: 3,
+    shadowRadius: 4,
     elevation: 1,
   },
 
-  // Small shadow - for subtle elevation
+  // Small shadow - subtle lift
   sm: {
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
+    shadowColor: '#1A1714',
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
-    shadowRadius: 4,
+    shadowRadius: 6,
     elevation: 2,
   },
 
   // Soft shadow - primary for cards
   soft: {
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-
-  // Medium shadow
-  medium: {
-    shadowColor: '#000000',
+    shadowColor: '#1A1714',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.06,
     shadowRadius: 12,
-    elevation: 4,
+    elevation: 3,
   },
 
-  // Elevated - for floating elements
-  elevated: {
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 8 },
+  // Medium shadow - noticeable elevation
+  medium: {
+    shadowColor: '#1A1714',
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.08,
-    shadowRadius: 24,
-    elevation: 6,
+    shadowRadius: 20,
+    elevation: 5,
   },
 
-  // Large - for modals
-  large: {
-    shadowColor: '#000000',
+  // Elevated - floating elements
+  elevated: {
+    shadowColor: '#1A1714',
     shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.10,
+    shadowOpacity: 0.12,
     shadowRadius: 32,
     elevation: 8,
   },
 
-  // Glass shadow - subtle for glass cards
-  glass: {
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 16,
-    elevation: 3,
+  // Large - for modals, overlays
+  large: {
+    shadowColor: '#1A1714',
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.16,
+    shadowRadius: 48,
+    elevation: 12,
   },
 
-  // Button shadow
+  // Premium glass shadow - deep but diffuse
+  glass: {
+    shadowColor: '#1A1714',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 24,
+    elevation: 4,
+  },
+
+  // Premium card - luxurious depth
+  premium: {
+    shadowColor: '#1A1714',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.10,
+    shadowRadius: 30,
+    elevation: 6,
+  },
+
+  // Button shadow - colored
   button: {
     shadowColor: PsychiColors.royalBlue,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-
-  // Accent glow
-  glow: {
-    shadowColor: PsychiColors.coral,
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.20,
     shadowRadius: 12,
     elevation: 4,
   },
 
-  // Card shadow - for content cards
-  card: {
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 12,
-    elevation: 3,
+  // Accent glow - warm
+  glow: {
+    shadowColor: PsychiColors.coral,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 5,
   },
 
-  // Inner shadow effect (simulated with border)
+  // Editorial card - sophisticated
+  editorial: {
+    shadowColor: '#1A1714',
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.08,
+    shadowRadius: 40,
+    elevation: 6,
+  },
+
+  // Card shadow - content cards
+  card: {
+    shadowColor: '#1A1714',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.06,
+    shadowRadius: 18,
+    elevation: 4,
+  },
+
+  // Inner shadow effect (simulated)
   inner: {
     shadowColor: 'transparent',
     shadowOffset: { width: 0, height: 0 },
@@ -393,65 +439,94 @@ export const Shadows = {
 };
 
 // =============================================================================
-// COMPONENT STYLES - Refined defaults
+// COMPONENT STYLES - Premium, editorial defaults
 // =============================================================================
 export const ComponentStyles = {
-  // Premium button - Soft pill shape
+  // Premium button - Pill with arrow affordance
   premiumButton: {
     paddingVertical: Spacing['4'],
-    paddingHorizontal: Spacing['6'],
-    borderRadius: BorderRadius.lg,
+    paddingHorizontal: Spacing['7'],
+    borderRadius: BorderRadius.full,
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: Spacing['2'],
   },
 
-  // Primary button
+  // Primary button - Pill shape
   primaryButton: {
     paddingVertical: Spacing['4'],
-    paddingHorizontal: Spacing['6'],
-    borderRadius: BorderRadius.lg,
+    paddingHorizontal: Spacing['7'],
+    borderRadius: BorderRadius.full,
     backgroundColor: PsychiColors.royalBlue,
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    gap: Spacing['2'],
   },
 
-  // Secondary button
+  // Secondary button - Outlined pill
   secondaryButton: {
     paddingVertical: Spacing['4'],
-    paddingHorizontal: Spacing['6'],
-    borderRadius: BorderRadius.lg,
+    paddingHorizontal: Spacing['7'],
+    borderRadius: BorderRadius.full,
     backgroundColor: 'transparent',
     borderWidth: 1,
     borderColor: PsychiColors.borderMedium,
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    gap: Spacing['2'],
   },
 
   // Ghost button
   ghostButton: {
     paddingVertical: Spacing['3'],
     paddingHorizontal: Spacing['4'],
-    borderRadius: BorderRadius.md,
+    borderRadius: BorderRadius.lg,
     backgroundColor: 'transparent',
   },
 
-  // Card style - Glass effect
+  // Premium Glass Card - Luxurious glassmorphism
+  glassCard: {
+    borderRadius: 20,
+    padding: Spacing['6'],
+    backgroundColor: PsychiColors.glassCard,
+    borderWidth: 1,
+    borderColor: PsychiColors.borderGlass,
+    overflow: 'hidden' as const,
+  },
+
+  // Editorial Card - Clean, minimal
+  editorialCard: {
+    borderRadius: 20,
+    padding: Spacing['6'],
+    backgroundColor: PsychiColors.cloud,
+    borderWidth: 0,
+  },
+
+  // Card style - Standard
   card: {
-    borderRadius: BorderRadius.xl,
+    borderRadius: 18,
     padding: Spacing['5'],
-    backgroundColor: PsychiColors.glassFrosted,
+    backgroundColor: PsychiColors.cloud,
     borderWidth: 1,
     borderColor: PsychiColors.borderUltraLight,
   },
 
   // Elevated card
   cardElevated: {
-    borderRadius: BorderRadius.xl,
-    padding: Spacing['5'],
+    borderRadius: 20,
+    padding: Spacing['6'],
     backgroundColor: PsychiColors.cloud,
     borderWidth: 0,
-    ...Shadows.soft,
+    ...Shadows.premium,
   },
 
-  // Input field style
+  // Input field style - Premium
   input: {
     paddingVertical: Spacing['4'],
-    paddingHorizontal: Spacing['4'],
-    borderRadius: BorderRadius.lg,
+    paddingHorizontal: Spacing['5'],
+    borderRadius: 14,
     backgroundColor: PsychiColors.frost,
     borderWidth: 1,
     borderColor: PsychiColors.borderLight,
@@ -459,14 +534,14 @@ export const ComponentStyles = {
     color: PsychiColors.textPrimary,
   },
 
-  // Modal style
+  // Modal style - Elevated
   modal: {
-    borderRadius: BorderRadius['2xl'],
+    borderRadius: 24,
     backgroundColor: PsychiColors.cloud,
     ...Shadows.large,
   },
 
-  // Badge/Tag style
+  // Badge/Tag style - Refined pill
   badge: {
     paddingVertical: Spacing['1.5'],
     paddingHorizontal: Spacing['3'],
@@ -474,10 +549,46 @@ export const ComponentStyles = {
     backgroundColor: PsychiColors.frost,
   },
 
-  // Divider
+  // Premium badge
+  premiumBadge: {
+    paddingVertical: Spacing['1'],
+    paddingHorizontal: Spacing['2.5'],
+    borderRadius: BorderRadius.full,
+    backgroundColor: `${PsychiColors.gold}15`,
+  },
+
+  // Divider - Editorial thin line
   divider: {
     height: 1,
-    backgroundColor: PsychiColors.borderUltraLight,
+    backgroundColor: PsychiColors.divider,
+  },
+
+  // Section divider - Full width with padding
+  sectionDivider: {
+    height: 1,
+    backgroundColor: PsychiColors.divider,
+    marginVertical: Spacing['6'],
+  },
+
+  // Segmented control - Premium pill tabs
+  segmentedControl: {
+    flexDirection: 'row' as const,
+    backgroundColor: PsychiColors.frost,
+    borderRadius: 14,
+    padding: Spacing['1'],
+  },
+
+  // Segmented control tab
+  segmentedTab: {
+    paddingVertical: Spacing['3'],
+    paddingHorizontal: Spacing['5'],
+    borderRadius: 12,
+  },
+
+  // Segmented control active tab
+  segmentedTabActive: {
+    backgroundColor: PsychiColors.cloud,
+    ...Shadows.sm,
   },
 };
 
