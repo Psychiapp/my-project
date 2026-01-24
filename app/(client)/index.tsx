@@ -139,8 +139,8 @@ export default function ClientHomeScreen() {
             style={styles.heroGradient}
           >
             <View style={styles.heroContent}>
-              <View style={styles.heroIconContainer}>
-                <SparkleIcon size={22} color={PsychiColors.royalBlue} weight="regular" />
+              <View style={styles.heroIcon}>
+                <SparkleIcon size={24} color={PsychiColors.royalBlue} weight="regular" />
               </View>
               <Text style={styles.heroTitle}>
                 {assignedSupporter
@@ -176,24 +176,24 @@ export default function ClientHomeScreen() {
           <Text style={styles.sectionLabel}>YOUR PROGRESS</Text>
           <View style={styles.statsGrid}>
             <View style={styles.statCard}>
-              <View style={[styles.statIconBg, { backgroundColor: `${PsychiColors.royalBlue}10` }]}>
-                <CalendarIcon size={18} color={PsychiColors.royalBlue} />
+              <View style={styles.statIcon}>
+                <CalendarIcon size={20} color={PsychiColors.royalBlue} />
               </View>
               <Text style={styles.statValue}>{upcomingSessions}</Text>
               <Text style={styles.statLabel}>Upcoming</Text>
             </View>
 
             <View style={styles.statCard}>
-              <View style={[styles.statIconBg, { backgroundColor: `${PsychiColors.success}10` }]}>
-                <CheckCircleIcon size={18} color={PsychiColors.success} />
+              <View style={styles.statIcon}>
+                <CheckCircleIcon size={20} color={PsychiColors.success} />
               </View>
               <Text style={styles.statValue}>{completedSessions}</Text>
               <Text style={styles.statLabel}>Completed</Text>
             </View>
 
             <View style={styles.statCard}>
-              <View style={[styles.statIconBg, { backgroundColor: `${PsychiColors.lavender}15` }]}>
-                <CardIcon size={18} color={PsychiColors.violet} />
+              <View style={styles.statIcon}>
+                <CardIcon size={20} color={PsychiColors.violet} />
               </View>
               <Text style={styles.statValueSmall}>
                 {selectedPlan ? planLabels[selectedPlan] : 'Free'}
@@ -256,9 +256,7 @@ export default function ClientHomeScreen() {
               activeOpacity={0.7}
             >
               <View style={styles.actionLeft}>
-                <View style={[styles.actionIconBg, { backgroundColor: `${PsychiColors.royalBlue}08` }]}>
-                  <PlusIcon size={20} color={PsychiColors.royalBlue} />
-                </View>
+                <PlusIcon size={22} color={PsychiColors.royalBlue} />
                 <View style={styles.actionText}>
                   <Text style={styles.actionTitle}>Book Session</Text>
                   <Text style={styles.actionSubtitle}>Schedule your next session</Text>
@@ -273,9 +271,7 @@ export default function ClientHomeScreen() {
               activeOpacity={0.7}
             >
               <View style={styles.actionLeft}>
-                <View style={[styles.actionIconBg, { backgroundColor: `${PsychiColors.coral}08` }]}>
-                  <CalendarIcon size={20} color={PsychiColors.coral} />
-                </View>
+                <CalendarIcon size={22} color={PsychiColors.coral} />
                 <View style={styles.actionText}>
                   <Text style={styles.actionTitle}>Sessions</Text>
                   <Text style={styles.actionSubtitle}>View upcoming & past</Text>
@@ -290,9 +286,7 @@ export default function ClientHomeScreen() {
               activeOpacity={0.7}
             >
               <View style={styles.actionLeft}>
-                <View style={[styles.actionIconBg, { backgroundColor: `${PsychiColors.lavender}12` }]}>
-                  <SettingsIcon size={20} color={PsychiColors.violet} />
-                </View>
+                <SettingsIcon size={22} color={PsychiColors.violet} />
                 <View style={styles.actionText}>
                   <Text style={styles.actionTitle}>Settings</Text>
                   <Text style={styles.actionSubtitle}>Preferences & account</Text>
@@ -378,14 +372,8 @@ const styles = StyleSheet.create({
   heroContent: {
     padding: Spacing['6'],
   },
-  heroIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    backgroundColor: `${PsychiColors.royalBlue}08`,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: Spacing['5'],
+  heroIcon: {
+    marginBottom: Spacing['4'],
   },
   heroTitle: {
     fontSize: Typography.fontSize['2xl'],
@@ -439,12 +427,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: PsychiColors.borderUltraLight,
   },
-  statIconBg: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
+  statIcon: {
     marginBottom: Spacing['3'],
   },
   statValue: {
@@ -584,14 +567,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-  },
-  actionIconBg: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: Spacing['4'],
+    gap: Spacing['4'],
   },
   actionText: {
     flex: 1,

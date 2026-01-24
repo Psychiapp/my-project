@@ -154,18 +154,13 @@ export default function SupporterHomeScreen() {
             style={styles.statusGradient}
           >
             <View style={styles.statusContent}>
-              <View style={[
-                styles.statusIconBg,
-                { backgroundColor: acceptingClients ? PsychiColors.successMuted : PsychiColors.errorMuted }
-              ]}>
-                {isLoadingToggle ? (
-                  <ActivityIndicator size="small" color={PsychiColors.royalBlue} />
-                ) : acceptingClients ? (
-                  <PlayIcon size={18} color={PsychiColors.success} />
-                ) : (
-                  <PauseIcon size={18} color={PsychiColors.error} />
-                )}
-              </View>
+              {isLoadingToggle ? (
+                <ActivityIndicator size="small" color={PsychiColors.royalBlue} />
+              ) : acceptingClients ? (
+                <PlayIcon size={22} color={PsychiColors.success} />
+              ) : (
+                <PauseIcon size={22} color={PsychiColors.error} />
+              )}
               <View style={styles.statusInfo}>
                 <Text style={styles.statusTitle}>
                   {isLoadingToggle ? 'Loading...' : acceptingClients ? 'Accepting Clients' : 'Paused'}
@@ -197,9 +192,7 @@ export default function SupporterHomeScreen() {
             style={styles.launchGradient}
           >
             <View style={styles.launchHeader}>
-              <View style={styles.launchIconBg}>
-                <CalendarIcon size={20} color={PsychiColors.coral} />
-              </View>
+              <CalendarIcon size={24} color={PsychiColors.coral} />
               <View style={styles.launchBadge}>
                 <Text style={styles.launchBadgeText}>PRE-LAUNCH</Text>
               </View>
@@ -244,9 +237,7 @@ export default function SupporterHomeScreen() {
 
         {/* Commission Banner */}
         <View style={styles.commissionBanner}>
-          <View style={styles.commissionIconBg}>
-            <DollarIcon size={18} color={PsychiColors.gold} />
-          </View>
+          <DollarIcon size={22} color={PsychiColors.gold} />
           <View style={styles.commissionInfo}>
             <Text style={styles.commissionText}>
               You earn <Text style={styles.commissionBold}>75% commission</Text> on every session
@@ -302,8 +293,8 @@ export default function SupporterHomeScreen() {
             ))
           ) : (
             <View style={styles.emptyState}>
-              <View style={styles.emptyIconBg}>
-                <CalendarIcon size={28} color={PsychiColors.textMuted} />
+              <View style={styles.emptyIcon}>
+                <CalendarIcon size={32} color={PsychiColors.textMuted} />
               </View>
               <Text style={styles.emptyTitle}>No upcoming sessions</Text>
               <Text style={styles.emptySubtitle}>Sessions will appear here once clients book with you</Text>
@@ -322,9 +313,7 @@ export default function SupporterHomeScreen() {
             onPress={() => router.push('/(supporter)/availability')}
             activeOpacity={0.6}
           >
-            <View style={[styles.actionIconBg, { backgroundColor: 'rgba(181, 163, 189, 0.15)' }]}>
-              <CalendarIcon size={20} color={PsychiColors.lavender} />
-            </View>
+            <CalendarIcon size={22} color={PsychiColors.lavender} />
             <View style={styles.actionInfo}>
               <Text style={styles.actionTitle}>Set Availability</Text>
               <Text style={styles.actionSubtitle}>Manage your schedule</Text>
@@ -337,9 +326,7 @@ export default function SupporterHomeScreen() {
             onPress={() => router.push('/(supporter)/profile')}
             activeOpacity={0.6}
           >
-            <View style={[styles.actionIconBg, { backgroundColor: 'rgba(137, 167, 196, 0.15)' }]}>
-              <EditIcon size={20} color={PsychiColors.azure} />
-            </View>
+            <EditIcon size={22} color={PsychiColors.azure} />
             <View style={styles.actionInfo}>
               <Text style={styles.actionTitle}>Edit Profile</Text>
               <Text style={styles.actionSubtitle}>Update your bio and photo</Text>
@@ -352,9 +339,7 @@ export default function SupporterHomeScreen() {
             onPress={() => router.push('/(supporter)/earnings')}
             activeOpacity={0.6}
           >
-            <View style={[styles.actionIconBg, { backgroundColor: 'rgba(197, 165, 114, 0.15)' }]}>
-              <ChartIcon size={20} color={PsychiColors.gold} />
-            </View>
+            <ChartIcon size={22} color={PsychiColors.gold} />
             <View style={styles.actionInfo}>
               <Text style={styles.actionTitle}>View Earnings</Text>
               <Text style={styles.actionSubtitle}>Track your income</Text>
@@ -367,9 +352,7 @@ export default function SupporterHomeScreen() {
             onPress={() => router.push('/(supporter)/training')}
             activeOpacity={0.6}
           >
-            <View style={[styles.actionIconBg, { backgroundColor: 'rgba(212, 151, 122, 0.15)' }]}>
-              <BookIcon size={20} color={PsychiColors.coral} />
-            </View>
+            <BookIcon size={22} color={PsychiColors.coral} />
             <View style={styles.actionInfo}>
               <Text style={styles.actionTitle}>Training Modules</Text>
               <Text style={styles.actionSubtitle}>Continue your certification</Text>
@@ -442,13 +425,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing['3'],
   },
-  statusIconBg: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   statusInfo: {
     flex: 1,
   },
@@ -480,14 +456,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: Spacing['3'],
-  },
-  launchIconBg: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: 'rgba(212, 151, 122, 0.12)',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   launchBadge: {
     backgroundColor: 'rgba(212, 151, 122, 0.15)',
@@ -586,14 +554,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(197, 165, 114, 0.08)',
     borderRadius: 16,
     gap: Spacing['3'],
-  },
-  commissionIconBg: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: 'rgba(197, 165, 114, 0.15)',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   commissionInfo: {
     flex: 1,
@@ -710,13 +670,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     ...Shadows.ambient,
   },
-  emptyIconBg: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
-    backgroundColor: PsychiColors.frost,
-    justifyContent: 'center',
-    alignItems: 'center',
+  emptyIcon: {
     marginBottom: Spacing['3'],
   },
   emptyTitle: {
@@ -740,13 +694,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: PsychiColors.divider,
     gap: Spacing['3'],
-  },
-  actionIconBg: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   actionInfo: {
     flex: 1,
