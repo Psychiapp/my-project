@@ -9,6 +9,8 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -430,7 +432,10 @@ export default function SupporterSessionsScreen() {
         transparent={true}
         onRequestClose={() => setCancelModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}
+        >
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Cancel Session</Text>
@@ -443,7 +448,10 @@ export default function SupporterSessionsScreen() {
             </View>
 
             {selectedSession && (
-              <>
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+              >
                 <View style={styles.refundInfo}>
                   <DollarIcon size={24} color={PsychiColors.success} />
                   <View style={styles.refundTextContainer}>
@@ -497,10 +505,10 @@ export default function SupporterSessionsScreen() {
                     )}
                   </TouchableOpacity>
                 </View>
-              </>
+              </ScrollView>
             )}
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Reschedule Modal */}
