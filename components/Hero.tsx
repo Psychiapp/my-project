@@ -154,8 +154,8 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.lg,
   },
   headerLogo: {
-    width: 80,
-    height: 80,
+    width: 100,
+    height: 100,
   },
   authButtons: {
     flexDirection: 'row',
