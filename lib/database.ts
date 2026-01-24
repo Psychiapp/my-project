@@ -2189,6 +2189,177 @@ export async function assignSupporterToClient(
   return true;
 }
 
+/**
+ * Get the client's current active supporter assignment
+ */
+export async function getClientCurrentAssignment(
+  clientId: string
+): Promise<ClientAssignment | null> {
+  if (!supabase) return null;
+
+  const { data, error } = await supabase
+    .from('client_assignments')
+    .select(`
+      *,
+      supporter:profiles!client_assignments_supporter_id_fkey (
+        id,
+        full_name,
+        email,
+        avatar_url
+      )
+    `)
+    .eq('client_id', clientId)
+    .eq('status', 'active')
+    .maybeSingle();
+
+  if (error) {
+    // Silently handle if table doesn't exist yet
+    if (error.code !== '42P01') {
+      console.error('Error fetching client assignment:', error);
+    }
+    return null;
+  }
+
+  if (!data) return null;
+
+  return {
+    id: data.id,
+    supporter_id: data.supporter_id,
+    client_id: data.client_id,
+    client_name: '', // Not needed for this query
+    client_email: '',
+    client_avatar: null,
+    status: data.status,
+    sessions_completed: data.sessions_completed || 0,
+    started_at: data.started_at,
+    last_session_date: data.last_session_date,
+    notes: data.notes,
+  };
+}
+
+/**
+ * End/pause a client's current supporter assignment
+ */
+export async function endClientAssignment(
+  clientId: string,
+  supporterId: string,
+  reason: 'client_requested' | 'supporter_requested' | 'admin' | 'completed' = 'client_requested'
+): Promise<{ success: boolean; error?: string }> {
+  if (!supabase) {
+    return { success: true }; // Demo mode
+  }
+
+  const { error } = await supabase
+    .from('client_assignments')
+    .update({
+      status: 'ended',
+      ended_at: new Date().toISOString(),
+      end_reason: reason,
+    })
+    .eq('client_id', clientId)
+    .eq('supporter_id', supporterId)
+    .eq('status', 'active');
+
+  if (error) {
+    // Silently handle if table doesn't exist yet
+    if (error.code !== '42P01') {
+      console.error('Error ending client assignment:', error);
+    }
+    return { success: false, error: 'Failed to end assignment' };
+  }
+
+  return { success: true };
+}
+
+/**
+ * Request a new supporter - ends current assignment and finds a new match
+ * Returns the new supporter info if successful
+ */
+export async function requestSupporterReassignment(
+  clientId: string,
+  preferences: Partial<ClientPreferences>,
+  currentSupporterId?: string
+): Promise<{ success: boolean; newSupporter?: MatchedSupporter; error?: string }> {
+  if (!supabase) {
+    // Demo mode - return mock success
+    return {
+      success: true,
+      newSupporter: {
+        id: 'demo_new_supporter',
+        full_name: 'New Supporter',
+        avatar_url: null,
+        bio: 'Your new matched supporter',
+        specialties: ['Anxiety', 'Stress'],
+        education: 'Psychology Student',
+        total_sessions: 0,
+        is_available: true,
+        accepting_clients: true,
+        training_complete: true,
+        compatibilityScore: 85,
+        matchReasons: ['Based on your updated preferences'],
+      },
+    };
+  }
+
+  try {
+    // Step 1: End the current assignment if one exists
+    if (currentSupporterId) {
+      const endResult = await endClientAssignment(clientId, currentSupporterId, 'client_requested');
+      if (!endResult.success) {
+        console.warn('Could not end previous assignment:', endResult.error);
+        // Continue anyway - the old assignment might not exist
+      }
+    }
+
+    // Step 2: Build full preferences with defaults for missing values
+    const fullPreferences: ClientPreferences = {
+      mood: preferences.mood ?? 3,
+      topics: preferences.topics ?? [],
+      communication_style: preferences.communication_style ?? 'balanced',
+      preferred_session_types: preferences.preferred_session_types ?? ['chat', 'phone', 'video'],
+      scheduling_preference: preferences.scheduling_preference ?? 'flexible',
+      preferred_times: preferences.preferred_times ?? ['morning', 'afternoon', 'evening'],
+      personality_preference: preferences.personality_preference ?? 'warm',
+      goals: preferences.goals ?? ['connection'],
+      urgency: preferences.urgency ?? 'moderate',
+      timezone: preferences.timezone ?? 'America/New_York',
+    };
+
+    // Step 3: Find a new match based on preferences, excluding the old supporter
+    const matches = await matchSupportersToClient(fullPreferences);
+
+    // Filter out the current supporter from matches
+    const availableMatches = currentSupporterId
+      ? matches.filter(m => m.id !== currentSupporterId)
+      : matches;
+
+    if (availableMatches.length === 0) {
+      return {
+        success: false,
+        error: 'No available supporters match your preferences. Please try adjusting your preferences or try again later.'
+      };
+    }
+
+    // Step 4: Get the best match
+    const newSupporter = availableMatches[0];
+
+    // Step 5: Create the new assignment
+    const assigned = await assignSupporterToClient(clientId, newSupporter.id);
+    if (!assigned) {
+      return { success: false, error: 'Failed to assign new supporter' };
+    }
+
+    // Step 6: Optionally notify the old supporter (via notification system)
+    // This would be implemented when push notifications are set up
+    // await createNotification(currentSupporterId, 'Client has been reassigned', ...);
+
+    return { success: true, newSupporter };
+  } catch (error) {
+    console.error('Error in supporter reassignment:', error);
+    return { success: false, error: 'An unexpected error occurred' };
+  }
+}
+
 // ============================================
 // USER SAFETY: REPORT & BLOCK
 // ============================================

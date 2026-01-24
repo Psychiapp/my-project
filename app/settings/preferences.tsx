@@ -30,6 +30,11 @@ import {
   ChevronRightIcon,
 } from '@/components/icons';
 import OnboardingModal from '@/components/OnboardingModal';
+import {
+  getClientCurrentAssignment,
+  requestSupporterReassignment,
+} from '@/lib/database';
+import type { ClientAssignment } from '@/types/database';
 
 // Timezone options
 const timezones = [
@@ -49,20 +54,32 @@ const sessionTypes = [
 ];
 
 export default function PreferencesScreen() {
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const [selectedTimezone, setSelectedTimezone] = useState('America/New_York');
   const [selectedSessionTypes, setSelectedSessionTypes] = useState<string[]>(['chat', 'phone', 'video']);
   const [showQuizModal, setShowQuizModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [currentAssignment, setCurrentAssignment] = useState<ClientAssignment | null>(null);
+  const [isLoadingAssignment, setIsLoadingAssignment] = useState(true);
 
-  // Auto-detect timezone on mount
+  // Auto-detect timezone and fetch current assignment on mount
   useEffect(() => {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
     const matchingTz = timezones.find(t => t.id === tz);
     if (matchingTz) {
       setSelectedTimezone(tz);
     }
-  }, []);
+
+    // Fetch current supporter assignment
+    const fetchAssignment = async () => {
+      if (user?.id) {
+        const assignment = await getClientCurrentAssignment(user.id);
+        setCurrentAssignment(assignment);
+      }
+      setIsLoadingAssignment(false);
+    };
+    fetchAssignment();
+  }, [user?.id]);
 
   const toggleSessionType = (typeId: string) => {
     setSelectedSessionTypes(prev => {
@@ -91,13 +108,43 @@ export default function PreferencesScreen() {
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Request New Match',
-          onPress: () => {
-            // In production, trigger re-matching process
-            Alert.alert(
-              'Request Sent',
-              'We\'ve received your request. You\'ll be notified when your new supporter match is ready.',
-              [{ text: 'OK' }]
-            );
+          onPress: async () => {
+            setIsSaving(true);
+            try {
+              const result = await requestSupporterReassignment(
+                user?.id || '',
+                {
+                  preferred_session_types: selectedSessionTypes,
+                  timezone: selectedTimezone,
+                },
+                currentAssignment?.supporter_id
+              );
+
+              if (result.success && result.newSupporter) {
+                // Update local state with new assignment
+                setCurrentAssignment(prev => prev ? {
+                  ...prev,
+                  supporter_id: result.newSupporter!.id,
+                } : null);
+
+                Alert.alert(
+                  'New Supporter Matched!',
+                  `You\'ve been matched with ${result.newSupporter.full_name}. They\'ll be ready to support you in your next session.`,
+                  [{ text: 'Great!' }]
+                );
+              } else {
+                Alert.alert(
+                  'Unable to Find Match',
+                  result.error || 'We couldn\'t find a new supporter match at this time. Please try again later or adjust your preferences.',
+                  [{ text: 'OK' }]
+                );
+              }
+            } catch (error) {
+              console.error('Error requesting new supporter:', error);
+              Alert.alert('Error', 'Something went wrong. Please try again.');
+            } finally {
+              setIsSaving(false);
+            }
           },
         },
       ]
@@ -131,19 +178,58 @@ export default function PreferencesScreen() {
     timezone: string;
   }) => {
     setIsSaving(true);
+    setShowQuizModal(false);
+
     try {
-      // In production, save preferences to database
-      console.log('New preferences:', preferences);
-      setShowQuizModal(false);
+      // Update local state with new preferences
+      setSelectedTimezone(preferences.timezone);
+      setSelectedSessionTypes(preferences.preferred_session_types);
+
+      // Ask if they want a new supporter match based on updated preferences
       Alert.alert(
         'Preferences Updated',
-        'Your preferences have been saved. We\'ll use these to improve your supporter match.',
-        [{ text: 'OK' }]
+        'Your preferences have been saved. Would you also like to be matched with a new supporter based on these updated preferences?',
+        [
+          {
+            text: 'Keep Current Supporter',
+            style: 'cancel',
+            onPress: () => setIsSaving(false),
+          },
+          {
+            text: 'Find New Match',
+            onPress: async () => {
+              const result = await requestSupporterReassignment(
+                user?.id || '',
+                preferences,
+                currentAssignment?.supporter_id
+              );
+
+              if (result.success && result.newSupporter) {
+                setCurrentAssignment(prev => prev ? {
+                  ...prev,
+                  supporter_id: result.newSupporter!.id,
+                } : null);
+
+                Alert.alert(
+                  'New Supporter Matched!',
+                  `Based on your updated preferences, you\'ve been matched with ${result.newSupporter.full_name}.`,
+                  [{ text: 'Great!' }]
+                );
+              } else {
+                Alert.alert(
+                  'Preferences Saved',
+                  result.error || 'Your preferences were saved, but we couldn\'t find a better match right now. Your current supporter will continue to support you.',
+                  [{ text: 'OK' }]
+                );
+              }
+              setIsSaving(false);
+            },
+          },
+        ]
       );
     } catch (error) {
       console.error('Error saving preferences:', error);
       Alert.alert('Error', 'Failed to save preferences. Please try again.');
-    } finally {
       setIsSaving(false);
     }
   };
