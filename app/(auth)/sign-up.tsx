@@ -26,7 +26,7 @@ import { PENDING_QUIZ_PREFERENCES_KEY } from './welcome';
 export default function SignUpScreen() {
   const insets = useSafeAreaInsets();
   const { signUp } = useAuth();
-  const [step, setStep] = useState<'credentials' | 'role'>('credentials');
+  const [step, setStep] = useState<'role' | 'credentials'>('role');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -47,6 +47,8 @@ export default function SignUpScreen() {
           setHasCompletedQuiz(true);
           // Auto-select client role since they completed the quiz
           setSelectedRole('client');
+          // Skip role selection if quiz was completed
+          setStep('credentials');
         }
       } catch (error) {
         console.error('Error checking pending preferences:', error);
@@ -55,7 +57,15 @@ export default function SignUpScreen() {
     checkPendingPreferences();
   }, []);
 
-  const handleContinue = () => {
+  const handleRoleContinue = () => {
+    if (!selectedRole) {
+      Alert.alert('Error', 'Please select a role');
+      return;
+    }
+    setStep('credentials');
+  };
+
+  const handleSignUp = async () => {
     if (!email || !password || !confirmPassword) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
@@ -71,10 +81,6 @@ export default function SignUpScreen() {
       return;
     }
 
-    setStep('role');
-  };
-
-  const handleSignUp = async () => {
     if (!selectedRole) {
       Alert.alert('Error', 'Please select a role');
       return;
@@ -104,7 +110,7 @@ export default function SignUpScreen() {
     setIsLoading(false);
   };
 
-  // Role Selection Screen
+  // Role Selection Screen (Step 1)
   if (step === 'role') {
     return (
       <View style={styles.container}>
@@ -117,7 +123,7 @@ export default function SignUpScreen() {
         >
           <TouchableOpacity
             style={styles.backButton}
-            onPress={() => setStep('credentials')}
+            onPress={() => router.back()}
             activeOpacity={0.7}
           >
             <View style={styles.backButtonContent}>
@@ -127,24 +133,19 @@ export default function SignUpScreen() {
           </TouchableOpacity>
 
           <View style={styles.logoSection}>
-            <Text style={styles.headerTitle}>How will you use Psychi?</Text>
-            <Text style={styles.headerSubtitle}>Select your role to continue</Text>
+            <Image
+              source={require('@/assets/images/logo.png')}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
+            <Text style={styles.headerTitle}>Join Psychi</Text>
+            <Text style={styles.headerSubtitle}>How will you use Psychi?</Text>
           </View>
         </LinearGradient>
 
         {/* Role Selection Card */}
         <View style={[styles.formCard, { paddingBottom: insets.bottom + Spacing.lg }]}>
           <ScrollView showsVerticalScrollIndicator={false}>
-            {/* Quiz Completed Banner */}
-            {hasCompletedQuiz && (
-              <View style={styles.quizCompletedBanner}>
-                <CheckCircleIcon size={20} color={PsychiColors.success} />
-                <Text style={styles.quizCompletedText}>
-                  Matching quiz completed! Your preferences will be saved.
-                </Text>
-              </View>
-            )}
-
             {/* Client Role Option */}
             <TouchableOpacity
               style={[
@@ -203,38 +204,35 @@ export default function SignUpScreen() {
               </View>
             </TouchableOpacity>
 
-            {/* Submit Button */}
+            {/* Continue Button */}
             <TouchableOpacity
               style={[styles.submitButtonWrapper, !selectedRole && styles.submitButtonDisabled]}
-              onPress={handleSignUp}
-              disabled={isLoading || !selectedRole}
+              onPress={handleRoleContinue}
+              disabled={!selectedRole}
               activeOpacity={0.9}
             >
               <LinearGradient
                 colors={selectedRole ? Gradients.primaryButton : ['#94A3B8', '#94A3B8']}
                 style={styles.submitButton}
               >
-                {isLoading ? (
-                  <ActivityIndicator color={PsychiColors.white} />
-                ) : (
-                  <Text style={styles.submitButtonText}>Create Account</Text>
-                )}
+                <Text style={styles.submitButtonText}>Continue</Text>
               </LinearGradient>
             </TouchableOpacity>
 
-            {/* Terms */}
-            <Text style={styles.termsText}>
-              By creating an account, you agree to our{' '}
-              <Text style={styles.termsLink}>Terms of Service</Text> and{' '}
-              <Text style={styles.termsLink}>Privacy Policy</Text>
-            </Text>
+            {/* Footer */}
+            <View style={styles.footer}>
+              <Text style={styles.footerText}>Already have an account? </Text>
+              <TouchableOpacity onPress={() => router.replace('/(auth)/sign-in')}>
+                <Text style={styles.footerLink}>Sign In</Text>
+              </TouchableOpacity>
+            </View>
           </ScrollView>
         </View>
       </View>
     );
   }
 
-  // Credentials Entry Screen
+  // Credentials Entry Screen (Step 2)
   return (
     <View style={styles.container}>
       {/* Header Gradient */}
@@ -246,7 +244,7 @@ export default function SignUpScreen() {
       >
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => router.back()}
+          onPress={() => setStep('role')}
           activeOpacity={0.7}
         >
           <View style={styles.backButtonContent}>
@@ -262,7 +260,9 @@ export default function SignUpScreen() {
             resizeMode="contain"
           />
           <Text style={styles.headerTitle}>Create your account</Text>
-          <Text style={styles.headerSubtitle}>Join Psychi today</Text>
+          <Text style={styles.headerSubtitle}>
+            {selectedRole === 'supporter' ? 'Join as a Supporter' : 'Join as a Client'}
+          </Text>
         </View>
       </LinearGradient>
 
@@ -273,6 +273,16 @@ export default function SignUpScreen() {
       >
         <View style={[styles.formCard, { paddingBottom: insets.bottom + Spacing.lg }]}>
           <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+            {/* Quiz Completed Banner */}
+            {hasCompletedQuiz && selectedRole === 'client' && (
+              <View style={styles.quizCompletedBanner}>
+                <CheckCircleIcon size={20} color={PsychiColors.success} />
+                <Text style={styles.quizCompletedText}>
+                  Matching quiz completed! Your preferences will be saved.
+                </Text>
+              </View>
+            )}
+
             {/* Email Input */}
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Email</Text>
@@ -329,16 +339,28 @@ export default function SignUpScreen() {
             {/* Submit Button */}
             <TouchableOpacity
               style={styles.submitButtonWrapper}
-              onPress={handleContinue}
+              onPress={handleSignUp}
+              disabled={isLoading}
               activeOpacity={0.9}
             >
               <LinearGradient
                 colors={Gradients.primaryButton}
                 style={styles.submitButton}
               >
-                <Text style={styles.submitButtonText}>Continue</Text>
+                {isLoading ? (
+                  <ActivityIndicator color={PsychiColors.white} />
+                ) : (
+                  <Text style={styles.submitButtonText}>Create Account</Text>
+                )}
               </LinearGradient>
             </TouchableOpacity>
+
+            {/* Terms */}
+            <Text style={styles.termsText}>
+              By creating an account, you agree to our{' '}
+              <Text style={styles.termsLink}>Terms of Service</Text> and{' '}
+              <Text style={styles.termsLink}>Privacy Policy</Text>
+            </Text>
 
             {/* Divider */}
             <View style={styles.divider}>
