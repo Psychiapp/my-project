@@ -44,6 +44,9 @@ export interface ClientProfile extends UserProfile {
   total_sessions_completed: number;
 }
 
+// Stripe Connect account status
+export type StripeConnectStatus = 'pending' | 'pending_verification' | 'active' | 'restricted' | 'disabled';
+
 // Supporter-specific profile data
 export interface SupporterProfile extends UserProfile {
   role: 'supporter';
@@ -65,7 +68,17 @@ export interface SupporterProfile extends UserProfile {
   session_types: SessionType[];
   total_earnings: number;
   pending_payout: number;
+  // Stripe Connect fields
+  stripe_connect_id: string | null;
+  stripe_connect_status: StripeConnectStatus | null;
+  stripe_charges_enabled: boolean;
+  stripe_payouts_enabled: boolean;
+  payout_schedule: PayoutSchedule | null;
+  payout_schedule_day: string | null; // For weekly: 'monday'-'friday', for monthly: '1'-'28'
 }
+
+// Payout schedule type
+export type PayoutSchedule = 'manual' | 'daily' | 'weekly' | 'monthly';
 
 // Supporter listing (simplified view for matching)
 export interface SupporterListing {

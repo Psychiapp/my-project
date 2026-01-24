@@ -1,6 +1,7 @@
-import { Alert } from 'react-native';
+import { Alert, Linking } from 'react-native';
 import { initPaymentSheet, presentPaymentSheet } from '@stripe/stripe-react-native';
 import { StripeConfig, Config, SupabaseConfig } from '@/constants/config';
+import type { StripeConnectStatus } from '@/types/database';
 
 // Stripe integration with payment sheet support
 
@@ -287,4 +288,194 @@ export async function processSubscriptionPaymentSheet(
     Alert.alert('Error', 'Payment failed. Please try again.');
     return false;
   }
+}
+
+// ============================================
+// STRIPE CONNECT FUNCTIONS (Supporter Payouts)
+// ============================================
+
+interface ConnectAccountResponse {
+  accountId: string;
+  status: StripeConnectStatus;
+}
+
+interface AccountLinkResponse {
+  url: string;
+  expiresAt: number;
+}
+
+interface AccountStatusResponse {
+  chargesEnabled: boolean;
+  payoutsEnabled: boolean;
+  detailsSubmitted: boolean;
+}
+
+interface PayoutResponse {
+  transferId: string;
+  amount: number;
+  status: string;
+  payoutId?: string;
+}
+
+/**
+ * Create a Stripe Connect Express account for a supporter
+ */
+export async function createConnectAccount(
+  supporterId: string,
+  email: string,
+  fullName: string
+): Promise<ConnectAccountResponse> {
+  if (!SupabaseConfig.url || !SupabaseConfig.anonKey) {
+    throw new Error('Supabase configuration missing');
+  }
+
+  const response = await fetch(`${SupabaseConfig.url}/functions/v1/create-connect-account`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${SupabaseConfig.anonKey}`,
+    },
+    body: JSON.stringify({ supporterId, email, fullName }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to create Connect account');
+  }
+
+  return response.json();
+}
+
+/**
+ * Get an onboarding link for a Stripe Connect account
+ */
+export async function getConnectOnboardingLink(
+  accountId: string,
+  refreshUrl?: string,
+  returnUrl?: string
+): Promise<AccountLinkResponse> {
+  if (!SupabaseConfig.url || !SupabaseConfig.anonKey) {
+    throw new Error('Supabase configuration missing');
+  }
+
+  const response = await fetch(`${SupabaseConfig.url}/functions/v1/create-account-link`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${SupabaseConfig.anonKey}`,
+    },
+    body: JSON.stringify({ accountId, refreshUrl, returnUrl }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to create account link');
+  }
+
+  return response.json();
+}
+
+/**
+ * Open Stripe Connect onboarding in browser
+ */
+export async function openConnectOnboarding(accountId: string): Promise<boolean> {
+  try {
+    const { url } = await getConnectOnboardingLink(accountId);
+
+    const supported = await Linking.canOpenURL(url);
+    if (supported) {
+      await Linking.openURL(url);
+      return true;
+    } else {
+      Alert.alert('Error', 'Unable to open browser for account setup.');
+      return false;
+    }
+  } catch (error) {
+    console.error('Onboarding error:', error);
+    Alert.alert('Error', 'Failed to start account setup. Please try again.');
+    return false;
+  }
+}
+
+/**
+ * Request a payout to a supporter's connected account
+ */
+export async function requestPayout(
+  supporterId: string,
+  amount: number,
+  stripeConnectId: string
+): Promise<PayoutResponse> {
+  if (!SupabaseConfig.url || !SupabaseConfig.anonKey) {
+    throw new Error('Supabase configuration missing');
+  }
+
+  // Minimum payout check
+  if (amount < 2500) {
+    throw new Error('Minimum payout amount is $25.00');
+  }
+
+  const response = await fetch(`${SupabaseConfig.url}/functions/v1/create-payout`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${SupabaseConfig.anonKey}`,
+    },
+    body: JSON.stringify({ supporterId, amount, stripeConnectId }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to process payout');
+  }
+
+  return response.json();
+}
+
+/**
+ * Check if a supporter's Connect account is ready for payouts
+ */
+export function isPayoutReady(
+  stripeConnectId: string | null,
+  stripeConnectStatus: StripeConnectStatus | null,
+  payoutsEnabled: boolean
+): { ready: boolean; message: string } {
+  if (!stripeConnectId) {
+    return {
+      ready: false,
+      message: 'Set up your payout account to receive earnings.',
+    };
+  }
+
+  if (stripeConnectStatus === 'pending') {
+    return {
+      ready: false,
+      message: 'Complete your account setup to receive payouts.',
+    };
+  }
+
+  if (stripeConnectStatus === 'pending_verification') {
+    return {
+      ready: false,
+      message: 'Your account is being verified. This usually takes 1-2 business days.',
+    };
+  }
+
+  if (!payoutsEnabled) {
+    return {
+      ready: false,
+      message: 'Payouts are temporarily disabled. Please update your account information.',
+    };
+  }
+
+  if (stripeConnectStatus === 'restricted' || stripeConnectStatus === 'disabled') {
+    return {
+      ready: false,
+      message: 'Your account has restrictions. Please contact support.',
+    };
+  }
+
+  return {
+    ready: true,
+    message: 'Your account is ready to receive payouts.',
+  };
 }

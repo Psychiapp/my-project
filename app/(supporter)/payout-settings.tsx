@@ -1,27 +1,32 @@
 /**
  * Payout Settings Screen
- * Manage bank account and payout schedule
+ * Manage Stripe Connect account and payout schedule
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  TextInput,
   Alert,
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PsychiColors, Spacing, BorderRadius, Shadows, Typography } from '@/constants/theme';
 import { BankIcon, DocumentIcon, ChevronRightIcon } from '@/components/icons';
-import { ChevronLeftIcon, CheckIcon, LockIcon } from '@/components/icons';
-
-type PayoutSchedule = 'manual' | 'daily' | 'weekly' | 'monthly';
+import { ChevronLeftIcon, CheckIcon, LockIcon, AlertIcon, ClockIcon } from '@/components/icons';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
+import {
+  createConnectAccount,
+  openConnectOnboarding,
+  isPayoutReady,
+} from '@/lib/stripe';
+import type { StripeConnectStatus, PayoutSchedule } from '@/types/database';
 
 const DAYS_OF_WEEK = [
   { value: 'monday', label: 'Monday' },
@@ -43,49 +48,144 @@ function getOrdinalSuffix(n: number): string {
 }
 
 export default function PayoutSettingsScreen() {
-  const [bankAccountLinked, setBankAccountLinked] = useState(false);
+  const { user } = useAuth();
+  const params = useLocalSearchParams();
+
+  // Stripe Connect state
+  const [stripeConnectId, setStripeConnectId] = useState<string | null>(null);
+  const [stripeConnectStatus, setStripeConnectStatus] = useState<StripeConnectStatus | null>(null);
+  const [payoutsEnabled, setPayoutsEnabled] = useState(false);
+  const [fullName, setFullName] = useState<string>('Supporter');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSettingUp, setIsSettingUp] = useState(false);
+
+  // Payout schedule state
   const [payoutSchedule, setPayoutSchedule] = useState<PayoutSchedule>('weekly');
   const [weeklyDay, setWeeklyDay] = useState('friday');
   const [monthlyDay, setMonthlyDay] = useState(1);
-  const [isLinking, setIsLinking] = useState(false);
 
-  // Bank account form
-  const [accountHolder, setAccountHolder] = useState('');
-  const [routingNumber, setRoutingNumber] = useState('');
-  const [accountNumber, setAccountNumber] = useState('');
-  const [confirmAccountNumber, setConfirmAccountNumber] = useState('');
+  // Load supporter profile data
+  useEffect(() => {
+    loadProfile();
+  }, [user?.id]);
 
-  const handleLinkBankAccount = async () => {
-    // Validation
-    if (!accountHolder.trim()) {
-      Alert.alert('Error', 'Please enter account holder name');
-      return;
+  // Handle return from Stripe onboarding
+  useEffect(() => {
+    if (params.success === 'true') {
+      loadProfile();
+      Alert.alert('Success', 'Your payout account has been set up!');
+    } else if (params.refresh === 'true') {
+      loadProfile();
     }
-    if (routingNumber.length !== 9) {
-      Alert.alert('Error', 'Routing number must be 9 digits');
-      return;
-    }
-    if (accountNumber.length < 4) {
-      Alert.alert('Error', 'Please enter a valid account number');
-      return;
-    }
-    if (accountNumber !== confirmAccountNumber) {
-      Alert.alert('Error', 'Account numbers do not match');
-      return;
-    }
+  }, [params.success, params.refresh]);
 
-    setIsLinking(true);
+  const loadProfile = async () => {
+    if (!user?.id || !supabase) return;
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('stripe_connect_id, stripe_connect_status, stripe_payouts_enabled, payout_schedule, payout_schedule_day, full_name')
+        .eq('id', user.id)
+        .single();
 
-    setIsLinking(false);
-    setBankAccountLinked(true);
-    Alert.alert('Success', 'Bank account linked successfully!');
+      if (error) throw error;
+
+      if (data) {
+        setStripeConnectId(data.stripe_connect_id);
+        setStripeConnectStatus(data.stripe_connect_status);
+        setPayoutsEnabled(data.stripe_payouts_enabled || false);
+        if (data.full_name) {
+          setFullName(data.full_name);
+        }
+        if (data.payout_schedule) {
+          setPayoutSchedule(data.payout_schedule);
+        }
+        if (data.payout_schedule_day) {
+          if (data.payout_schedule === 'weekly') {
+            setWeeklyDay(data.payout_schedule_day);
+          } else if (data.payout_schedule === 'monthly') {
+            setMonthlyDay(parseInt(data.payout_schedule_day, 10) || 1);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error loading profile:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleUpdateSchedule = (schedule: PayoutSchedule) => {
+  const handleSetupPayouts = async () => {
+    if (!user?.id || !user?.email) {
+      Alert.alert('Error', 'User information not available');
+      return;
+    }
+
+    setIsSettingUp(true);
+
+    try {
+      if (stripeConnectId) {
+        // Already have an account, just open onboarding to complete/update
+        await openConnectOnboarding(stripeConnectId);
+      } else {
+        // Create a new Connect account
+        const { accountId } = await createConnectAccount(
+          user.id,
+          user.email,
+          fullName
+        );
+        setStripeConnectId(accountId);
+        setStripeConnectStatus('pending');
+
+        // Open onboarding
+        await openConnectOnboarding(accountId);
+      }
+    } catch (error: unknown) {
+      console.error('Setup error:', error);
+      Alert.alert('Error', error instanceof Error ? error.message : 'Failed to set up payouts');
+    } finally {
+      setIsSettingUp(false);
+    }
+  };
+
+  const handleUpdateSchedule = async (schedule: PayoutSchedule) => {
     setPayoutSchedule(schedule);
+
+    if (!user?.id || !supabase) return;
+
+    try {
+      await supabase
+        .from('profiles')
+        .update({
+          payout_schedule: schedule,
+          payout_schedule_day: schedule === 'weekly' ? weeklyDay : schedule === 'monthly' ? monthlyDay.toString() : null,
+        })
+        .eq('id', user.id);
+    } catch (error) {
+      console.error('Error updating schedule:', error);
+    }
+  };
+
+  const handleUpdateScheduleDay = async (day: string | number) => {
+    if (payoutSchedule === 'weekly') {
+      setWeeklyDay(day as string);
+    } else if (payoutSchedule === 'monthly') {
+      setMonthlyDay(day as number);
+    }
+
+    if (!user?.id || !supabase) return;
+
+    try {
+      await supabase
+        .from('profiles')
+        .update({
+          payout_schedule_day: day.toString(),
+        })
+        .eq('id', user.id);
+    } catch (error) {
+      console.error('Error updating schedule day:', error);
+    }
   };
 
   const getScheduleDescription = (schedule: PayoutSchedule): string => {
@@ -110,6 +210,58 @@ export default function PayoutSettingsScreen() {
     { id: 'monthly' as PayoutSchedule, label: 'Monthly', description: 'Choose your payout date' },
   ];
 
+  const payoutStatus = isPayoutReady(stripeConnectId, stripeConnectStatus, payoutsEnabled);
+
+  const getStatusBadge = () => {
+    if (!stripeConnectId) {
+      return null;
+    }
+
+    if (stripeConnectStatus === 'active' && payoutsEnabled) {
+      return (
+        <View style={styles.verifiedBadge}>
+          <CheckIcon size={16} color={PsychiColors.success} />
+          <Text style={styles.verifiedText}>Active</Text>
+        </View>
+      );
+    }
+
+    if (stripeConnectStatus === 'pending_verification') {
+      return (
+        <View style={styles.pendingBadge}>
+          <ClockIcon size={16} color={PsychiColors.warning} />
+          <Text style={styles.pendingText}>Verifying</Text>
+        </View>
+      );
+    }
+
+    if (stripeConnectStatus === 'pending') {
+      return (
+        <View style={styles.pendingBadge}>
+          <AlertIcon size={16} color={PsychiColors.warning} />
+          <Text style={styles.pendingText}>Incomplete</Text>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.errorBadge}>
+        <AlertIcon size={16} color={PsychiColors.error} />
+        <Text style={styles.errorText}>Issue</Text>
+      </View>
+    );
+  };
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={PsychiColors.azure} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -122,110 +274,74 @@ export default function PayoutSettingsScreen() {
       </View>
 
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
-        {/* Bank Account Section */}
+        {/* Payout Account Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Bank Account</Text>
+          <Text style={styles.sectionTitle}>Payout Account</Text>
 
-          {bankAccountLinked ? (
-            // Linked Account View
+          {stripeConnectId && stripeConnectStatus === 'active' && payoutsEnabled ? (
+            // Connected Account View
             <View style={styles.linkedAccountCard}>
               <View style={styles.linkedAccountHeader}>
                 <View style={styles.bankIcon}>
                   <BankIcon size={24} color={PsychiColors.azure} />
                 </View>
                 <View style={styles.linkedAccountInfo}>
-                  <Text style={styles.linkedAccountName}>{accountHolder || 'Bank Account'}</Text>
+                  <Text style={styles.linkedAccountName}>Bank Account Connected</Text>
                   <Text style={styles.linkedAccountNumber}>
-                    ••••{accountNumber.slice(-4)}
+                    Powered by Stripe
                   </Text>
                 </View>
-                <View style={styles.verifiedBadge}>
-                  <CheckIcon size={16} color={PsychiColors.success} />
-                  <Text style={styles.verifiedText}>Verified</Text>
-                </View>
+                {getStatusBadge()}
               </View>
               <TouchableOpacity
                 style={styles.changeAccountButton}
-                onPress={() => setBankAccountLinked(false)}
+                onPress={handleSetupPayouts}
               >
-                <Text style={styles.changeAccountText}>Change Account</Text>
+                <Text style={styles.changeAccountText}>Update Account</Text>
               </TouchableOpacity>
             </View>
           ) : (
-            // Link Account Form
+            // Setup Account Card
             <View style={styles.formCard}>
               <View style={styles.securityNote}>
                 <LockIcon size={16} color={PsychiColors.azure} />
                 <Text style={styles.securityText}>
-                  Your banking information is encrypted and secure
+                  Secure bank setup powered by Stripe
                 </Text>
               </View>
 
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Account Holder Name</Text>
-                <TextInput
-                  style={styles.input}
-                  value={accountHolder}
-                  onChangeText={setAccountHolder}
-                  placeholder="John Doe"
-                  placeholderTextColor={PsychiColors.textSoft}
-                  autoCapitalize="words"
-                />
-              </View>
+              {stripeConnectId && (
+                <View style={styles.statusCard}>
+                  <View style={styles.statusHeader}>
+                    {getStatusBadge()}
+                  </View>
+                  <Text style={styles.statusMessage}>{payoutStatus.message}</Text>
+                </View>
+              )}
 
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Routing Number</Text>
-                <TextInput
-                  style={styles.input}
-                  value={routingNumber}
-                  onChangeText={(text) => setRoutingNumber(text.replace(/\D/g, '').slice(0, 9))}
-                  placeholder="9 digits"
-                  placeholderTextColor={PsychiColors.textSoft}
-                  keyboardType="number-pad"
-                  maxLength={9}
-                />
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Account Number</Text>
-                <TextInput
-                  style={styles.input}
-                  value={accountNumber}
-                  onChangeText={(text) => setAccountNumber(text.replace(/\D/g, ''))}
-                  placeholder="Your account number"
-                  placeholderTextColor={PsychiColors.textSoft}
-                  keyboardType="number-pad"
-                  secureTextEntry
-                />
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Confirm Account Number</Text>
-                <TextInput
-                  style={styles.input}
-                  value={confirmAccountNumber}
-                  onChangeText={(text) => setConfirmAccountNumber(text.replace(/\D/g, ''))}
-                  placeholder="Re-enter account number"
-                  placeholderTextColor={PsychiColors.textSoft}
-                  keyboardType="number-pad"
-                  secureTextEntry
-                />
-              </View>
+              <Text style={styles.setupDescription}>
+                {stripeConnectId
+                  ? 'Complete your account setup to start receiving payouts for your sessions.'
+                  : 'Set up your payout account to receive earnings from your sessions. You\'ll be guided through a secure process to verify your identity and link your bank account.'
+                }
+              </Text>
 
               <TouchableOpacity
-                style={[styles.linkButton, isLinking && styles.linkButtonDisabled]}
-                onPress={handleLinkBankAccount}
-                disabled={isLinking}
+                style={[styles.linkButton, isSettingUp && styles.linkButtonDisabled]}
+                onPress={handleSetupPayouts}
+                disabled={isSettingUp}
                 activeOpacity={0.8}
               >
                 <LinearGradient
                   colors={[PsychiColors.azure, PsychiColors.deep] as const}
                   style={styles.linkButtonGradient}
                 >
-                  {isLinking ? (
+                  {isSettingUp ? (
                     <ActivityIndicator color={PsychiColors.white} />
                   ) : (
-                    <Text style={styles.linkButtonText}>Link Bank Account</Text>
+                    <Text style={styles.linkButtonText}>
+                      {stripeConnectId ? 'Complete Setup' : 'Set Up Payouts'}
+                    </Text>
                   )}
                 </LinearGradient>
               </TouchableOpacity>
@@ -233,111 +349,113 @@ export default function PayoutSettingsScreen() {
           )}
         </View>
 
-        {/* Payout Schedule Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Payout Schedule</Text>
-          <View style={styles.scheduleCard}>
-            {scheduleOptions.map((option, index) => (
-              <TouchableOpacity
-                key={option.id}
-                style={[
-                  styles.scheduleOption,
-                  payoutSchedule === option.id && styles.scheduleOptionActive,
-                  index === scheduleOptions.length - 1 && styles.scheduleOptionLast,
-                ]}
-                onPress={() => handleUpdateSchedule(option.id)}
-              >
-                <View style={styles.scheduleOptionLeft}>
-                  <View style={[
-                    styles.radioCircle,
-                    payoutSchedule === option.id && styles.radioCircleActive,
-                  ]}>
-                    {payoutSchedule === option.id && <View style={styles.radioInner} />}
-                  </View>
-                  <View>
-                    <Text style={[
-                      styles.scheduleLabel,
-                      payoutSchedule === option.id && styles.scheduleLabelActive,
+        {/* Payout Schedule Section - Only show if account is set up */}
+        {stripeConnectId && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Payout Schedule</Text>
+            <View style={styles.scheduleCard}>
+              {scheduleOptions.map((option, index) => (
+                <TouchableOpacity
+                  key={option.id}
+                  style={[
+                    styles.scheduleOption,
+                    payoutSchedule === option.id && styles.scheduleOptionActive,
+                    index === scheduleOptions.length - 1 && styles.scheduleOptionLast,
+                  ]}
+                  onPress={() => handleUpdateSchedule(option.id)}
+                >
+                  <View style={styles.scheduleOptionLeft}>
+                    <View style={[
+                      styles.radioCircle,
+                      payoutSchedule === option.id && styles.radioCircleActive,
                     ]}>
-                      {option.label}
-                    </Text>
-                    <Text style={styles.scheduleDescription}>{option.description}</Text>
+                      {payoutSchedule === option.id && <View style={styles.radioInner} />}
+                    </View>
+                    <View>
+                      <Text style={[
+                        styles.scheduleLabel,
+                        payoutSchedule === option.id && styles.scheduleLabelActive,
+                      ]}>
+                        {option.label}
+                      </Text>
+                      <Text style={styles.scheduleDescription}>{option.description}</Text>
+                    </View>
                   </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Weekly Day Picker */}
+            {payoutSchedule === 'weekly' && (
+              <View style={styles.dayPickerCard}>
+                <Text style={styles.dayPickerLabel}>Payout Day</Text>
+                <View style={styles.dayPickerOptions}>
+                  {DAYS_OF_WEEK.map((day) => (
+                    <TouchableOpacity
+                      key={day.value}
+                      style={[
+                        styles.dayOption,
+                        weeklyDay === day.value && styles.dayOptionActive,
+                      ]}
+                      onPress={() => handleUpdateScheduleDay(day.value)}
+                    >
+                      <Text style={[
+                        styles.dayOptionText,
+                        weeklyDay === day.value && styles.dayOptionTextActive,
+                      ]}>
+                        {day.label.slice(0, 3)}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
                 </View>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          {/* Weekly Day Picker */}
-          {payoutSchedule === 'weekly' && (
-            <View style={styles.dayPickerCard}>
-              <Text style={styles.dayPickerLabel}>Payout Day</Text>
-              <View style={styles.dayPickerOptions}>
-                {DAYS_OF_WEEK.map((day) => (
-                  <TouchableOpacity
-                    key={day.value}
-                    style={[
-                      styles.dayOption,
-                      weeklyDay === day.value && styles.dayOptionActive,
-                    ]}
-                    onPress={() => setWeeklyDay(day.value)}
-                  >
-                    <Text style={[
-                      styles.dayOptionText,
-                      weeklyDay === day.value && styles.dayOptionTextActive,
-                    ]}>
-                      {day.label.slice(0, 3)}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+                <Text style={styles.dayPickerNote}>
+                  Payouts will be sent every {DAYS_OF_WEEK.find(d => d.value === weeklyDay)?.label}
+                </Text>
               </View>
-              <Text style={styles.dayPickerNote}>
-                Payouts will be sent every {DAYS_OF_WEEK.find(d => d.value === weeklyDay)?.label}
-              </Text>
-            </View>
-          )}
+            )}
 
-          {/* Monthly Day Picker */}
-          {payoutSchedule === 'monthly' && (
-            <View style={styles.dayPickerCard}>
-              <Text style={styles.dayPickerLabel}>Payout Date</Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.monthlyDayScroll}
-              >
-                {DAYS_OF_MONTH.map((day) => (
-                  <TouchableOpacity
-                    key={day.value}
-                    style={[
-                      styles.monthDayOption,
-                      monthlyDay === day.value && styles.monthDayOptionActive,
-                    ]}
-                    onPress={() => setMonthlyDay(day.value)}
-                  >
-                    <Text style={[
-                      styles.monthDayText,
-                      monthlyDay === day.value && styles.monthDayTextActive,
-                    ]}>
-                      {day.value}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-              <Text style={styles.dayPickerNote}>
-                Payouts will be sent on the {monthlyDay}{getOrdinalSuffix(monthlyDay)} of each month
-              </Text>
-            </View>
-          )}
+            {/* Monthly Day Picker */}
+            {payoutSchedule === 'monthly' && (
+              <View style={styles.dayPickerCard}>
+                <Text style={styles.dayPickerLabel}>Payout Date</Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.monthlyDayScroll}
+                >
+                  {DAYS_OF_MONTH.map((day) => (
+                    <TouchableOpacity
+                      key={day.value}
+                      style={[
+                        styles.monthDayOption,
+                        monthlyDay === day.value && styles.monthDayOptionActive,
+                      ]}
+                      onPress={() => handleUpdateScheduleDay(day.value)}
+                    >
+                      <Text style={[
+                        styles.monthDayText,
+                        monthlyDay === day.value && styles.monthDayTextActive,
+                      ]}>
+                        {day.value}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+                <Text style={styles.dayPickerNote}>
+                  Payouts will be sent on the {monthlyDay}{getOrdinalSuffix(monthlyDay)} of each month
+                </Text>
+              </View>
+            )}
 
-          {/* Current Schedule Summary */}
-          <View style={styles.scheduleSummary}>
-            <Text style={styles.scheduleSummaryLabel}>Current Schedule:</Text>
-            <Text style={styles.scheduleSummaryValue}>{getScheduleDescription(payoutSchedule)}</Text>
+            {/* Current Schedule Summary */}
+            <View style={styles.scheduleSummary}>
+              <Text style={styles.scheduleSummaryLabel}>Current Schedule:</Text>
+              <Text style={styles.scheduleSummaryValue}>{getScheduleDescription(payoutSchedule)}</Text>
+            </View>
           </View>
-        </View>
+        )}
 
-        {/* Minimum Payout */}
+        {/* Payout Info */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Payout Info</Text>
           <View style={styles.infoCard}>
@@ -354,6 +472,11 @@ export default function PayoutSettingsScreen() {
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Transfer Fee</Text>
               <Text style={styles.infoValue}>Free</Text>
+            </View>
+            <View style={styles.infoDivider} />
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Your Earnings</Text>
+              <Text style={styles.infoValue}>75% of session fee</Text>
             </View>
           </View>
         </View>
@@ -382,6 +505,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: PsychiColors.cream,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   header: {
     flexDirection: 'row',
@@ -445,9 +573,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: Spacing.md,
   },
-  bankEmoji: {
-    fontSize: 24,
-  },
   linkedAccountInfo: {
     flex: 1,
   },
@@ -475,6 +600,34 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: PsychiColors.success,
   },
+  pendingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.full,
+    gap: 4,
+  },
+  pendingText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: PsychiColors.warning,
+  },
+  errorBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.full,
+    gap: 4,
+  },
+  errorText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: PsychiColors.error,
+  },
   changeAccountButton: {
     marginTop: Spacing.md,
     paddingVertical: Spacing.sm,
@@ -499,7 +652,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(74, 144, 226, 0.1)',
     padding: Spacing.sm,
     borderRadius: BorderRadius.md,
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.md,
     gap: Spacing.sm,
   },
   securityText: {
@@ -507,22 +660,25 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: PsychiColors.azure,
   },
-  inputGroup: {
-    marginBottom: Spacing.md,
-  },
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: PsychiColors.midnight,
-    marginBottom: Spacing.xs,
-  },
-  input: {
+  statusCard: {
     backgroundColor: PsychiColors.cream,
     borderRadius: BorderRadius.md,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    fontSize: 16,
-    color: PsychiColors.midnight,
+    padding: Spacing.md,
+    marginBottom: Spacing.md,
+  },
+  statusHeader: {
+    marginBottom: Spacing.xs,
+  },
+  statusMessage: {
+    fontSize: 14,
+    color: PsychiColors.textSecondary,
+    lineHeight: 20,
+  },
+  setupDescription: {
+    fontSize: 14,
+    color: PsychiColors.textSecondary,
+    lineHeight: 20,
+    marginBottom: Spacing.md,
   },
   linkButton: {
     borderRadius: BorderRadius.lg,
@@ -642,9 +798,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: Spacing.md,
   },
-  taxEmoji: {
-    fontSize: 22,
-  },
   taxInfo: {
     flex: 1,
   },
@@ -657,10 +810,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: PsychiColors.textMuted,
     marginTop: 2,
-  },
-  taxArrow: {
-    fontSize: 24,
-    color: PsychiColors.textSoft,
   },
   dayPickerCard: {
     backgroundColor: PsychiColors.white,

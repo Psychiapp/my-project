@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -17,29 +19,229 @@ import {
   CheckIcon,
   SettingsIcon,
   ChevronRightIcon,
+  ClockIcon,
+  AlertIcon,
 } from '@/components/icons';
 import { Config } from '@/constants/config';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
+import { requestPayout, isPayoutReady } from '@/lib/stripe';
+import type { Payout, StripeConnectStatus } from '@/types/database';
 
 type TimeRange = 'week' | 'month' | 'all';
 
+interface EarningsData {
+  total: number;
+  sessions: number;
+  pending: number;
+}
+
+interface ProfileData {
+  total_earnings: number;
+  pending_payout: number;
+  stripe_connect_id: string | null;
+  stripe_connect_status: StripeConnectStatus | null;
+  stripe_payouts_enabled: boolean;
+}
+
 export default function EarningsScreen() {
   const router = useRouter();
+  const { user } = useAuth();
   const [timeRange, setTimeRange] = useState<TimeRange>('month');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRequestingPayout, setIsRequestingPayout] = useState(false);
 
-  // Mock earnings data
-  const earnings = {
-    week: { total: 90.00, sessions: 5, pending: 45.00 },
-    month: { total: 352.50, sessions: 23, pending: 90.00 },
-    all: { total: 705.75, sessions: 47, pending: 90.00 },
+  // Profile data
+  const [profile, setProfile] = useState<ProfileData | null>(null);
+
+  // Earnings data
+  const [earnings, setEarnings] = useState<Record<TimeRange, EarningsData>>({
+    week: { total: 0, sessions: 0, pending: 0 },
+    month: { total: 0, sessions: 0, pending: 0 },
+    all: { total: 0, sessions: 0, pending: 0 },
+  });
+
+  // Payout history
+  const [payouts, setPayouts] = useState<Payout[]>([]);
+
+  useEffect(() => {
+    if (user?.id) {
+      loadData();
+    }
+  }, [user?.id]);
+
+  const loadData = async () => {
+    if (!user?.id || !supabase) return;
+
+    try {
+      // Load profile data
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('total_earnings, pending_payout, stripe_connect_id, stripe_connect_status, stripe_payouts_enabled')
+        .eq('id', user.id)
+        .single();
+
+      if (profileError) throw profileError;
+      setProfile(profileData);
+
+      // Load session counts for different time ranges
+      const now = new Date();
+      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+      // Get all completed sessions
+      const { data: sessions, error: sessionsError } = await supabase
+        .from('sessions')
+        .select('id, session_type, scheduled_at')
+        .eq('supporter_id', user.id)
+        .eq('status', 'completed');
+
+      if (sessionsError) throw sessionsError;
+
+      // Calculate earnings by time range
+      const calculateEarnings = (sessionList: typeof sessions) => {
+        let total = 0;
+        sessionList?.forEach(session => {
+          const pricing = Config.pricing[session.session_type as keyof typeof Config.pricing];
+          if (pricing) {
+            total += pricing.supporterCut;
+          }
+        });
+        return total / 100; // Convert from cents to dollars
+      };
+
+      const weekSessions = sessions?.filter(s => new Date(s.scheduled_at) >= weekAgo) || [];
+      const monthSessions = sessions?.filter(s => new Date(s.scheduled_at) >= monthAgo) || [];
+      const allSessions = sessions || [];
+
+      setEarnings({
+        week: {
+          total: calculateEarnings(weekSessions),
+          sessions: weekSessions.length,
+          pending: (profileData?.pending_payout || 0) / 100,
+        },
+        month: {
+          total: calculateEarnings(monthSessions),
+          sessions: monthSessions.length,
+          pending: (profileData?.pending_payout || 0) / 100,
+        },
+        all: {
+          total: (profileData?.total_earnings || 0) / 100,
+          sessions: allSessions.length,
+          pending: (profileData?.pending_payout || 0) / 100,
+        },
+      });
+
+      // Load payout history
+      const { data: payoutData, error: payoutError } = await supabase
+        .from('payouts')
+        .select('*')
+        .eq('supporter_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (!payoutError && payoutData) {
+        setPayouts(payoutData);
+      }
+    } catch (error) {
+      console.error('Error loading earnings data:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const recentPayouts = [
-    { id: '1', date: 'Jan 7, 2026', amount: 180.00, status: 'completed' },
-    { id: '2', date: 'Dec 31, 2025', amount: 195.75, status: 'completed' },
-    { id: '3', date: 'Dec 24, 2025', amount: 150.00, status: 'completed' },
-  ];
+  const handleRequestPayout = async () => {
+    if (!user?.id || !profile) return;
+
+    const payoutStatus = isPayoutReady(
+      profile.stripe_connect_id,
+      profile.stripe_connect_status,
+      profile.stripe_payouts_enabled
+    );
+
+    if (!payoutStatus.ready) {
+      Alert.alert('Cannot Request Payout', payoutStatus.message, [
+        { text: 'Set Up Account', onPress: () => router.push('/(supporter)/payout-settings') },
+        { text: 'Cancel', style: 'cancel' },
+      ]);
+      return;
+    }
+
+    const pendingAmount = profile.pending_payout;
+    if (pendingAmount < 2500) {
+      Alert.alert(
+        'Minimum Not Met',
+        `You need at least $25.00 to request a payout. Current balance: $${(pendingAmount / 100).toFixed(2)}`
+      );
+      return;
+    }
+
+    Alert.alert(
+      'Request Payout',
+      `Transfer $${(pendingAmount / 100).toFixed(2)} to your bank account?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Request Payout',
+          onPress: async () => {
+            setIsRequestingPayout(true);
+            try {
+              await requestPayout(user.id, pendingAmount, profile.stripe_connect_id!);
+              Alert.alert('Success', 'Payout requested! Funds will arrive in 2-3 business days.');
+              loadData(); // Refresh data
+            } catch (error: unknown) {
+              Alert.alert('Error', error instanceof Error ? error.message : 'Failed to request payout');
+            } finally {
+              setIsRequestingPayout(false);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const currentEarnings = earnings[timeRange];
+
+  const formatPayoutDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
+  const getPayoutStatusIcon = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return <CheckIcon size={12} color={PsychiColors.success} />;
+      case 'pending':
+        return <ClockIcon size={12} color={PsychiColors.warning} />;
+      case 'failed':
+        return <AlertIcon size={12} color={PsychiColors.error} />;
+      default:
+        return null;
+    }
+  };
+
+  const getPayoutStatusColor = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return PsychiColors.success;
+      case 'pending':
+        return PsychiColors.warning;
+      case 'failed':
+        return PsychiColors.error;
+      default:
+        return PsychiColors.textMuted;
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={PsychiColors.azure} />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -97,6 +299,32 @@ export default function EarningsScreen() {
           </View>
         </View>
 
+        {/* Request Payout Button */}
+        {currentEarnings.pending >= 25 && profile?.stripe_connect_status === 'active' && (
+          <View style={styles.payoutButtonContainer}>
+            <TouchableOpacity
+              style={[styles.payoutButton, isRequestingPayout && styles.payoutButtonDisabled]}
+              onPress={handleRequestPayout}
+              disabled={isRequestingPayout}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={[PsychiColors.success, '#16A34A']}
+                style={styles.payoutButtonGradient}
+              >
+                {isRequestingPayout ? (
+                  <ActivityIndicator color={PsychiColors.white} />
+                ) : (
+                  <>
+                    <DollarIcon size={20} color={PsychiColors.white} />
+                    <Text style={styles.payoutButtonText}>Request Payout</Text>
+                  </>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Commission Breakdown */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>How Earnings Work</Text>
@@ -139,22 +367,31 @@ export default function EarningsScreen() {
         {/* Recent Payouts */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Recent Payouts</Text>
-          {recentPayouts.map((payout) => (
-            <View key={payout.id} style={styles.payoutCard}>
-              <View style={styles.payoutInfo}>
-                <Text style={styles.payoutDate}>{payout.date}</Text>
-                <View style={styles.statusBadge}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    {payout.status === 'completed' && <CheckIcon size={12} color={PsychiColors.success} />}
-                    <Text style={styles.statusText}>
-                      {payout.status === 'completed' ? ' Completed' : 'Pending'}
-                    </Text>
+          {payouts.length === 0 ? (
+            <View style={styles.emptyPayouts}>
+              <Text style={styles.emptyPayoutsText}>No payouts yet</Text>
+              <Text style={styles.emptyPayoutsSubtext}>
+                Complete sessions to start earning
+              </Text>
+            </View>
+          ) : (
+            payouts.map((payout) => (
+              <View key={payout.id} style={styles.payoutCard}>
+                <View style={styles.payoutInfo}>
+                  <Text style={styles.payoutDate}>{formatPayoutDate(payout.created_at)}</Text>
+                  <View style={styles.statusBadge}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      {getPayoutStatusIcon(payout.status)}
+                      <Text style={[styles.statusText, { color: getPayoutStatusColor(payout.status) }]}>
+                        {' '}{payout.status.charAt(0).toUpperCase() + payout.status.slice(1)}
+                      </Text>
+                    </View>
                   </View>
                 </View>
+                <Text style={styles.payoutAmount}>${(payout.amount / 100).toFixed(2)}</Text>
               </View>
-              <Text style={styles.payoutAmount}>${payout.amount.toFixed(2)}</Text>
-            </View>
-          ))}
+            ))
+          )}
         </View>
 
         {/* Payout Settings */}
@@ -169,7 +406,11 @@ export default function EarningsScreen() {
             </View>
             <View style={styles.settingsInfo}>
               <Text style={styles.settingsTitle}>Payout Settings</Text>
-              <Text style={styles.settingsSubtitle}>Manage bank account & payout schedule</Text>
+              <Text style={styles.settingsSubtitle}>
+                {profile?.stripe_connect_status === 'active'
+                  ? 'Manage bank account & payout schedule'
+                  : 'Set up your payout account'}
+              </Text>
             </View>
             <ChevronRightIcon size={20} color={PsychiColors.textMuted} />
           </TouchableOpacity>
@@ -185,6 +426,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: PsychiColors.cream,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   scrollView: {
     flex: 1,
@@ -269,10 +515,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     ...Shadows.soft,
   },
-  statIcon: {
-    fontSize: 24,
-    marginBottom: Spacing.xs,
-  },
   statValue: {
     fontSize: 20,
     fontWeight: '700',
@@ -282,6 +524,29 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: PsychiColors.textMuted,
     marginTop: 4,
+  },
+  payoutButtonContainer: {
+    paddingHorizontal: Spacing.lg,
+    marginBottom: Spacing.lg,
+  },
+  payoutButton: {
+    borderRadius: BorderRadius.lg,
+    overflow: 'hidden',
+  },
+  payoutButtonDisabled: {
+    opacity: 0.7,
+  },
+  payoutButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing.md,
+    gap: Spacing.sm,
+  },
+  payoutButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: PsychiColors.white,
   },
   section: {
     paddingHorizontal: Spacing.lg,
@@ -317,11 +582,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: PsychiColors.textMuted,
   },
-  breakdownArrow: {
-    fontSize: 14,
-    color: PsychiColors.textSoft,
-    marginHorizontal: Spacing.sm,
-  },
   breakdownNet: {
     fontSize: 15,
     fontWeight: '600',
@@ -331,6 +591,23 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: 'rgba(0,0,0,0.05)',
     marginVertical: Spacing.sm,
+  },
+  emptyPayouts: {
+    backgroundColor: PsychiColors.white,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.lg,
+    alignItems: 'center',
+    ...Shadows.soft,
+  },
+  emptyPayoutsText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: PsychiColors.textSecondary,
+  },
+  emptyPayoutsSubtext: {
+    fontSize: 14,
+    color: PsychiColors.textMuted,
+    marginTop: 4,
   },
   payoutCard: {
     flexDirection: 'row',
@@ -355,7 +632,6 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 12,
-    color: PsychiColors.success,
     fontWeight: '500',
   },
   payoutAmount: {
@@ -380,9 +656,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: Spacing.md,
   },
-  settingsEmoji: {
-    fontSize: 22,
-  },
   settingsInfo: {
     flex: 1,
   },
@@ -395,9 +668,5 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: PsychiColors.textMuted,
     marginTop: 2,
-  },
-  settingsArrow: {
-    fontSize: 24,
-    color: PsychiColors.textSoft,
   },
 });
