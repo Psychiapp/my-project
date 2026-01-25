@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -24,9 +25,54 @@ import {
   CertificateIcon,
   ChevronRightIcon,
 } from '@/components/icons';
+import { getSupporterDetail, getSupporterSessionCount } from '@/lib/database';
+
+interface SupporterProfileData {
+  name: string;
+  education: string;
+  totalSessions: number;
+  bio: string;
+  specialties: string[];
+  communicationStyles: string[];
+}
 
 export default function SupporterProfileScreen() {
-  const { profile, signOut } = useAuth();
+  const { user, profile, signOut } = useAuth();
+  const [supporterData, setSupporterData] = useState<SupporterProfileData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchSupporterData = async () => {
+      if (!user?.id) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const [detail, sessionCount] = await Promise.all([
+          getSupporterDetail(user.id),
+          getSupporterSessionCount(user.id),
+        ]);
+
+        if (detail) {
+          setSupporterData({
+            name: detail.full_name,
+            education: detail.education || '',
+            totalSessions: sessionCount || 0,
+            bio: detail.bio || '',
+            specialties: detail.specialties || [],
+            communicationStyles: [], // Not stored in database yet
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching supporter data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchSupporterData();
+  }, [user?.id]);
 
   const handleSignOut = () => {
     Alert.alert(
@@ -46,14 +92,14 @@ export default function SupporterProfileScreen() {
     );
   };
 
-  // Mock profile data
-  const supporterProfile = {
-    name: 'Sarah Chen',
-    education: 'Psychology, Stanford University',
-    totalSessions: 127,
-    bio: 'I specialize in helping students navigate academic stress and anxiety. My approach combines active listening with practical coping strategies.',
-    specialties: ['Anxiety', 'Stress', 'Academic', 'Motivation'],
-    communicationStyles: ['Active Listening', 'Empathetic', 'Solution-Focused'],
+  // Use fetched data or defaults
+  const supporterProfile = supporterData || {
+    name: `${profile?.firstName || ''} ${profile?.lastName || ''}`.trim() || 'Your Profile',
+    education: '',
+    totalSessions: 0,
+    bio: 'Add a bio to tell clients about yourself',
+    specialties: [],
+    communicationStyles: [],
   };
 
   const menuItems = [
