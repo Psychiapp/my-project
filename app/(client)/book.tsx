@@ -20,11 +20,13 @@ import { PsychiColors, Spacing, BorderRadius, Shadows, Typography } from '@/cons
 import { Config } from '@/constants/config';
 import { ChatIcon, PhoneIcon, VideoIcon, CalendarIcon, ClockIcon, ChevronLeftIcon } from '@/components/icons';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLocalSearchParams } from 'expo-router';
 import {
   sendNewBookingNotification,
   sendBookingConfirmedNotification,
   scheduleAllSessionReminders,
 } from '@/lib/notifications';
+import { createSession, getSupporterDetail, getSupporterAvailability } from '@/lib/database';
 
 type SessionType = 'chat' | 'phone' | 'video';
 type BookingStep = 'type' | 'date' | 'time' | 'confirm';
@@ -62,44 +64,62 @@ const sessionTypes = [
   },
 ];
 
-// Generate dates for the next 14 days
-const generateDates = () => {
+// Generate dates for the next 14 days based on supporter availability
+const generateDates = (availability: Record<string, string[]>) => {
   const dates = [];
   const today = new Date();
+  const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
   for (let i = 0; i < 14; i++) {
     const date = new Date(today);
     date.setDate(today.getDate() + i);
-    // Skip weekends for now (can be customized based on supporter availability)
-    if (date.getDay() !== 0 && date.getDay() !== 6) {
+    const dayName = dayNames[date.getDay()];
+
+    // Only include dates where supporter has availability
+    const hasAvailability = Object.keys(availability).length === 0 ||
+      (availability[dayName] && availability[dayName].length > 0);
+
+    if (hasAvailability) {
       dates.push(date);
     }
   }
   return dates;
 };
 
-// Generate time slots
-const generateTimeSlots = (date: Date, duration: number): TimeSlot[] => {
+// Generate time slots based on supporter availability for that day
+const generateTimeSlots = (date: Date, duration: number, availability: Record<string, string[]>): TimeSlot[] => {
   const slots: TimeSlot[] = [];
   const now = new Date();
   const isToday = date.toDateString() === now.toDateString();
+  const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const dayName = dayNames[date.getDay()];
 
-  for (let hour = 9; hour < 18; hour++) {
+  // Get available hours for this day from supporter's schedule
+  const dayAvailability = availability[dayName] || [];
+
+  // If no specific availability set, use default 9 AM - 6 PM
+  const startHour = dayAvailability.length > 0 ? parseInt(dayAvailability[0].split(':')[0]) : 9;
+  const endHour = dayAvailability.length > 0
+    ? parseInt(dayAvailability[dayAvailability.length - 1].split(':')[0]) + 1
+    : 18;
+
+  for (let hour = startHour; hour < endHour; hour++) {
     for (let minute = 0; minute < 60; minute += 30) {
       if (isToday && (hour < now.getHours() || (hour === now.getHours() && minute <= now.getMinutes()))) {
         continue;
       }
 
       const endMinute = minute + duration;
-      const endHour = hour + Math.floor(endMinute / 60);
+      const slotEndHour = hour + Math.floor(endMinute / 60);
       const actualEndMinute = endMinute % 60;
 
-      if (endHour < 19) {
+      if (slotEndHour <= endHour) {
         const displayHour = hour % 12 || 12;
         const ampm = hour >= 12 ? 'PM' : 'AM';
 
         slots.push({
           startTime: `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`,
-          endTime: `${endHour.toString().padStart(2, '0')}:${actualEndMinute.toString().padStart(2, '0')}`,
+          endTime: `${slotEndHour.toString().padStart(2, '0')}:${actualEndMinute.toString().padStart(2, '0')}`,
           display: `${displayHour}:${minute.toString().padStart(2, '0')} ${ampm}`,
         });
       }
@@ -110,27 +130,44 @@ const generateTimeSlots = (date: Date, duration: number): TimeSlot[] => {
 
 export default function BookSessionScreen() {
   const { user, profile } = useAuth();
+  const params = useLocalSearchParams<{ supporterId?: string; supporterName?: string }>();
   const [step, setStep] = useState<BookingStep>('type');
   const [selectedType, setSelectedType] = useState<SessionType | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
   const [isBooking, setIsBooking] = useState(false);
+  const [supporterAvailability, setSupporterAvailability] = useState<Record<string, string[]>>({});
+  const [isLoadingAvailability, setIsLoadingAvailability] = useState(true);
 
-  // Mock supporter data (in production, this would come from route params or context)
+  // Get supporter from route params or use fallback
   const supporter = {
-    id: 'supporter-1',
-    name: 'Sarah Chen',
-    specialty: 'Anxiety & Stress',
+    id: params.supporterId || 'supporter-1',
+    name: params.supporterName || 'Your Supporter',
+    specialty: 'Peer Support',
   };
+
+  // Fetch supporter availability on mount
+  React.useEffect(() => {
+    const fetchAvailability = async () => {
+      if (params.supporterId) {
+        const data = await getSupporterAvailability(params.supporterId);
+        if (data?.availability) {
+          setSupporterAvailability(data.availability);
+        }
+      }
+      setIsLoadingAvailability(false);
+    };
+    fetchAvailability();
+  }, [params.supporterId]);
 
   // Get client name for notifications
   const clientName = profile?.firstName
     ? `${profile.firstName}${profile.lastName ? ' ' + profile.lastName : ''}`
     : 'Client';
 
-  const availableDates = generateDates();
+  const availableDates = generateDates(supporterAvailability);
   const timeSlots = selectedDate
-    ? generateTimeSlots(selectedDate, selectedType === 'chat' ? 30 : 45)
+    ? generateTimeSlots(selectedDate, selectedType === 'chat' ? 30 : 45, supporterAvailability)
     : [];
 
   const handleSelectType = (type: SessionType) => {
@@ -164,21 +201,30 @@ export default function BookSessionScreen() {
   };
 
   const handleConfirmBooking = async () => {
-    if (!selectedDate || !selectedSlot || !selectedType) return;
+    if (!selectedDate || !selectedSlot || !selectedType || !user?.id) return;
 
     setIsBooking(true);
 
     try {
-      // Simulate API call to create booking
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      // Generate a session ID (in production, this would come from the API)
-      const sessionId = `session-${Date.now()}`;
-
       // Create scheduled session time
       const [hours, minutes] = selectedSlot.startTime.split(':').map(Number);
       const scheduledTime = new Date(selectedDate);
       scheduledTime.setHours(hours, minutes, 0, 0);
+
+      // Create the session in the database
+      const session = await createSession(
+        user.id,
+        supporter.id,
+        selectedType,
+        scheduledTime.toISOString(),
+        selectedType === 'chat' ? 30 : 45
+      );
+
+      if (!session) {
+        throw new Error('Failed to create session');
+      }
+
+      const sessionId = session.id;
 
       // Format date and time for notifications
       const dateStr = selectedDate.toLocaleDateString('en-US', {
