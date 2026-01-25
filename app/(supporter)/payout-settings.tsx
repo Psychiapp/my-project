@@ -483,7 +483,11 @@ export default function PayoutSettingsScreen() {
 
         {/* Tax Info */}
         <View style={styles.section}>
-          <TouchableOpacity style={styles.taxCard} activeOpacity={0.7}>
+          <TouchableOpacity
+            style={styles.taxCard}
+            activeOpacity={0.7}
+            onPress={() => router.push('/(supporter)/tax-documents')}
+          >
             <View style={styles.taxIcon}>
               <DocumentIcon size={24} color={PsychiColors.azure} />
             </View>
