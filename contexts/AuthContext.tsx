@@ -126,9 +126,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       setIsLoading(true);
 
-      // Check for demo login first
-      if (isDemoLogin(email, password)) {
-        const { profile: demoProfile, role } = getDemoProfile(email);
+      // Check for demo login first (disabled in production)
+      const demoResult = getDemoProfile(email);
+      if (isDemoLogin(email, password) && demoResult) {
+        const { profile: demoProfile, role } = demoResult;
 
         const demoUser = { id: demoProfile.id, email: demoProfile.email };
         setUser(demoUser);

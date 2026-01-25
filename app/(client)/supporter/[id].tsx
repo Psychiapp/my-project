@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -13,9 +14,9 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
 import { ChevronLeftIcon, HeartIcon, ChatIcon, PhoneIcon, VideoIcon } from '@/components/icons';
 import { Config } from '@/constants/config';
+import { getSupporterDetail, getSupporterAvailability } from '@/lib/database';
 
-// Mock supporter data - in production this would come from API
-const mockSupporters: Record<string, {
+interface SupporterData {
   id: string;
   name: string;
   education: string;
@@ -28,60 +29,73 @@ const mockSupporters: Record<string, {
   approach: string;
   availability: string[];
   feedback: { author: string; text: string; date: string }[];
-}> = {
-  '1': {
-    id: '1',
-    name: 'Sarah Chen',
-    education: 'Psychology, Stanford',
-    specialties: ['Anxiety', 'Stress', 'Academic'],
-    sessions: 127,
-    bio: 'I specialize in helping students navigate academic stress and anxiety. Having gone through similar experiences during my own education, I understand the unique pressures that come with academic life.',
-    available: true,
-    languages: ['English', 'Mandarin'],
-    experience: '2+ years',
-    approach: 'I use a combination of active listening, mindfulness techniques, and cognitive reframing to help you build resilience and manage stress effectively.',
-    availability: ['Weekdays 9am-5pm', 'Saturday mornings'],
-    feedback: [
-      { author: 'Alex M.', text: 'Sarah helped me through a really tough semester. Highly recommend!', date: 'Jan 2026' },
-      { author: 'Jordan K.', text: 'Understanding and supportive. Great listener.', date: 'Dec 2025' },
-      { author: 'Taylor R.', text: 'Very helpful with my anxiety about exams.', date: 'Dec 2025' },
-    ],
-  },
-  '2': {
-    id: '2',
-    name: 'Marcus Johnson',
-    education: 'Clinical Psych, UCLA',
-    specialties: ['Depression', 'Life Transitions', 'Relationships'],
-    sessions: 89,
-    bio: 'Passionate about helping people through major life changes. Whether you\'re dealing with a breakup, career change, or just feeling lost, I\'m here to listen and support you.',
-    available: true,
-    languages: ['English', 'Spanish'],
-    experience: '3+ years',
-    approach: 'My approach focuses on validation, empathy, and helping you discover your own inner strength and resilience.',
-    availability: ['Weekdays 6pm-10pm', 'Weekends'],
-    feedback: [
-      { author: 'Casey P.', text: 'Marcus is incredibly empathetic. Helped me through a difficult breakup.', date: 'Jan 2026' },
-      { author: 'Morgan L.', text: 'Great at helping me see things from different perspectives.', date: 'Jan 2026' },
-    ],
-  },
-};
+}
 
 export default function SupporterProfileScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [isFavorite, setIsFavorite] = useState(false);
+  const [supporter, setSupporter] = useState<SupporterData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Get supporter data (mock)
-  const supporter = mockSupporters[id || '1'] || mockSupporters['1'];
+  useEffect(() => {
+    const fetchSupporter = async () => {
+      if (!id) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const detail = await getSupporterDetail(id);
+        const availabilityData = await getSupporterAvailability(id);
+
+        if (detail) {
+          // Format availability from database format
+          const availabilityStrings: string[] = [];
+          if (availabilityData?.availability) {
+            const avail = availabilityData.availability;
+            Object.entries(avail).forEach(([day, hours]) => {
+              if (Array.isArray(hours) && hours.length > 0) {
+                availabilityStrings.push(`${day.charAt(0).toUpperCase() + day.slice(1)}`);
+              }
+            });
+          }
+
+          setSupporter({
+            id: detail.id,
+            name: detail.full_name,
+            education: detail.education || '',
+            specialties: detail.specialties || [],
+            sessions: detail.total_sessions || 0,
+            bio: detail.bio || 'This supporter has not added a bio yet.',
+            available: detail.accepting_clients || false,
+            languages: detail.languages || ['English'],
+            experience: detail.years_experience ? `${detail.years_experience}+ years` : '',
+            approach: detail.approach || '',
+            availability: availabilityStrings.length > 0 ? availabilityStrings : ['Contact for availability'],
+            feedback: [], // Would need a separate reviews/feedback table
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching supporter:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchSupporter();
+  }, [id]);
 
   const handleBook = (sessionType: 'chat' | 'phone' | 'video') => {
+    if (!supporter) return;
     router.push({
       pathname: '/(client)/book',
-      params: { supporterId: supporter.id, sessionType },
+      params: { supporterId: supporter.id, supporterName: supporter.name, sessionType },
     });
   };
 
   const handleToggleFavorite = () => {
+    if (!supporter) return;
     setIsFavorite(!isFavorite);
     Alert.alert(
       isFavorite ? 'Removed from Favorites' : 'Added to Favorites',
@@ -90,6 +104,34 @@ export default function SupporterProfileScreen() {
         : `${supporter.name} has been added to your favorites.`
     );
   };
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={PsychiColors.azure} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!supporter) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <ChevronLeftIcon size={24} color={PsychiColors.azure} />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>Supporter not found</Text>
+          <TouchableOpacity onPress={() => router.back()} style={styles.errorButton}>
+            <Text style={styles.errorButtonText}>Go Back</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -160,13 +202,15 @@ export default function SupporterProfileScreen() {
           </View>
         </View>
 
-        {/* Approach */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>My Approach</Text>
-          <View style={styles.infoCard}>
-            <Text style={styles.bioText}>{supporter.approach}</Text>
+        {/* Approach - only show if supporter has added one */}
+        {supporter.approach ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>My Approach</Text>
+            <View style={styles.infoCard}>
+              <Text style={styles.bioText}>{supporter.approach}</Text>
+            </View>
           </View>
-        </View>
+        ) : null}
 
         {/* Details */}
         <View style={styles.section}>
@@ -184,19 +228,21 @@ export default function SupporterProfileScreen() {
           </View>
         </View>
 
-        {/* Feedback */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Client Feedback</Text>
-          {supporter.feedback.map((item, index) => (
-            <View key={index} style={styles.reviewCard}>
-              <View style={styles.reviewHeader}>
-                <Text style={styles.reviewAuthor}>{item.author}</Text>
+        {/* Feedback - only show if there are reviews */}
+        {supporter.feedback.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Client Feedback</Text>
+            {supporter.feedback.map((item, index) => (
+              <View key={index} style={styles.reviewCard}>
+                <View style={styles.reviewHeader}>
+                  <Text style={styles.reviewAuthor}>{item.author}</Text>
+                </View>
+                <Text style={styles.reviewText}>{item.text}</Text>
+                <Text style={styles.reviewDate}>{item.date}</Text>
               </View>
-              <Text style={styles.reviewText}>{item.text}</Text>
-              <Text style={styles.reviewDate}>{item.date}</Text>
-            </View>
-          ))}
-        </View>
+            ))}
+          </View>
+        )}
 
         {/* Book Session */}
         <View style={styles.section}>
@@ -245,6 +291,33 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: PsychiColors.cream,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.lg,
+  },
+  errorText: {
+    fontSize: 18,
+    color: PsychiColors.textSecondary,
+    marginBottom: Spacing.md,
+  },
+  errorButton: {
+    backgroundColor: PsychiColors.azure,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.md,
+  },
+  errorButtonText: {
+    color: PsychiColors.white,
+    fontWeight: '600',
+    fontSize: 16,
   },
   scrollView: {
     flex: 1,

@@ -139,12 +139,12 @@ export default function BookSessionScreen() {
   const [supporterAvailability, setSupporterAvailability] = useState<Record<string, string[]>>({});
   const [isLoadingAvailability, setIsLoadingAvailability] = useState(true);
 
-  // Get supporter from route params or use fallback
-  const supporter = {
-    id: params.supporterId || 'supporter-1',
+  // Get supporter from route params
+  const supporter = params.supporterId ? {
+    id: params.supporterId,
     name: params.supporterName || 'Your Supporter',
     specialty: 'Peer Support',
-  };
+  } : null;
 
   // Fetch supporter availability on mount
   React.useEffect(() => {
@@ -201,7 +201,7 @@ export default function BookSessionScreen() {
   };
 
   const handleConfirmBooking = async () => {
-    if (!selectedDate || !selectedSlot || !selectedType || !user?.id) return;
+    if (!selectedDate || !selectedSlot || !selectedType || !user?.id || !supporter) return;
 
     setIsBooking(true);
 
@@ -304,6 +304,33 @@ export default function BookSessionScreen() {
   };
 
   const stepIndex = ['type', 'date', 'time', 'confirm'].indexOf(step);
+
+  // Show message if no supporter selected
+  if (!supporter) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <ChevronLeftIcon size={24} color={PsychiColors.midnight} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Book a Session</Text>
+          <View style={styles.headerSpacer} />
+        </View>
+        <View style={styles.noSupporterContainer}>
+          <Text style={styles.noSupporterTitle}>No Supporter Selected</Text>
+          <Text style={styles.noSupporterText}>
+            Please select a supporter first before booking a session.
+          </Text>
+          <TouchableOpacity
+            style={styles.noSupporterButton}
+            onPress={() => router.back()}
+          >
+            <Text style={styles.noSupporterButtonText}>Go Back</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -647,6 +674,35 @@ const styles = StyleSheet.create({
   },
   headerSpacer: {
     width: 40,
+  },
+  noSupporterContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.xl,
+  },
+  noSupporterTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: PsychiColors.midnight,
+    marginBottom: Spacing.md,
+  },
+  noSupporterText: {
+    fontSize: 16,
+    color: PsychiColors.textSecondary,
+    textAlign: 'center',
+    marginBottom: Spacing.xl,
+  },
+  noSupporterButton: {
+    backgroundColor: PsychiColors.azure,
+    paddingHorizontal: Spacing.xl,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.lg,
+  },
+  noSupporterButtonText: {
+    color: PsychiColors.white,
+    fontWeight: '600',
+    fontSize: 16,
   },
   progressContainer: {
     flexDirection: 'row',
