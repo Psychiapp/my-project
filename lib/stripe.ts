@@ -56,20 +56,17 @@ export async function confirmPayment(clientSecret: string): Promise<{ success: b
 
 // Get saved payment methods for a customer
 export async function getPaymentMethods(customerId: string): Promise<PaymentMethod[]> {
-  // Mock payment methods
-  return [
-    {
-      id: 'pm_1',
-      type: 'card',
-      card: {
-        brand: 'visa',
-        last4: '4242',
-        expMonth: 12,
-        expYear: 2027,
-      },
-      isDefault: true,
-    },
-  ];
+  // TODO: Implement Stripe API call when backend is ready
+  // For now, return empty array - payment methods will be added during checkout
+  if (!StripeConfig.publishableKey) {
+    return [];
+  }
+
+  // In production, this would fetch from your backend:
+  // const response = await fetch(`${API_URL}/payment-methods/${customerId}`);
+  // return response.json();
+
+  return [];
 }
 
 // Add a new payment method
