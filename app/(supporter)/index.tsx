@@ -26,6 +26,7 @@ import {
   ChevronRightIcon,
 } from '@/components/icons';
 import DashboardTutorial from '@/components/DashboardTutorial';
+import SupporterOnboardingChecklist from '@/components/SupporterOnboardingChecklist';
 import { Divider } from '@/components/ui/PremiumCard';
 
 const TUTORIAL_COMPLETED_KEY = '@psychi_supporter_tutorial_completed';
@@ -98,6 +99,9 @@ export default function SupporterHomeScreen() {
           <Text style={styles.userName}>{profile?.firstName || 'there'}</Text>
           <Text style={styles.headerSubtitle}>Your support dashboard</Text>
         </View>
+
+        {/* Onboarding Checklist - Shows required steps before receiving clients */}
+        <SupporterOnboardingChecklist />
 
         {/* Launch Notice Card */}
         <View style={styles.launchCard}>

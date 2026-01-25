@@ -157,7 +157,7 @@ export async function updateUserProfile(
 /**
  * Get all available supporters for browsing
  * Only returns supporters who:
- * - Have completed training
+ * - Have completed onboarding (W9, bank info, training)
  * - Are accepting new clients
  */
 export async function getAvailableSupporters(): Promise<SupporterListing[]> {
@@ -169,6 +169,7 @@ export async function getAvailableSupporters(): Promise<SupporterListing[]> {
       id,
       full_name,
       avatar_url,
+      onboarding_complete,
       supporter_details (
         bio,
         specialties,
@@ -180,7 +181,7 @@ export async function getAvailableSupporters(): Promise<SupporterListing[]> {
       )
     `)
     .eq('role', 'supporter')
-    .eq('supporter_details.training_complete', true)
+    .eq('onboarding_complete', true) // Must complete W9, bank, and training
     .eq('supporter_details.accepting_clients', true);
 
   if (error) {
@@ -202,12 +203,14 @@ export async function getAvailableSupporters(): Promise<SupporterListing[]> {
       is_available: details.is_available || false,
       accepting_clients: details.accepting_clients || false,
       training_complete: details.training_complete || false,
+      onboarding_complete: supporter.onboarding_complete || false,
     };
   });
 }
 
 /**
  * Search supporters by name or specialty
+ * Only returns supporters who have completed onboarding
  */
 export async function searchSupporters(
   query: string,
@@ -221,6 +224,7 @@ export async function searchSupporters(
       id,
       full_name,
       avatar_url,
+      onboarding_complete,
       supporter_details (
         bio,
         specialties,
@@ -232,7 +236,7 @@ export async function searchSupporters(
       )
     `)
     .eq('role', 'supporter')
-    .eq('supporter_details.training_complete', true)
+    .eq('onboarding_complete', true) // Must complete W9, bank, and training
     .eq('supporter_details.accepting_clients', true);
 
   // Add name search if query provided
@@ -261,6 +265,7 @@ export async function searchSupporters(
       is_available: details.is_available || false,
       accepting_clients: details.accepting_clients || false,
       training_complete: details.training_complete || false,
+      onboarding_complete: supporter.onboarding_complete || false,
     };
   });
 
@@ -283,6 +288,7 @@ export async function getSupporterDetail(supporterId: string): Promise<Supporter
       id,
       full_name,
       avatar_url,
+      onboarding_complete,
       supporter_details (
         bio,
         specialties,
@@ -326,6 +332,7 @@ export async function getSupporterDetail(supporterId: string): Promise<Supporter
     is_available: details.is_available || false,
     accepting_clients: details.accepting_clients || false,
     training_complete: details.training_complete || false,
+    onboarding_complete: data.onboarding_complete || false,
     availability: details.availability || {},
     session_types: details.session_types || ['chat', 'phone', 'video'],
     reviews,
@@ -1876,19 +1883,21 @@ const topicToSpecialtyMap: Record<string, string[]> = {
 /**
  * Match supporters to a client based on their preferences
  * Returns sorted list of supporters with compatibility scores
+ * Only matches supporters who have completed full onboarding
  */
 export async function matchSupportersToClient(
   preferences: ClientPreferences
 ): Promise<MatchedSupporter[]> {
   if (!supabase) return [];
 
-  // Get all available supporters
+  // Get all available supporters who have completed onboarding
   const { data, error } = await supabase
     .from('profiles')
     .select(`
       id,
       full_name,
       avatar_url,
+      onboarding_complete,
       supporter_details (
         bio,
         specialties,
@@ -1904,7 +1913,8 @@ export async function matchSupportersToClient(
         session_types
       )
     `)
-    .eq('role', 'supporter');
+    .eq('role', 'supporter')
+    .eq('onboarding_complete', true); // Must complete W9, bank, and training
 
   if (error) {
     console.error('Error fetching supporters for matching:', error);
@@ -1917,8 +1927,8 @@ export async function matchSupportersToClient(
   for (const supporter of data || []) {
     const details = supporter.supporter_details?.[0];
 
-    // Skip if not fully active
-    if (!details?.training_complete || !details?.accepting_clients || !details?.is_verified) {
+    // Skip if not fully active (verified and accepting clients)
+    if (!details?.accepting_clients || !details?.is_verified) {
       continue;
     }
 
@@ -2007,6 +2017,7 @@ export async function matchSupportersToClient(
         is_available: details.is_available || false,
         accepting_clients: details.accepting_clients || false,
         training_complete: details.training_complete || false,
+        onboarding_complete: supporter.onboarding_complete || false,
         compatibilityScore: Math.round(score),
         matchReasons: matchReasons.slice(0, 3), // Top 3 reasons
       });
@@ -2310,6 +2321,7 @@ export async function requestSupporterReassignment(
         is_available: true,
         accepting_clients: true,
         training_complete: true,
+        onboarding_complete: true,
         compatibilityScore: 85,
         matchReasons: ['Based on your updated preferences'],
       },

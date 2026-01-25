@@ -47,6 +47,22 @@ export interface ClientProfile extends UserProfile {
 // Stripe Connect account status
 export type StripeConnectStatus = 'pending' | 'pending_verification' | 'active' | 'restricted' | 'disabled';
 
+// W9 form data structure
+export interface W9FormData {
+  legal_name: string;
+  business_name: string;
+  tax_classification: string;
+  other_classification?: string;
+  address_line1: string;
+  address_line2?: string;
+  city: string;
+  state: string;
+  zip_code: string;
+  ssn_ein: string; // Masked: ***-**-XXXX (only last 4 stored)
+  certification_agreed: boolean;
+  submitted_at: string;
+}
+
 // Supporter-specific profile data
 export interface SupporterProfile extends UserProfile {
   role: 'supporter';
@@ -75,6 +91,12 @@ export interface SupporterProfile extends UserProfile {
   stripe_payouts_enabled: boolean;
   payout_schedule: PayoutSchedule | null;
   payout_schedule_day: string | null; // For weekly: 'monday'-'friday', for monthly: '1'-'28'
+  // W9 and onboarding fields
+  w9_completed: boolean;
+  w9_completed_at: string | null;
+  w9_data: W9FormData | null;
+  onboarding_complete: boolean; // True when W9, bank, and training are all done
+  onboarding_completed_at: string | null;
 }
 
 // Payout schedule type
@@ -92,6 +114,7 @@ export interface SupporterListing {
   is_available: boolean;
   accepting_clients: boolean;
   training_complete: boolean;
+  onboarding_complete: boolean; // Required for client assignment
 }
 
 // Supporter detail (full profile for profile page)

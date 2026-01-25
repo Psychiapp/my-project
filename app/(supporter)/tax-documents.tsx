@@ -1,6 +1,6 @@
 /**
  * Tax Documents Screen
- * View and download 1099 tax forms
+ * View W9 and 1099-NEC tax forms
  */
 
 import React, { useState, useEffect } from 'react';
@@ -25,6 +25,7 @@ import {
   ClockIcon,
   InfoIcon,
   AlertIcon,
+  EditIcon,
 } from '@/components/icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
@@ -33,8 +34,7 @@ interface TaxYear {
   year: number;
   status: 'available' | 'pending' | 'not_eligible' | 'processing';
   totalEarnings: number;
-  formType: '1099-NEC' | '1099-K' | null;
-  downloadUrl: string | null;
+  formType: '1099-NEC' | null;
   availableDate: string | null;
 }
 
@@ -45,6 +45,8 @@ export default function TaxDocumentsScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [taxYears, setTaxYears] = useState<TaxYear[]>([]);
   const [totalEarnings, setTotalEarnings] = useState(0);
+  const [w9Completed, setW9Completed] = useState(false);
+  const [w9CompletedDate, setW9CompletedDate] = useState<string | null>(null);
 
   useEffect(() => {
     loadTaxData();
@@ -57,15 +59,17 @@ export default function TaxDocumentsScreen() {
     }
 
     try {
-      // Get supporter's total earnings
+      // Get supporter's profile including W9 status
       const { data: profile } = await supabase
         .from('profiles')
-        .select('total_earnings')
+        .select('total_earnings, w9_completed, w9_completed_at')
         .eq('id', user.id)
         .single();
 
       const earnings = profile?.total_earnings || 0;
       setTotalEarnings(earnings);
+      setW9Completed(profile?.w9_completed || false);
+      setW9CompletedDate(profile?.w9_completed_at || null);
 
       // Generate tax year data
       const currentYear = new Date().getFullYear();
@@ -84,7 +88,6 @@ export default function TaxDocumentsScreen() {
           status: today >= formDeadline ? 'available' : 'processing',
           totalEarnings: prevYearEarnings,
           formType: '1099-NEC',
-          downloadUrl: today >= formDeadline ? `https://stripe.com/tax/${prevYear}` : null,
           availableDate: today >= formDeadline ? null : 'January 31, ' + currentYear,
         });
       } else if (prevYearEarnings > 0) {
@@ -93,7 +96,6 @@ export default function TaxDocumentsScreen() {
           status: 'not_eligible',
           totalEarnings: prevYearEarnings,
           formType: null,
-          downloadUrl: null,
           availableDate: null,
         });
       }
@@ -104,7 +106,6 @@ export default function TaxDocumentsScreen() {
         status: 'pending',
         totalEarnings: earnings,
         formType: earnings >= TAX_THRESHOLD ? '1099-NEC' : null,
-        downloadUrl: null,
         availableDate: `January 31, ${currentYear + 1}`,
       });
 
@@ -116,27 +117,29 @@ export default function TaxDocumentsScreen() {
     }
   };
 
-  const handleDownload = async (taxYear: TaxYear) => {
-    if (!taxYear.downloadUrl) {
+  const handleDownload1099 = async (taxYear: TaxYear) => {
+    if (taxYear.status !== 'available') {
       Alert.alert('Not Available', 'This document is not yet available for download.');
       return;
     }
 
-    // In production, this would link to Stripe's tax document portal
     Alert.alert(
       'Download 1099-NEC',
-      `This will open Stripe's secure portal to download your ${taxYear.year} tax documents.`,
+      `This will open Stripe's secure portal to download your ${taxYear.year} 1099-NEC form.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Open Stripe',
           onPress: () => {
-            // Open Stripe Express dashboard for tax documents
             Linking.openURL('https://connect.stripe.com/express_login');
           },
         },
       ]
     );
+  };
+
+  const handleW9Action = () => {
+    router.push('/(supporter)/w9-form');
   };
 
   const getStatusIcon = (status: TaxYear['status']) => {
@@ -184,6 +187,11 @@ export default function TaxDocumentsScreen() {
     }
   };
 
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  };
+
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -206,36 +214,109 @@ export default function TaxDocumentsScreen() {
       </View>
 
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
-        {/* Info Card */}
+        {/* How It Works */}
         <View style={styles.infoCard}>
           <View style={styles.infoIcon}>
             <InfoIcon size={20} color={PsychiColors.azure} />
           </View>
           <View style={styles.infoContent}>
-            <Text style={styles.infoTitle}>About 1099 Forms</Text>
+            <Text style={styles.infoTitle}>How Tax Documents Work</Text>
             <Text style={styles.infoText}>
-              If you earn $600 or more in a calendar year, you'll receive a 1099-NEC form for tax
-              reporting. Forms are available by January 31st of the following year.
+              1. Complete your W-9 form when you sign up{'\n'}
+              2. Psychi uses your W-9 to prepare your 1099-NEC{'\n'}
+              3. If you earn $600+ in a year, you'll receive a 1099-NEC by January 31st
             </Text>
           </View>
         </View>
 
-        {/* Current Year Summary */}
+        {/* W-9 Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{new Date().getFullYear()} Earnings</Text>
+          <Text style={styles.sectionTitle}>W-9 Form</Text>
+          <Text style={styles.sectionDescription}>
+            The W-9 collects your taxpayer information and is required before you can receive clients.
+          </Text>
+
+          <View style={styles.documentCard}>
+            <View style={styles.documentHeader}>
+              <View style={styles.documentIcon}>
+                <DocumentIcon size={24} color={PsychiColors.azure} />
+              </View>
+              <View style={styles.documentInfo}>
+                <Text style={styles.documentTitle}>Form W-9</Text>
+                <Text style={styles.documentSubtitle}>
+                  Request for Taxpayer ID
+                </Text>
+              </View>
+              <View style={[
+                styles.statusBadge,
+                { backgroundColor: w9Completed ? `${PsychiColors.success}15` : `${PsychiColors.warning}15` }
+              ]}>
+                {w9Completed ? (
+                  <CheckIcon size={16} color={PsychiColors.success} />
+                ) : (
+                  <AlertIcon size={16} color={PsychiColors.warning} />
+                )}
+                <Text style={[
+                  styles.statusText,
+                  { color: w9Completed ? PsychiColors.success : PsychiColors.warning }
+                ]}>
+                  {w9Completed ? 'Completed' : 'Required'}
+                </Text>
+              </View>
+            </View>
+
+            {w9Completed && w9CompletedDate && (
+              <View style={styles.documentDetails}>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Submitted</Text>
+                  <Text style={styles.detailValue}>{formatDate(w9CompletedDate)}</Text>
+                </View>
+              </View>
+            )}
+
+            <TouchableOpacity
+              style={[styles.actionButton, w9Completed && styles.actionButtonSecondary]}
+              onPress={handleW9Action}
+              activeOpacity={0.8}
+            >
+              {w9Completed ? (
+                <>
+                  <EditIcon size={18} color={PsychiColors.azure} />
+                  <Text style={[styles.actionButtonText, styles.actionButtonTextSecondary]}>
+                    View or Update W-9
+                  </Text>
+                </>
+              ) : (
+                <>
+                  <EditIcon size={18} color={PsychiColors.white} />
+                  <Text style={styles.actionButtonText}>Complete W-9 Form</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* 1099-NEC Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>1099-NEC Forms</Text>
+          <Text style={styles.sectionDescription}>
+            Psychi provides a 1099-NEC form if you earn $600 or more in a calendar year. Forms are generated using your W-9 information.
+          </Text>
+
+          {/* Current Year Summary */}
           <View style={styles.summaryCard}>
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Total Earnings</Text>
+              <Text style={styles.summaryLabel}>{new Date().getFullYear()} Earnings</Text>
               <Text style={styles.summaryValue}>${(totalEarnings / 100).toFixed(2)}</Text>
             </View>
             <View style={styles.summaryDivider} />
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>1099 Threshold</Text>
-              <Text style={styles.summaryValue}>${(TAX_THRESHOLD / 100).toFixed(2)}</Text>
+              <Text style={styles.summaryValue}>$600.00</Text>
             </View>
             <View style={styles.summaryDivider} />
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>1099 Required?</Text>
+              <Text style={styles.summaryLabel}>1099 Will Be Issued?</Text>
               <Text style={[
                 styles.summaryValue,
                 { color: totalEarnings >= TAX_THRESHOLD ? PsychiColors.success : PsychiColors.textMuted }
@@ -244,80 +325,64 @@ export default function TaxDocumentsScreen() {
               </Text>
             </View>
           </View>
-        </View>
 
-        {/* Tax Documents List */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Tax Documents</Text>
+          {/* Tax Year Documents */}
+          {taxYears.map((taxYear) => (
+            <View key={taxYear.year} style={styles.documentCard}>
+              <View style={styles.documentHeader}>
+                <View style={styles.documentIcon}>
+                  <DocumentIcon size={24} color={PsychiColors.azure} />
+                </View>
+                <View style={styles.documentInfo}>
+                  <Text style={styles.documentTitle}>{taxYear.year} Tax Year</Text>
+                  <Text style={styles.documentSubtitle}>
+                    {taxYear.formType || 'Below threshold'}
+                  </Text>
+                </View>
+                <View style={[styles.statusBadge, { backgroundColor: `${getStatusColor(taxYear.status)}15` }]}>
+                  {getStatusIcon(taxYear.status)}
+                  <Text style={[styles.statusText, { color: getStatusColor(taxYear.status) }]}>
+                    {getStatusText(taxYear.status)}
+                  </Text>
+                </View>
+              </View>
 
-          {taxYears.length === 0 ? (
-            <View style={styles.emptyCard}>
-              <DocumentIcon size={40} color={PsychiColors.textMuted} />
-              <Text style={styles.emptyTitle}>No Documents Yet</Text>
-              <Text style={styles.emptyText}>
-                Tax documents will appear here once you've earned income through Psychi.
-              </Text>
-            </View>
-          ) : (
-            taxYears.map((taxYear) => (
-              <View key={taxYear.year} style={styles.documentCard}>
-                <View style={styles.documentHeader}>
-                  <View style={styles.documentIcon}>
-                    <DocumentIcon size={24} color={PsychiColors.azure} />
-                  </View>
-                  <View style={styles.documentInfo}>
-                    <Text style={styles.documentTitle}>
-                      {taxYear.year} Tax Year
-                    </Text>
-                    <Text style={styles.documentSubtitle}>
-                      {taxYear.formType || 'No form required'}
-                    </Text>
-                  </View>
-                  <View style={[styles.statusBadge, { backgroundColor: `${getStatusColor(taxYear.status)}15` }]}>
-                    {getStatusIcon(taxYear.status)}
-                    <Text style={[styles.statusText, { color: getStatusColor(taxYear.status) }]}>
-                      {getStatusText(taxYear.status)}
-                    </Text>
-                  </View>
+              <View style={styles.documentDetails}>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Earnings</Text>
+                  <Text style={styles.detailValue}>
+                    ${(taxYear.totalEarnings / 100).toFixed(2)}
+                  </Text>
                 </View>
 
-                <View style={styles.documentDetails}>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Earnings</Text>
-                    <Text style={styles.detailValue}>
-                      ${(taxYear.totalEarnings / 100).toFixed(2)}
-                    </Text>
-                  </View>
+                {taxYear.status === 'not_eligible' && (
+                  <Text style={styles.notEligibleText}>
+                    Earnings below $600 threshold - no 1099 required
+                  </Text>
+                )}
 
-                  {taxYear.status === 'not_eligible' && (
-                    <Text style={styles.notEligibleText}>
-                      Earnings below $600 threshold - no 1099 required
-                    </Text>
-                  )}
-
-                  {taxYear.availableDate && taxYear.status !== 'not_eligible' && (
-                    <Text style={styles.availableDateText}>
-                      {taxYear.status === 'pending'
-                        ? `Form will be available by ${taxYear.availableDate}`
-                        : `Processing - expected by ${taxYear.availableDate}`
-                      }
-                    </Text>
-                  )}
-                </View>
-
-                {taxYear.status === 'available' && (
-                  <TouchableOpacity
-                    style={styles.downloadButton}
-                    onPress={() => handleDownload(taxYear)}
-                    activeOpacity={0.8}
-                  >
-                    <DownloadIcon size={18} color={PsychiColors.white} />
-                    <Text style={styles.downloadButtonText}>Download 1099-NEC</Text>
-                  </TouchableOpacity>
+                {taxYear.availableDate && taxYear.status !== 'not_eligible' && (
+                  <Text style={styles.availableDateText}>
+                    {taxYear.status === 'pending'
+                      ? `Form will be available by ${taxYear.availableDate}`
+                      : `Processing - expected by ${taxYear.availableDate}`
+                    }
+                  </Text>
                 )}
               </View>
-            ))
-          )}
+
+              {taxYear.status === 'available' && (
+                <TouchableOpacity
+                  style={styles.actionButton}
+                  onPress={() => handleDownload1099(taxYear)}
+                  activeOpacity={0.8}
+                >
+                  <DownloadIcon size={18} color={PsychiColors.white} />
+                  <Text style={styles.actionButtonText}>Download 1099-NEC</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          ))}
         </View>
 
         {/* Help Section */}
@@ -419,7 +484,7 @@ const styles = StyleSheet.create({
   infoText: {
     fontSize: 13,
     color: PsychiColors.azure,
-    lineHeight: 18,
+    lineHeight: 20,
   },
   section: {
     marginBottom: Spacing.lg,
@@ -428,13 +493,20 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: PsychiColors.midnight,
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.xs,
     fontFamily: Typography.fontFamily.serif,
+  },
+  sectionDescription: {
+    fontSize: 14,
+    color: PsychiColors.textSecondary,
+    lineHeight: 20,
+    marginBottom: Spacing.md,
   },
   summaryCard: {
     backgroundColor: PsychiColors.white,
     borderRadius: BorderRadius.lg,
     padding: Spacing.md,
+    marginBottom: Spacing.md,
     ...Shadows.soft,
   },
   summaryRow: {
@@ -455,26 +527,6 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: 'rgba(0,0,0,0.05)',
     marginVertical: Spacing.sm,
-  },
-  emptyCard: {
-    backgroundColor: PsychiColors.white,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.xl,
-    alignItems: 'center',
-    ...Shadows.soft,
-  },
-  emptyTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: PsychiColors.textSecondary,
-    marginTop: Spacing.md,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: PsychiColors.textMuted,
-    textAlign: 'center',
-    marginTop: Spacing.xs,
-    lineHeight: 20,
   },
   documentCard: {
     backgroundColor: PsychiColors.white,
@@ -552,7 +604,7 @@ const styles = StyleSheet.create({
     color: PsychiColors.azure,
     marginTop: Spacing.sm,
   },
-  downloadButton: {
+  actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -562,10 +614,18 @@ const styles = StyleSheet.create({
     marginTop: Spacing.md,
     gap: Spacing.xs,
   },
-  downloadButtonText: {
+  actionButtonSecondary: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: PsychiColors.azure,
+  },
+  actionButtonText: {
     fontSize: 14,
     fontWeight: '600',
     color: PsychiColors.white,
+  },
+  actionButtonTextSecondary: {
+    color: PsychiColors.azure,
   },
   helpCard: {
     backgroundColor: PsychiColors.white,
