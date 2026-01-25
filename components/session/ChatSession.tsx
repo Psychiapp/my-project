@@ -9,17 +9,13 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  ActionSheetIOS,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PsychiColors, Spacing, BorderRadius, Shadows, Typography } from '@/constants/theme';
-import { LockIcon, MoreHorizontalIcon } from '@/components/icons';
+import { LockIcon } from '@/components/icons';
 import { useEncryptedChat, ChatMessage } from '@/hooks/useEncryptedChat';
 import EmergencyButton from './EmergencyButton';
-import ReportUserModal from '@/components/ReportUserModal';
-import BlockUserModal from '@/components/BlockUserModal';
 
 interface Message {
   id: string;
@@ -63,44 +59,7 @@ export default function ChatSession({
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [isSending, setIsSending] = useState(false);
-  const [showReportModal, setShowReportModal] = useState(false);
-  const [showBlockModal, setShowBlockModal] = useState(false);
   const flatListRef = useRef<FlatList>(null);
-
-  const showMoreOptions = () => {
-    if (Platform.OS === 'ios') {
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          options: ['Cancel', 'Report User', 'Block User'],
-          cancelButtonIndex: 0,
-          destructiveButtonIndex: 2,
-        },
-        (buttonIndex) => {
-          if (buttonIndex === 1) {
-            setShowReportModal(true);
-          } else if (buttonIndex === 2) {
-            setShowBlockModal(true);
-          }
-        }
-      );
-    } else {
-      // Android fallback using Alert
-      Alert.alert(
-        'Options',
-        '',
-        [
-          { text: 'Report User', onPress: () => setShowReportModal(true) },
-          { text: 'Block User', onPress: () => setShowBlockModal(true), style: 'destructive' },
-          { text: 'Cancel', style: 'cancel' },
-        ]
-      );
-    }
-  };
-
-  const handleUserBlocked = () => {
-    // End the session when user is blocked
-    onEndSession();
-  };
 
   // Use encrypted messages if available, otherwise fall back to local
   const messages = encryptedChat.isReady ? encryptedChat.messages : localMessages;
@@ -190,9 +149,6 @@ export default function ChatSession({
             participantName={otherParticipant.name}
             currentUserName={currentUserName}
           />
-          <TouchableOpacity style={styles.moreButton} onPress={showMoreOptions}>
-            <MoreHorizontalIcon size={20} color={PsychiColors.textSecondary} />
-          </TouchableOpacity>
           <TouchableOpacity style={styles.endButton} onPress={onEndSession}>
             <Text style={styles.endButtonText}>End</Text>
           </TouchableOpacity>
@@ -268,22 +224,6 @@ export default function ChatSession({
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
-
-      {/* Report/Block Modals */}
-      <ReportUserModal
-        visible={showReportModal}
-        onClose={() => setShowReportModal(false)}
-        reportedUserId={otherParticipant.id}
-        reportedUserName={otherParticipant.name}
-        sessionId={sessionId}
-      />
-      <BlockUserModal
-        visible={showBlockModal}
-        onClose={() => setShowBlockModal(false)}
-        blockedUserId={otherParticipant.id}
-        blockedUserName={otherParticipant.name}
-        onBlocked={handleUserBlocked}
-      />
     </SafeAreaView>
   );
 }
@@ -353,11 +293,6 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 13,
     color: PsychiColors.success,
-  },
-  moreButton: {
-    padding: Spacing.sm,
-    borderRadius: BorderRadius.md,
-    backgroundColor: 'rgba(0, 0, 0, 0.04)',
   },
   endButton: {
     backgroundColor: 'rgba(239, 68, 68, 0.08)',

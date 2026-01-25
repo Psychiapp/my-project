@@ -6,6 +6,9 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
+  Alert,
+  Linking,
+  AppState,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
@@ -29,8 +32,10 @@ import {
   ArrowRightIcon,
   PlusIcon,
   ChevronRightIcon,
+  AlertIcon,
 } from '@/components/icons';
 import DashboardTutorial from '@/components/DashboardTutorial';
+import { getClientCurrentAssignment, requestSupporterReassignment, getSupporterDetail } from '@/lib/database';
 
 const TUTORIAL_COMPLETED_KEY = '@psychi_client_tutorial_completed';
 
@@ -54,10 +59,15 @@ const planLabels: Record<string, string> = {
 
 export default function ClientHomeScreen() {
   const insets = useSafeAreaInsets();
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
 
   // Dashboard tutorial state
   const [showTutorial, setShowTutorial] = useState(false);
+
+  // Assigned supporter state
+  const [assignedSupporter, setAssignedSupporter] = useState<AssignedSupporter | null>(null);
+  const [isLoadingSupporter, setIsLoadingSupporter] = useState(true);
+  const [pendingReportEmail, setPendingReportEmail] = useState(false);
 
   // Check if tutorial has been completed on mount
   useEffect(() => {
@@ -73,6 +83,100 @@ export default function ClientHomeScreen() {
     };
     checkTutorialStatus();
   }, []);
+
+  // Fetch assigned supporter
+  useEffect(() => {
+    const fetchAssignedSupporter = async () => {
+      if (!user?.id) {
+        setIsLoadingSupporter(false);
+        return;
+      }
+
+      try {
+        const assignment = await getClientCurrentAssignment(user.id);
+        if (assignment?.supporter_id) {
+          const supporterDetail = await getSupporterDetail(assignment.supporter_id);
+          if (supporterDetail) {
+            setAssignedSupporter({
+              id: supporterDetail.id,
+              name: supporterDetail.full_name,
+              image: supporterDetail.avatar_url || '',
+              compatibilityScore: 85,
+              year: '',
+              university: supporterDetail.education || '',
+              bio: supporterDetail.bio,
+              specialties: supporterDetail.specialties,
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching assigned supporter:', error);
+      } finally {
+        setIsLoadingSupporter(false);
+      }
+    };
+
+    fetchAssignedSupporter();
+  }, [user?.id]);
+
+  // Listen for app returning from email
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active' && pendingReportEmail) {
+        setPendingReportEmail(false);
+        // Show switch supporter prompt after returning from email
+        setTimeout(() => {
+          Alert.alert(
+            'Would you like to switch supporters?',
+            'We can match you with a different supporter based on your preferences.',
+            [
+              { text: 'No, keep current', style: 'cancel' },
+              {
+                text: 'Yes, switch',
+                onPress: handleSwitchSupporter,
+              },
+            ]
+          );
+        }, 500);
+      }
+    });
+
+    return () => subscription.remove();
+  }, [pendingReportEmail]);
+
+  const handleReportSupporter = async () => {
+    if (!assignedSupporter) return;
+
+    const emailSubject = encodeURIComponent(`Report: ${assignedSupporter.name}`);
+    const emailBody = encodeURIComponent(
+      `I would like to report an issue with my supporter.\n\nSupporter Name: ${assignedSupporter.name}\n\nPlease describe the issue:\n\n`
+    );
+    const emailUrl = `mailto:psychiapp@outlook.com?subject=${emailSubject}&body=${emailBody}`;
+
+    try {
+      const canOpen = await Linking.canOpenURL(emailUrl);
+      if (canOpen) {
+        setPendingReportEmail(true);
+        await Linking.openURL(emailUrl);
+      } else {
+        Alert.alert(
+          'Email Not Available',
+          'Please send your report to psychiapp@outlook.com',
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      console.error('Error opening email:', error);
+      Alert.alert('Error', 'Could not open email app');
+    }
+  };
+
+  const handleSwitchSupporter = async () => {
+    if (!user?.id) return;
+
+    // Navigate to supporter matching flow or call reassignment
+    router.push('/(client)/book');
+  };
 
   const handleTutorialComplete = async () => {
     try {
@@ -95,7 +199,6 @@ export default function ClientHomeScreen() {
   };
 
   // Real data - no mock data
-  const assignedSupporter: AssignedSupporter | null = null;
   const bookingHistory: { id: string; status: string; session_date: string }[] = [];
   const selectedPlan: string | null = null;
 
@@ -216,26 +319,36 @@ export default function ClientHomeScreen() {
               </TouchableOpacity>
             </View>
             <View style={styles.supporterCard}>
-              <Image
-                source={{ uri: (assignedSupporter as AssignedSupporter).image }}
-                style={styles.supporterImage}
-              />
+              {assignedSupporter.image ? (
+                <Image
+                  source={{ uri: assignedSupporter.image }}
+                  style={styles.supporterImage}
+                />
+              ) : (
+                <View style={[styles.supporterImage, styles.supporterImagePlaceholder]}>
+                  <Text style={styles.supporterImagePlaceholderText}>
+                    {assignedSupporter.name.charAt(0)}
+                  </Text>
+                </View>
+              )}
               <View style={styles.supporterInfo}>
                 <View style={styles.supporterHeader}>
                   <Text style={styles.supporterName}>
-                    {(assignedSupporter as AssignedSupporter).name}
+                    {assignedSupporter.name}
                   </Text>
                   <View style={styles.matchBadge}>
                     <Text style={styles.matchBadgeText}>
-                      {(assignedSupporter as AssignedSupporter).compatibilityScore}% match
+                      {assignedSupporter.compatibilityScore}% match
                     </Text>
                   </View>
                 </View>
-                <Text style={styles.supporterMeta}>
-                  {(assignedSupporter as AssignedSupporter).year} · {(assignedSupporter as AssignedSupporter).university}
-                </Text>
+                {assignedSupporter.university ? (
+                  <Text style={styles.supporterMeta}>
+                    {assignedSupporter.year ? `${assignedSupporter.year} · ` : ''}{assignedSupporter.university}
+                  </Text>
+                ) : null}
                 <View style={styles.specialtiesRow}>
-                  {(assignedSupporter as AssignedSupporter).specialties.slice(0, 3).map((specialty: string, idx: number) => (
+                  {assignedSupporter.specialties.slice(0, 3).map((specialty: string, idx: number) => (
                     <View key={idx} style={styles.specialtyTag}>
                       <Text style={styles.specialtyText}>{specialty}</Text>
                     </View>
@@ -243,6 +356,15 @@ export default function ClientHomeScreen() {
                 </View>
               </View>
             </View>
+            {/* Report Button */}
+            <TouchableOpacity
+              style={styles.reportButton}
+              onPress={handleReportSupporter}
+              activeOpacity={0.7}
+            >
+              <AlertIcon size={16} color={PsychiColors.textMuted} />
+              <Text style={styles.reportButtonText}>Report an issue</Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -502,6 +624,16 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     marginRight: Spacing['4'],
   },
+  supporterImagePlaceholder: {
+    backgroundColor: PsychiColors.royalBlue,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  supporterImagePlaceholderText: {
+    fontSize: Typography.fontSize['2xl'],
+    fontWeight: Typography.fontWeight.bold,
+    color: PsychiColors.white,
+  },
   supporterInfo: {
     flex: 1,
   },
@@ -546,6 +678,19 @@ const styles = StyleSheet.create({
   specialtyText: {
     fontSize: Typography.fontSize.xs,
     color: PsychiColors.textSecondary,
+    fontWeight: Typography.fontWeight.medium,
+  },
+  reportButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: Spacing['3'],
+    paddingVertical: Spacing['2'],
+    gap: Spacing['1.5'],
+  },
+  reportButtonText: {
+    fontSize: Typography.fontSize.sm,
+    color: PsychiColors.textMuted,
     fontWeight: Typography.fontWeight.medium,
   },
 
