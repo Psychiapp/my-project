@@ -18,7 +18,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/contexts/AuthContext';
 import { PsychiColors, Gradients, Spacing, BorderRadius, Shadows, Typography } from '@/constants/theme';
 import { ChevronLeftIcon, EyeIcon } from '@/components/icons';
-import { DEMO_CREDENTIALS } from '@/constants/demo';
 
 export default function SignInScreen() {
   const insets = useSafeAreaInsets();
@@ -41,16 +40,6 @@ export default function SignInScreen() {
     if (error) {
       Alert.alert('Error', error.message);
     }
-  };
-
-  const handleDemoLogin = (role: 'client' | 'supporter' | 'admin') => {
-    const demoEmail =
-      role === 'supporter' ? DEMO_CREDENTIALS.supporterEmail :
-      role === 'admin' ? DEMO_CREDENTIALS.adminEmail :
-      DEMO_CREDENTIALS.email;
-
-    setEmail(demoEmail);
-    setPassword(DEMO_CREDENTIALS.password);
   };
 
   return (
@@ -170,26 +159,6 @@ export default function SignInScreen() {
               <Text style={styles.socialIcon}>G</Text>
               <Text style={styles.socialButtonText}>Continue with Google</Text>
             </TouchableOpacity>
-
-            {/* Demo Mode Section */}
-            <View style={styles.demoSection}>
-              <Text style={styles.demoTitle}>App Store Review</Text>
-              <Text style={styles.demoSubtitle}>Try the app with demo accounts:</Text>
-              <View style={styles.demoButtons}>
-                <TouchableOpacity
-                  style={styles.demoButton}
-                  onPress={() => handleDemoLogin('client')}
-                >
-                  <Text style={styles.demoButtonText}>Client</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.demoButton}
-                  onPress={() => handleDemoLogin('supporter')}
-                >
-                  <Text style={styles.demoButtonText}>Supporter</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
 
             {/* Footer */}
             <View style={styles.footer}>
@@ -399,43 +368,5 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.base,
     color: PsychiColors.royalBlue,
     fontWeight: '600',
-  },
-  demoSection: {
-    backgroundColor: 'rgba(139, 92, 246, 0.08)',
-    borderRadius: 16,
-    padding: Spacing.lg,
-    marginBottom: Spacing.lg,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(139, 92, 246, 0.15)',
-  },
-  demoTitle: {
-    fontSize: Typography.fontSize.sm,
-    fontWeight: '700',
-    color: '#8B5CF6',
-    marginBottom: 4,
-    letterSpacing: 0.3,
-  },
-  demoSubtitle: {
-    fontSize: Typography.fontSize.xs,
-    color: PsychiColors.textMuted,
-    marginBottom: Spacing.md,
-    letterSpacing: 0.2,
-  },
-  demoButtons: {
-    flexDirection: 'row',
-    gap: Spacing.sm,
-  },
-  demoButton: {
-    backgroundColor: '#8B5CF6',
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.md,
-    borderRadius: BorderRadius.full,
-  },
-  demoButtonText: {
-    color: PsychiColors.white,
-    fontSize: Typography.fontSize.xs,
-    fontWeight: '600',
-    letterSpacing: 0.2,
   },
 });

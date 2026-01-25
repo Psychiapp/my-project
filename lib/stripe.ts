@@ -185,13 +185,12 @@ export async function processSessionPayment(
 
   // Check if Stripe is configured
   if (!StripeConfig.publishableKey) {
-    // Demo mode
     Alert.alert(
-      'Demo Mode',
-      `Payment of ${pricing.display} would be processed here.\n\nTo enable real payments, add your Stripe publishable key to the .env file.`,
+      'Payment Not Available',
+      'Payment processing is not configured. Please contact support.',
       [{ text: 'OK' }]
     );
-    return true;
+    return false;
   }
 
   try {
@@ -243,13 +242,12 @@ export async function processSubscriptionPaymentSheet(
 
   // Check if Stripe is configured
   if (!StripeConfig.publishableKey) {
-    // Demo mode
     Alert.alert(
-      'Demo Mode',
-      `Subscription to ${plan.name} plan ($${(plan.amount / 100).toFixed(2)}/month) would be processed here.\n\nTo enable real payments, add your Stripe publishable key to the .env file.`,
+      'Payment Not Available',
+      'Payment processing is not configured. Please contact support.',
       [{ text: 'OK' }]
     );
-    return true;
+    return false;
   }
 
   try {

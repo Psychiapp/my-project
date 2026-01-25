@@ -12,7 +12,7 @@ export const DEMO_CREDENTIALS = {
   adminEmail: 'admin@psychi.app',
 };
 
-export const DEMO_MODE_ENABLED = true;
+export const DEMO_MODE_ENABLED = false;
 
 // Demo Client Profile
 export const DEMO_CLIENT_PROFILE = {

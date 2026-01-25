@@ -49,21 +49,10 @@ export const createRoom = async (options: CreateRoomOptions = {}): Promise<Daily
   const exp = Math.floor(Date.now() / 1000) + (expiryMinutes * 60);
 
   try {
-    // If no API key, use demo mode
+    // If no API key, video/voice calls are not available
     if (!DAILY_API_KEY) {
-      console.log('Daily.co: No API key found, using demo mode');
-      return {
-        id: name,
-        name: name,
-        url: `https://psychi.daily.co/${name}`,
-        created_at: new Date().toISOString(),
-        config: {
-          exp,
-          max_participants: maxParticipants,
-          start_video_off: startVideoOff,
-          start_audio_off: startAudioOff,
-        },
-      };
+      console.warn('Daily.co: No API key configured. Video/voice calls unavailable.');
+      return null;
     }
 
     const response = await fetch(`${DAILY_API_URL}/rooms`, {

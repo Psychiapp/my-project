@@ -54,33 +54,8 @@ export default function ChatSession({
     conversationId: sessionId,
   });
 
-  // Local state for demo mode (when encryption not available)
-  const [localMessages, setLocalMessages] = useState<Message[]>([
-    {
-      id: '1',
-      content: "Hi! Thank you for reaching out. How are you feeling today?",
-      senderId: otherParticipant.id,
-      timestamp: new Date(Date.now() - 60000 * 5),
-      isOwn: false,
-      isEncrypted: useEncryption,
-    },
-    {
-      id: '2',
-      content: "I've been feeling a bit overwhelmed with work lately. It's hard to stay focused.",
-      senderId: currentUserId,
-      timestamp: new Date(Date.now() - 60000 * 4),
-      isOwn: true,
-      isEncrypted: useEncryption,
-    },
-    {
-      id: '3',
-      content: "I understand. Work stress can be really challenging. Can you tell me more about what's been overwhelming you?",
-      senderId: otherParticipant.id,
-      timestamp: new Date(Date.now() - 60000 * 3),
-      isOwn: false,
-      isEncrypted: useEncryption,
-    },
-  ]);
+  // Local state for messages (fallback when encryption not available)
+  const [localMessages, setLocalMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [isSending, setIsSending] = useState(false);
@@ -122,21 +97,8 @@ export default function ChatSession({
     };
 
     setLocalMessages((prev) => [...prev, newMessage]);
-
-    // Simulate typing indicator and response (demo mode only)
-    setTimeout(() => setIsTyping(true), 1000);
-    setTimeout(() => {
-      setIsTyping(false);
-      const responseMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        content: "Thank you for sharing that. It sounds like you're dealing with a lot right now. Let's work through this together.",
-        senderId: otherParticipant.id,
-        timestamp: new Date(),
-        isOwn: false,
-        isEncrypted: useEncryption,
-      };
-      setLocalMessages((prev) => [...prev, responseMessage]);
-    }, 3000);
+    // Note: In local mode, messages are only stored locally
+    // For real-time chat, encryption must be set up for both users
   };
 
   const formatTime = (date: Date) => {

@@ -88,37 +88,27 @@ export async function processRefund(request: RefundRequest): Promise<RefundResul
 
   // Check if Stripe is configured
   if (!StripeConfig.publishableKey) {
-    // Demo mode - simulate refund
-    console.log('Demo mode: Simulating refund of $' + (request.amount / 100).toFixed(2));
-
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({
-          success: true,
-          refundId: 'ref_demo_' + Date.now(),
-        });
-      }, 1000);
-    });
+    console.warn('Stripe not configured - refund cannot be processed');
+    return {
+      success: false,
+      error: 'Payment processing is not configured. Please contact support.',
+    };
   }
 
   try {
-    // In production, this would call your backend API to process the refund
-    // The backend would then call Stripe's refund API:
-    // const refund = await stripe.refunds.create({
-    //   payment_intent: request.paymentIntentId,
-    //   amount: request.amount,
-    //   reason: mapReasonToStripe(request.reason),
+    // TODO: Implement actual refund via Supabase Edge Function
+    // This would call your backend API to process the refund:
+    // const response = await fetch(`${SupabaseConfig.url}/functions/v1/process-refund`, {
+    //   method: 'POST',
+    //   headers: { 'Authorization': `Bearer ${SupabaseConfig.anonKey}` },
+    //   body: JSON.stringify(request),
     // });
 
-    // Simulate API call
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({
-          success: true,
-          refundId: 'ref_' + Date.now(),
-        });
-      }, 1500);
-    });
+    // For now, return error until refund endpoint is implemented
+    return {
+      success: false,
+      error: 'Refund processing not yet implemented. Please contact support.',
+    };
   } catch (error: any) {
     console.error('Refund error:', error);
     return {
