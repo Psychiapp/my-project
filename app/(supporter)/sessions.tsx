@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -40,7 +40,12 @@ import {
   createRescheduleRequest,
   calculateResponseDeadline,
   getTimeUntilDeadline,
+  getUpcomingSessions,
+  getPastSessions,
 } from '@/lib/database';
+import { useAuth } from '@/contexts/AuthContext';
+import type { SessionWithDetails } from '@/types/database';
+import { Config } from '@/constants/config';
 
 type SessionTab = 'upcoming' | 'past';
 
@@ -58,68 +63,26 @@ interface Session {
   pendingReschedule?: boolean;
 }
 
-const mockUpcomingSessions: Session[] = [
-  {
-    id: '1',
-    clientId: 'client_1',
-    clientName: 'John D.',
-    clientEmail: 'john@example.com',
-    type: 'video',
-    date: 'Today',
-    time: '2:00 PM',
-    scheduledAt: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(), // 2 hours from now
-    duration: 45,
-  },
-  {
-    id: '2',
-    clientId: 'client_2',
-    clientName: 'Sarah M.',
-    clientEmail: 'sarah@example.com',
-    type: 'chat',
-    date: 'Tomorrow',
-    time: '10:00 AM',
-    scheduledAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // Tomorrow
-    duration: 30,
-  },
-  {
-    id: '3',
-    clientId: 'client_3',
-    clientName: 'Michael R.',
-    clientEmail: 'michael@example.com',
-    type: 'phone',
-    date: 'Thu, Jan 16',
-    time: '3:00 PM',
-    scheduledAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days from now
-    duration: 30,
-  },
-];
+// Helper to format session data from database
+const formatSessionFromDb = (dbSession: SessionWithDetails): Session => {
+  const scheduledDate = new Date(dbSession.scheduled_at);
+  const client = dbSession.client as { id: string; full_name: string; avatar_url?: string } | null;
+  const sessionType = dbSession.session_type as 'chat' | 'phone' | 'video';
+  const pricing = Config.pricing[sessionType];
 
-const mockPastSessions: Session[] = [
-  {
-    id: '4',
-    clientId: 'client_4',
-    clientName: 'Emily K.',
-    clientEmail: 'emily@example.com',
-    type: 'video',
-    date: 'Jan 10, 2026',
-    time: '11:00 AM',
-    scheduledAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-    duration: 45,
-    earnings: 15.0,
-  },
-  {
-    id: '5',
-    clientId: 'client_5',
-    clientName: 'David L.',
-    clientEmail: 'david@example.com',
-    type: 'chat',
-    date: 'Jan 8, 2026',
-    time: '2:00 PM',
-    scheduledAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-    duration: 30,
-    earnings: 5.25,
-  },
-];
+  return {
+    id: dbSession.id,
+    clientId: client?.id || '',
+    clientName: client?.full_name || 'Unknown Client',
+    clientEmail: '',
+    type: sessionType,
+    date: scheduledDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
+    time: scheduledDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+    scheduledAt: dbSession.scheduled_at,
+    duration: dbSession.duration_minutes || 30,
+    earnings: dbSession.status === 'completed' ? (pricing?.supporterCut || 0) / 100 : undefined,
+  };
+};
 
 const typeIcons: Record<string, React.FC<{ size?: number; color?: string }>> = {
   chat: ChatIcon,
@@ -134,8 +97,11 @@ const TIME_SLOTS = [
 ];
 
 export default function SupporterSessionsScreen() {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<SessionTab>('upcoming');
-  const [sessions, setSessions] = useState(mockUpcomingSessions);
+  const [upcomingSessions, setUpcomingSessions] = useState<Session[]>([]);
+  const [pastSessions, setPastSessions] = useState<Session[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Modal states
   const [cancelModalVisible, setCancelModalVisible] = useState(false);
@@ -147,6 +113,32 @@ export default function SupporterSessionsScreen() {
   // Reschedule states
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
+
+  // Fetch sessions from database
+  useEffect(() => {
+    const fetchSessions = async () => {
+      if (!user?.id) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const [upcoming, past] = await Promise.all([
+          getUpcomingSessions(user.id, 'supporter'),
+          getPastSessions(user.id, 'supporter'),
+        ]);
+
+        setUpcomingSessions(upcoming.map(formatSessionFromDb));
+        setPastSessions(past.map(formatSessionFromDb));
+      } catch (error) {
+        console.error('Error fetching sessions:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchSessions();
+  }, [user?.id]);
 
   // Generate next 7 days for date selection
   const getAvailableDates = () => {
@@ -219,7 +211,7 @@ export default function SupporterSessionsScreen() {
       });
 
       // Remove session from list
-      setSessions(sessions.filter(s => s.id !== selectedSession.id));
+      setUpcomingSessions(upcomingSessions.filter(s => s.id !== selectedSession.id));
       setCancelModalVisible(false);
 
       Alert.alert(
@@ -274,7 +266,7 @@ export default function SupporterSessionsScreen() {
       });
 
       // Mark session as having pending reschedule
-      setSessions(sessions.map(s => {
+      setUpcomingSessions(upcomingSessions.map(s => {
         if (s.id === selectedSession.id) {
           return {
             ...s,
@@ -391,9 +383,9 @@ export default function SupporterSessionsScreen() {
           <Text style={[styles.tabText, activeTab === 'upcoming' && styles.tabTextActive]}>
             Upcoming
           </Text>
-          {sessions.length > 0 && (
+          {upcomingSessions.length > 0 && (
             <View style={styles.tabBadge}>
-              <Text style={styles.tabBadgeText}>{sessions.length}</Text>
+              <Text style={styles.tabBadgeText}>{upcomingSessions.length}</Text>
             </View>
           )}
         </TouchableOpacity>
@@ -409,16 +401,30 @@ export default function SupporterSessionsScreen() {
 
       {/* Sessions List */}
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {activeTab === 'upcoming'
-          ? sessions.map((session) => renderSession(session, true))
-          : mockPastSessions.map((session) => renderSession(session, false))}
-
-        {activeTab === 'upcoming' && sessions.length === 0 && (
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={PsychiColors.azure} />
+          </View>
+        ) : activeTab === 'upcoming' ? (
+          upcomingSessions.length > 0 ? (
+            upcomingSessions.map((session) => renderSession(session, true))
+          ) : (
+            <View style={styles.emptyState}>
+              <CalendarIcon size={48} color={PsychiColors.textMuted} />
+              <Text style={styles.emptyTitle}>No upcoming sessions</Text>
+              <Text style={styles.emptySubtitle}>
+                Your upcoming sessions will appear here
+              </Text>
+            </View>
+          )
+        ) : pastSessions.length > 0 ? (
+          pastSessions.map((session) => renderSession(session, false))
+        ) : (
           <View style={styles.emptyState}>
             <CalendarIcon size={48} color={PsychiColors.textMuted} />
-            <Text style={styles.emptyTitle}>No upcoming sessions</Text>
+            <Text style={styles.emptyTitle}>No past sessions</Text>
             <Text style={styles.emptySubtitle}>
-              Your upcoming sessions will appear here
+              Your completed sessions will appear here
             </Text>
           </View>
         )}
@@ -839,6 +845,12 @@ const styles = StyleSheet.create({
   star: {
     fontSize: 16,
     marginLeft: 2,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: Spacing.xl * 2,
   },
   emptyState: {
     alignItems: 'center',

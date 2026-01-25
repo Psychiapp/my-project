@@ -27,9 +27,12 @@ import {
 import {
   getPendingRescheduleRequests,
   processExpiredRescheduleRequests,
+  getUpcomingSessions,
+  getPastSessions,
 } from '@/lib/database';
+import { useAuth } from '@/contexts/AuthContext';
 import RescheduleRequestCard from '@/components/RescheduleRequestCard';
-import type { RescheduleRequestWithDetails } from '@/types/database';
+import type { RescheduleRequestWithDetails, SessionWithDetails } from '@/types/database';
 
 type SessionTab = 'upcoming' | 'past';
 
@@ -44,52 +47,22 @@ interface Session {
   duration: number;
 }
 
-// Mock session data
-const mockUpcomingSessions: Session[] = [
-  {
-    id: '1',
-    supporterName: 'Sarah Chen',
-    supporterEmail: 'sarah@psychi.app',
-    type: 'video',
-    date: 'Tomorrow',
-    time: '2:00 PM',
-    scheduledAt: new Date(Date.now() + 26 * 60 * 60 * 1000).toISOString(), // 26 hours from now
-    duration: 45,
-  },
-  {
-    id: '2',
-    supporterName: 'Marcus Johnson',
-    supporterEmail: 'marcus@psychi.app',
-    type: 'chat',
-    date: 'Thu, Jan 16',
-    time: '10:00 AM',
-    scheduledAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days from now
-    duration: 30,
-  },
-];
+// Helper to format session data from database
+const formatSessionFromDb = (dbSession: SessionWithDetails): Session => {
+  const scheduledDate = new Date(dbSession.scheduled_at);
+  const supporter = dbSession.supporter as { id: string; full_name: string; avatar_url?: string } | null;
 
-const mockPastSessions: Session[] = [
-  {
-    id: '3',
-    supporterName: 'Emily Rodriguez',
-    supporterEmail: 'emily@psychi.app',
-    type: 'phone',
-    date: 'Jan 10, 2026',
-    time: '3:00 PM',
-    scheduledAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-    duration: 30,
-  },
-  {
-    id: '4',
-    supporterName: 'Sarah Chen',
-    supporterEmail: 'sarah@psychi.app',
-    type: 'video',
-    date: 'Jan 5, 2026',
-    time: '11:00 AM',
-    scheduledAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
-    duration: 45,
-  },
-];
+  return {
+    id: dbSession.id,
+    supporterName: supporter?.full_name || 'Unknown Supporter',
+    supporterEmail: '', // Not available from this query
+    type: dbSession.session_type as 'chat' | 'phone' | 'video',
+    date: scheduledDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
+    time: scheduledDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+    scheduledAt: dbSession.scheduled_at,
+    duration: dbSession.duration_minutes || 30,
+  };
+};
 
 const getTypeIcon = (type: string) => {
   switch (type) {
@@ -105,25 +78,53 @@ const getTypeIcon = (type: string) => {
 };
 
 export default function SessionsScreen() {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<SessionTab>('upcoming');
-  const [sessions, setSessions] = useState(mockUpcomingSessions);
+  const [upcomingSessions, setUpcomingSessions] = useState<Session[]>([]);
+  const [pastSessions, setPastSessions] = useState<Session[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [cancelModalVisible, setCancelModalVisible] = useState(false);
   const [policyModalVisible, setPolicyModalVisible] = useState(false);
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [rescheduleRequests, setRescheduleRequests] = useState<RescheduleRequestWithDetails[]>([]);
 
+  // Fetch sessions from database
+  useEffect(() => {
+    const fetchSessions = async () => {
+      if (!user?.id) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const [upcoming, past] = await Promise.all([
+          getUpcomingSessions(user.id, 'client'),
+          getPastSessions(user.id, 'client'),
+        ]);
+
+        setUpcomingSessions(upcoming.map(formatSessionFromDb));
+        setPastSessions(past.map(formatSessionFromDb));
+      } catch (error) {
+        console.error('Error fetching sessions:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchSessions();
+  }, [user?.id]);
+
   // Fetch pending reschedule requests and process expired ones
   useEffect(() => {
     const fetchRescheduleRequests = async () => {
-      // In production, get clientId from auth context
-      const clientId = 'demo_client_id';
+      if (!user?.id) return;
 
       // First, process any expired requests (auto-cancel sessions)
-      await processExpiredRescheduleRequests(clientId);
+      await processExpiredRescheduleRequests(user.id);
 
       // Then fetch pending requests
-      const requests = await getPendingRescheduleRequests(clientId);
+      const requests = await getPendingRescheduleRequests(user.id);
       setRescheduleRequests(requests);
     };
 
@@ -132,7 +133,7 @@ export default function SessionsScreen() {
     // Poll for updates every minute
     const interval = setInterval(fetchRescheduleRequests, 60000);
     return () => clearInterval(interval);
-  }, []);
+  }, [user?.id]);
 
   const handleRescheduleResponse = (requestId: string, accepted: boolean) => {
     // Remove the request from the list
@@ -212,7 +213,7 @@ export default function SessionsScreen() {
         refundAmount: result.refundAmount > 0 ? formatCurrency(result.refundAmount) : undefined,
       });
 
-      setSessions(sessions.filter((s) => s.id !== selectedSession.id));
+      setUpcomingSessions(upcomingSessions.filter((s) => s.id !== selectedSession.id));
       setCancelModalVisible(false);
 
       if (result.refundAmount > 0) {
@@ -341,9 +342,9 @@ export default function SessionsScreen() {
           <Text style={[styles.tabText, activeTab === 'upcoming' && styles.tabTextActive]}>
             Upcoming
           </Text>
-          {sessions.length > 0 && (
+          {upcomingSessions.length > 0 && (
             <View style={styles.tabBadge}>
-              <Text style={styles.tabBadgeText}>{sessions.length}</Text>
+              <Text style={styles.tabBadgeText}>{upcomingSessions.length}</Text>
             </View>
           )}
         </TouchableOpacity>
@@ -373,9 +374,13 @@ export default function SessionsScreen() {
           </View>
         )}
 
-        {activeTab === 'upcoming' ? (
-          sessions.length > 0 ? (
-            sessions.map((session) => renderSession(session, true))
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={PsychiColors.azure} />
+          </View>
+        ) : activeTab === 'upcoming' ? (
+          upcomingSessions.length > 0 ? (
+            upcomingSessions.map((session) => renderSession(session, true))
           ) : rescheduleRequests.length > 0 ? (
             // Don't show empty state if there are reschedule requests
             null
@@ -402,8 +407,8 @@ export default function SessionsScreen() {
               </TouchableOpacity>
             </View>
           )
-        ) : mockPastSessions.length > 0 ? (
-          mockPastSessions.map((session) => renderSession(session, false))
+        ) : pastSessions.length > 0 ? (
+          pastSessions.map((session) => renderSession(session, false))
         ) : (
           <View style={styles.emptyState}>
             <View style={styles.emptyIconBg}>
@@ -788,6 +793,12 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: PsychiColors.white,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: Spacing.xl * 2,
   },
   emptyState: {
     alignItems: 'center',
