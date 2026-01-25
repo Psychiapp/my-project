@@ -2004,29 +2004,37 @@ export async function matchSupportersToClient(
       }
     }
 
-    // Only include supporters with a minimum score or specialty match
-    if (score >= 15 || specialtyMatches > 0) {
-      matchedSupporters.push({
-        id: supporter.id,
-        full_name: supporter.full_name,
-        avatar_url: supporter.avatar_url,
-        bio: details.bio || '',
-        specialties: supporterSpecialties,
-        education: details.education || '',
-        total_sessions: details.total_sessions || 0,
-        is_available: details.is_available || false,
-        accepting_clients: details.accepting_clients || false,
-        training_complete: details.training_complete || false,
-        onboarding_complete: supporter.onboarding_complete || false,
-        compatibilityScore: Math.round(score),
-        matchReasons: matchReasons.slice(0, 3), // Top 3 reasons
-      });
-    }
+    // Add all eligible supporters with their scores
+    matchedSupporters.push({
+      id: supporter.id,
+      full_name: supporter.full_name,
+      avatar_url: supporter.avatar_url,
+      bio: details.bio || '',
+      specialties: supporterSpecialties,
+      education: details.education || '',
+      total_sessions: details.total_sessions || 0,
+      is_available: details.is_available || false,
+      accepting_clients: details.accepting_clients || false,
+      training_complete: details.training_complete || false,
+      onboarding_complete: supporter.onboarding_complete || false,
+      compatibilityScore: Math.round(score),
+      matchReasons: matchReasons.length > 0 ? matchReasons.slice(0, 3) : ['Available to support you'],
+    });
   }
 
   // Sort by compatibility score (highest first)
   matchedSupporters.sort((a, b) => b.compatibilityScore - a.compatibilityScore);
 
+  // Always return at least one match if any supporters are available
+  // Filter to high matches (score >= 15 or specialty match) but keep all if none qualify
+  const highMatches = matchedSupporters.filter(s => s.compatibilityScore >= 15);
+
+  if (highMatches.length > 0) {
+    return highMatches;
+  }
+
+  // No high matches - return best available supporters anyway
+  // Client will still get matched with whoever is most compatible
   return matchedSupporters;
 }
 
