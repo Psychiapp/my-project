@@ -138,7 +138,11 @@ export default function ProfileScreen() {
             </Text>
             <Text style={styles.profileEmail}>{profile?.email || 'user@example.com'}</Text>
           </View>
-          <TouchableOpacity style={styles.editButton} activeOpacity={0.7}>
+          <TouchableOpacity
+            style={styles.editButton}
+            activeOpacity={0.7}
+            onPress={() => router.push('/settings/edit-profile')}
+          >
             <EditIcon size={16} color={PsychiColors.royalBlue} />
           </TouchableOpacity>
         </View>
