@@ -82,3 +82,13 @@ export const getSession = async () => {
   const { data: { session }, error } = await supabase.auth.getSession();
   return { session, error };
 };
+
+export const resetPassword = async (email: string) => {
+  if (!supabase) {
+    return { data: null, error: new Error('Supabase client not initialized') };
+  }
+  const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: 'psychi://reset-password',
+  });
+  return { data, error };
+};

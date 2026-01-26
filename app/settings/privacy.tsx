@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
+import { resetPassword } from '@/lib/supabase';
 import {
   LockIcon,
   PhoneIcon,
@@ -29,20 +30,45 @@ import { ExternalUrls } from '@/constants/config';
 
 export default function PrivacySecurityScreen() {
   const router = useRouter();
-  const { signOut } = useAuth();
+  const { signOut, profile } = useAuth();
 
   const [biometricEnabled, setBiometricEnabled] = useState(false);
   const [analyticsEnabled, setAnalyticsEnabled] = useState(true);
+  const [isSendingReset, setIsSendingReset] = useState(false);
 
   const handleChangePassword = () => {
+    const userEmail = profile?.email;
+
+    if (!userEmail) {
+      Alert.alert('Error', 'Unable to find your email address. Please try again later.');
+      return;
+    }
+
     Alert.alert(
       'Change Password',
-      'We will send a password reset link to your email.',
+      `We will send a password reset link to ${userEmail}.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Send Link',
-          onPress: () => Alert.alert('Email Sent', 'Check your inbox for the reset link.'),
+          onPress: async () => {
+            setIsSendingReset(true);
+            try {
+              const { error } = await resetPassword(userEmail);
+              if (error) {
+                Alert.alert('Error', error.message || 'Failed to send reset email. Please try again.');
+              } else {
+                Alert.alert(
+                  'Email Sent',
+                  'Check your inbox for the password reset link. It may take a few minutes to arrive.'
+                );
+              }
+            } catch (err) {
+              Alert.alert('Error', 'Something went wrong. Please try again later.');
+            } finally {
+              setIsSendingReset(false);
+            }
+          },
         },
       ]
     );
