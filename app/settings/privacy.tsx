@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Switch,
   Alert,
   Linking,
 } from 'react-native';
@@ -31,7 +30,6 @@ export default function PrivacySecurityScreen() {
   const router = useRouter();
   const { signOut, profile } = useAuth();
 
-  const [biometricEnabled, setBiometricEnabled] = useState(false);
   const [isSendingReset, setIsSendingReset] = useState(false);
 
   const handleChangePassword = () => {
@@ -199,29 +197,6 @@ export default function PrivacySecurityScreen() {
                 <ChevronRightIcon size={20} color={PsychiColors.textMuted} />
               </TouchableOpacity>
             ))}
-          </View>
-        </View>
-
-        {/* Biometric Toggle */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Authentication</Text>
-          <View style={styles.settingsCard}>
-            <View style={styles.toggleRow}>
-              <View style={styles.settingIcon}>
-                <LockIcon size={20} color={PsychiColors.azure} />
-              </View>
-              <View style={styles.settingInfo}>
-                <Text style={styles.settingTitle}>Biometric Login</Text>
-                <Text style={styles.settingDescription}>Use Face ID or Touch ID to sign in</Text>
-              </View>
-              <Switch
-                value={biometricEnabled}
-                onValueChange={setBiometricEnabled}
-                trackColor={{ false: '#E5E7EB', true: 'rgba(74, 144, 226, 0.4)' }}
-                thumbColor={biometricEnabled ? PsychiColors.azure : '#F3F4F6'}
-                ios_backgroundColor="#E5E7EB"
-              />
-            </View>
           </View>
         </View>
 
