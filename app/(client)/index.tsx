@@ -341,7 +341,7 @@ export default function ClientHomeScreen() {
                 <CardIcon size={20} color={PsychiColors.violet} />
               </View>
               <Text style={styles.statValueSmall}>
-                {subscriptionTier ? planLabels[subscriptionTier] || subscriptionTier : 'Free'}
+                {subscriptionTier ? planLabels[subscriptionTier] || subscriptionTier : 'Pay-As-You-Go'}
               </Text>
               <Text style={styles.statLabel}>Plan</Text>
             </TouchableOpacity>
