@@ -35,9 +35,10 @@ import {
   ExternalLinkIcon,
 } from '@/components/icons';
 
-type Module = 'mindfulness' | 'cbt' | 'validation' | 'crisis' | 'platform';
+type Module = 'confidentiality' | 'mindfulness' | 'cbt' | 'validation' | 'crisis' | 'platform';
 
 interface ModuleProgress {
+  confidentiality: boolean;
   mindfulness: boolean;
   cbt: boolean;
   validation: boolean;
@@ -135,6 +136,7 @@ const StudyCard = ({ study }: { study: StudyLink }) => (
 
 // Module icons mapping
 const MODULE_ICONS: Record<Module, React.FC<{ size?: number; color?: string }>> = {
+  confidentiality: LockIcon,
   mindfulness: HeartIcon,
   cbt: BrainIcon,
   validation: ChatIcon,
@@ -144,6 +146,7 @@ const MODULE_ICONS: Record<Module, React.FC<{ size?: number; color?: string }>> 
 
 // Module metadata
 const MODULES = [
+  { id: 'confidentiality' as Module, title: 'Confidentiality', duration: '30 min' },
   { id: 'mindfulness' as Module, title: 'Mindfulness', duration: '25 min' },
   { id: 'cbt' as Module, title: 'Cognitive Behavioral Therapy', duration: '30 min' },
   { id: 'validation' as Module, title: 'Validating Language', duration: '25 min' },
@@ -153,6 +156,7 @@ const MODULES = [
 
 // Correct answers for each module
 const CORRECT_ANSWERS: Record<Module, Record<string, string>> = {
+  confidentiality: { q1: 'b', q2: 'c', q3: 'b', q4: 'a', q5: 'b', q6: 'c' },
   mindfulness: { q1: 'b', q2: 'c', q3: 'b', q4: 'a', q5: 'b', q6: 'b' },
   cbt: { q1: 'b', q2: 'a', q3: 'c', q4: 'b', q5: 'b', q6: 'c' },
   validation: { q1: 'c', q2: 'b', q3: 'a', q4: 'b', q5: 'b', q6: 'c' },
@@ -162,6 +166,62 @@ const CORRECT_ANSWERS: Record<Module, Record<string, string>> = {
 
 // Quiz questions for each module
 const QUIZ_QUESTIONS: Record<Module, QuizQuestion[]> = {
+  confidentiality: [
+    {
+      question: "Your friend knows you're a Psychi supporter and asks, 'What kind of stuff do people talk to you about?' What's the best response?",
+      options: [
+        { label: "Share general trends without specific details", value: "a" },
+        { label: "Say you keep everything confidential and can't share details", value: "b" },
+        { label: "Tell them about one interesting case without names", value: "c" },
+        { label: "Explain that it's mostly relationship problems", value: "d" },
+      ],
+    },
+    {
+      question: "What information is considered confidential?",
+      options: [
+        { label: "Only deeply personal secrets shared by clients", value: "a" },
+        { label: "Only information clients explicitly ask you to keep private", value: "b" },
+        { label: "Everything shared during a session, including that they use Psychi", value: "c" },
+        { label: "Only information that could identify the client", value: "d" },
+      ],
+    },
+    {
+      question: "You had a meaningful session and want to share about it on social media. What should you do?",
+      options: [
+        { label: "Post about it without using names or identifying details", value: "a" },
+        { label: "Don't post anything specific about clients, even without names", value: "b" },
+        { label: "Ask the client for permission first", value: "c" },
+        { label: "Wait a few weeks and then post about it", value: "d" },
+      ],
+    },
+    {
+      question: "Someone contacts you claiming to be a client's worried parent. They ask what you've discussed. What do you do?",
+      options: [
+        { label: "Don't confirm or discuss anything, and suggest they contact the person directly", value: "a" },
+        { label: "Reassure them their child is doing well without specifics", value: "b" },
+        { label: "Share general information to ease their worry", value: "c" },
+        { label: "Confirm the person is a client but don't share details", value: "d" },
+      ],
+    },
+    {
+      question: "A client says, 'I have a plan to end things tonight.' What should you do?",
+      options: [
+        { label: "Keep it confidential as that's the rule", value: "a" },
+        { label: "Stay calm, keep them talking, and use Psychi's emergency reporting feature", value: "b" },
+        { label: "Immediately end the session and call 911", value: "c" },
+        { label: "Tell them to think positive and things will get better", value: "d" },
+      ],
+    },
+    {
+      question: "How long does your confidentiality obligation last?",
+      options: [
+        { label: "Until the session ends", value: "a" },
+        { label: "Until the client stops using Psychi", value: "b" },
+        { label: "Forever, even after you leave the platform", value: "c" },
+        { label: "For one year after your last session", value: "d" },
+      ],
+    },
+  ],
   mindfulness: [
     {
       question: "What is the core practice of mindfulness according to Jon Kabat-Zinn?",
@@ -446,6 +506,13 @@ const QUIZ_QUESTIONS: Record<Module, QuizQuestion[]> = {
 
 // Learning objectives for each module
 const LEARNING_OBJECTIVES: Record<Module, string[]> = {
+  confidentiality: [
+    "Understand why confidentiality is the foundation of trust in peer support",
+    "Identify what information is considered confidential (everything shared in sessions)",
+    "Apply the five core confidentiality obligations in practice",
+    "Recognize the three exceptions when disclosure is required",
+    "Handle real-world confidentiality scenarios appropriately",
+  ],
   mindfulness: [
     "Define mindfulness and explain its origins in both contemplative traditions and modern psychology",
     "Describe the neuroscience behind mindfulness and its effects on brain structure and function",
@@ -485,6 +552,304 @@ const LEARNING_OBJECTIVES: Record<Module, string[]> = {
 
 // Module content sections
 const MODULE_CONTENT: Record<Module, ContentSection[]> = {
+  confidentiality: [
+    {
+      id: 'confidentiality-1',
+      title: 'Why Confidentiality Matters',
+      content: `Confidentiality is the foundation of trust between you and your clients. When someone reaches out for peer support, they're sharing parts of their life they may not share with anyone else. Protecting that trust isn't just a rule — it's a responsibility.
+
+THE HEART OF PEER SUPPORT
+
+When clients come to Psychi, they're often in vulnerable moments. They might be:
+
+• Sharing something for the first time
+• Processing difficult emotions
+• Working through personal challenges
+• Seeking connection without judgment
+
+For many, the decision to open up takes courage. They're trusting you — sometimes more than they trust people in their daily lives — because they believe what they share will stay between you.
+
+Breaking that trust doesn't just harm one person. It can:
+
+• Prevent them from seeking support in the future
+• Damage their ability to trust others
+• Cause real-world consequences if private information spreads
+• Undermine the entire peer support community
+
+YOUR ROLE AS A GUARDIAN
+
+Think of yourself as a guardian of someone's private world. They've handed you something precious — their thoughts, fears, hopes, and struggles. Your job is to hold that carefully and never let it slip into the wrong hands.`,
+    },
+    {
+      id: 'confidentiality-2',
+      title: 'What Is Confidential Information?',
+      content: `EVERYTHING. REALLY.
+
+If a client shares it during a session, it's confidential. This includes:
+
+Personal Details
+• Their name, age, location
+• Contact information
+• Where they work or go to school
+• Family members' names
+
+Life Circumstances
+• Relationship situations
+• Work or academic challenges
+• Financial struggles
+• Living situation
+• Health concerns
+
+Emotional Content
+• How they're feeling
+• What they're worried about
+• Past experiences they share
+• Hopes and fears for the future
+
+Session Details
+• That they even use Psychi
+• How often they have sessions
+• What topics you've discussed
+• Progress they've made
+
+THE "COFFEE SHOP TEST"
+
+Here's a simple way to think about it: If you wouldn't say it about a client while sitting in a crowded coffee shop, don't say it anywhere. Even vague references like "I talked to someone today who..." can be identifying in the right context.`,
+    },
+    {
+      id: 'confidentiality-3',
+      title: 'Your Core Obligations',
+      content: `1. NEVER DISCLOSE
+
+What this means: You don't share client information with anyone — not friends, family, other supporters, or on social media. Ever.
+
+This includes:
+• Telling a friend about "this client I talked to"
+• Posting vague references on social media
+• Discussing clients with other Psychi supporters
+• Sharing stories at parties (even without names)
+
+Even "anonymous" sharing is risky. Details add up. "A college student in Chicago dealing with roommate issues" might sound anonymous, but to someone who knows that person, it's identifying.
+
+2. NEVER USE INFORMATION FOR OTHER PURPOSES
+
+What this means: Client information is for supporting that client. Period.
+
+You cannot:
+• Use their contact info to reach out personally
+• Reference their situation to sell them something
+• Use their stories for your own content or social media
+• Share details for academic research without proper consent
+
+3. PROTECT INFORMATION ACTIVELY
+
+What this means: Take real steps to keep information safe.
+
+Practical actions:
+• Don't leave sessions visible on shared screens
+• Log out of Psychi when you're done
+• Don't discuss clients where others might overhear
+• Be aware of your surroundings during voice/video sessions
+
+4. NEVER RECORD OR CAPTURE
+
+What this means: Don't create any record of sessions outside of Psychi's platform.
+
+This includes:
+• Screenshots of conversations
+• Photos of your screen
+• Voice recordings
+• Writing down details in personal notes
+• Copying chat text elsewhere
+
+Psychi's platform handles record-keeping securely. You don't need to — and shouldn't — create your own records.
+
+5. CREATE A SECURE ENVIRONMENT
+
+What this means: When you're in a session, make sure you're truly private.
+
+Before each session, check:
+• Am I in a private space?
+• Can anyone overhear me?
+• Is my screen visible to others?
+• Am I using headphones for audio/video calls?
+
+If your environment isn't secure, reschedule the session. It's better to delay than to compromise privacy.`,
+    },
+    {
+      id: 'confidentiality-4',
+      title: 'Exceptions — When You Must Speak Up',
+      content: `Confidentiality is critical, but it's not absolute. There are rare situations where you're required to break confidentiality to protect someone from serious harm.
+
+EXCEPTION 1: IMMINENT RISK OF HARM
+
+When it applies: A client expresses intent to seriously harm themselves or someone else, and the threat appears imminent and credible.
+
+What to do:
+1. Stay calm and supportive with the client
+2. Use Psychi's emergency reporting feature immediately
+3. Follow any guidance provided by the platform
+4. Document what was said (within the platform only)
+
+Important: This is for imminent, serious threats — not general expressions of sadness or frustration. If you're unsure, use the reporting feature to consult with Psychi's support team.
+
+EXCEPTION 2: LEGAL REQUIREMENTS
+
+When it applies: You receive a court order or legal demand requiring disclosure.
+
+What to do:
+1. Do not respond to the request directly
+2. Contact Psychi immediately
+3. We will guide you through the proper process
+4. Never disclose without confirming with Psychi first
+
+EXCEPTION 3: CHILD ABUSE OR NEGLECT
+
+When it applies: A client discloses that a child is being abused or neglected, or you have reasonable suspicion this is occurring.
+
+What to do:
+1. Report to appropriate local authorities (laws vary by location)
+2. Notify Psychi through the platform
+3. Document the disclosure within the platform
+
+Note: "Child" typically means anyone under 18. Reporting requirements vary by jurisdiction — when in doubt, report and let authorities assess.
+
+A NOTE ON THESE EXCEPTIONS
+
+These situations are rare, but they're serious. The goal is always to protect life and prevent harm. If you're ever unsure whether an exception applies, reach out to Psychi's support team. We're here to help you navigate difficult situations.`,
+    },
+    {
+      id: 'confidentiality-5',
+      title: 'Real Scenarios',
+      content: `Let's walk through some situations you might encounter.
+
+SCENARIO 1: THE CURIOUS FRIEND
+
+Situation: Your friend knows you're a Psychi supporter and asks, "So what kind of stuff do people talk to you about?"
+
+Wrong response: "Oh, you know, relationship stuff mostly. This one person is going through a really messy divorce..."
+
+Right response: "I keep everything confidential, so I can't really share details. But I find it really rewarding to help people work through challenges."
+
+Why: Even general trends or "types" of issues can feel like a breach to clients. Keep it vague and redirect.
+
+SCENARIO 2: THE SOCIAL MEDIA TEMPTATION
+
+Situation: You had a powerful session where you really helped someone. You want to share the experience (without names) on your Instagram.
+
+Wrong response: Posting "Had an amazing session today helping someone realize their worth after years of emotional abuse. This is why I do this work. 💙"
+
+Right response: Don't post it. If you want to share about being a supporter generally, keep it completely abstract: "Grateful for the opportunity to support others through Psychi."
+
+Why: Even without names, clients might recognize themselves. Others who know them might connect dots. The emotional specificity makes it identifiable.
+
+SCENARIO 3: THE SHARED SPACE
+
+Situation: You're about to start a video session, but your roommate is in the next room with the door open.
+
+Wrong response: Starting the session anyway and hoping they won't hear.
+
+Right response: Message your client: "Hey, I need a few minutes to find a private space. Can we start in 10 minutes?" Then find somewhere truly private or use headphones and keep your voice low.
+
+Why: Your client deserves to know their words aren't being overheard. If you can't guarantee privacy, delay.
+
+SCENARIO 4: THE WORRIED FAMILY MEMBER
+
+Situation: Someone contacts you claiming to be a client's parent/partner/friend, saying they're worried about them and asking what you've discussed.
+
+Wrong response: Sharing any information, even to reassure them.
+
+Right response: "I'm not able to confirm or discuss anything about anyone who may or may not use this platform. If you're concerned about someone, I'd encourage you to reach out to them directly or contact appropriate support services."
+
+Why: You can't even confirm someone is a client. The concerned person might not be who they claim, and even if they are, the client's privacy comes first.`,
+    },
+    {
+      id: 'confidentiality-6',
+      title: 'Safety Scenario & Lasting Responsibility',
+      content: `SCENARIO 5: THE SAFETY CONCERN
+
+Situation: During a session, a client says: "I've been thinking a lot about ending things. I have a plan, and I'm going to do it tonight."
+
+Wrong response: Keeping it confidential because "that's the rule."
+
+Right response:
+1. Stay calm: "I'm really glad you told me this. I'm concerned about your safety."
+2. Keep them talking while you access Psychi's emergency reporting feature
+3. Follow the platform's crisis protocol
+4. Document within the platform
+
+Why: This is an imminent safety risk. The exception to confidentiality exists specifically for moments like this. Your job is to help keep them safe, even if it means involving others.
+
+LASTING RESPONSIBILITY
+
+CONFIDENTIALITY DOESN'T EXPIRE
+
+Your obligation to protect client information doesn't end when:
+• A session ends
+• A client stops using Psychi
+• You take a break from being a supporter
+• You leave the platform entirely
+
+What was shared with you in confidence stays confidential forever. Five years from now, you still can't tell that story at a dinner party.
+
+WHY THIS MATTERS LONG-TERM
+
+People's lives change. Something that seemed minor when shared could become significant later. A client might:
+• Enter a new relationship
+• Start a new job
+• Run for office
+• Simply deserve their privacy
+
+You never know how information might affect someone in the future. The safest approach is permanent confidentiality.`,
+    },
+    {
+      id: 'confidentiality-7',
+      title: 'Consequences & Quick Reference',
+      content: `CONSEQUENCES OF BREACH
+
+We take confidentiality seriously. If you breach this agreement:
+
+Immediate consequences may include:
+• Suspension of your supporter account
+• Investigation of the incident
+• Permanent removal from the platform
+• Forfeiture of pending earnings
+
+Additional consequences may include:
+• Legal action if the breach causes harm
+• Reporting to relevant academic or professional bodies
+• Civil liability for damages
+
+But beyond consequences...
+
+Remember why this matters. A breach doesn't just affect your standing with Psychi — it affects a real person who trusted you. The guilt of knowing you betrayed someone's trust is its own consequence.
+
+QUICK REFERENCE GUIDE
+
+ALWAYS DO:
+✓ Conduct sessions in private spaces
+✓ Use headphones for audio/video
+✓ Log out when you're done
+✓ Report safety concerns through proper channels
+✓ Ask Psychi if you're unsure about a situation
+
+NEVER DO:
+✗ Share client information with anyone
+✗ Post about clients on social media (even vaguely)
+✗ Screenshot or record sessions
+✗ Discuss clients with other supporters
+✗ Confirm someone is a client to anyone asking
+
+WHEN IN DOUBT:
+→ Don't share
+→ Contact Psychi support
+→ Err on the side of more privacy, not less
+
+You're now ready to hold space for others with the trust and care they deserve.
+
+Welcome to Psychi.`,
+    },
+  ],
   mindfulness: [
     {
       id: 'mindfulness-1',
@@ -1786,6 +2151,7 @@ Congratulations on completing this training! You are now equipped with the found
 
 export default function TrainingScreen() {
   const [moduleProgress, setModuleProgress] = useState<ModuleProgress>({
+    confidentiality: false,
     mindfulness: false,
     cbt: false,
     validation: false,
@@ -1802,10 +2168,10 @@ export default function TrainingScreen() {
   const [showCertificate, setShowCertificate] = useState(false);
 
   const completedCount = Object.values(moduleProgress).filter(Boolean).length;
-  const allComplete = completedCount === 5;
+  const allComplete = completedCount === 6;
 
   const isModuleUnlocked = (moduleId: Module): boolean => {
-    const moduleOrder: Module[] = ['mindfulness', 'cbt', 'validation', 'crisis', 'platform'];
+    const moduleOrder: Module[] = ['confidentiality', 'mindfulness', 'cbt', 'validation', 'crisis', 'platform'];
     const index = moduleOrder.indexOf(moduleId);
     if (index === 0) return true;
     return moduleProgress[moduleOrder[index - 1]];
@@ -2192,9 +2558,9 @@ export default function TrainingScreen() {
         <View style={styles.progressCard}>
           <Text style={styles.progressTitle}>Your Progress</Text>
           <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: `${(completedCount / 5) * 100}%` }]} />
+            <View style={[styles.progressFill, { width: `${(completedCount / 6) * 100}%` }]} />
           </View>
-          <Text style={styles.progressText}>{completedCount} of 5 modules completed</Text>
+          <Text style={styles.progressText}>{completedCount} of 6 modules completed</Text>
         </View>
 
         {/* Modules List */}
