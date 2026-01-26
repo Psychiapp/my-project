@@ -31,7 +31,7 @@ const faqItems = [
   },
   {
     question: 'Who are the supporters?',
-    answer: 'Our supporters are psychology students (junior year and above) and psychology graduates who have completed our comprehensive training program. They understand mental wellness concepts and are trained in active listening, empathy, and supportive communication.',
+    answer: 'Our supporters are psychology students and psychology graduates who have completed our comprehensive training program. They understand mental wellness concepts and are trained in active listening, empathy, and supportive communication.',
   },
   {
     question: 'Is this therapy or counseling?',
