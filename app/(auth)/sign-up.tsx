@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -15,13 +15,12 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '@/contexts/AuthContext';
 import { PsychiColors, Gradients, Spacing, BorderRadius, Shadows, Typography } from '@/constants/theme';
 import { UserRole } from '@/types';
-import { ChevronLeftIcon, HeartIcon, BookIcon, EyeIcon, CheckCircleIcon } from '@/components/icons';
+import { ChevronLeftIcon, HeartIcon, BookIcon, EyeIcon } from '@/components/icons';
 import { saveClientPreferences } from '@/lib/database';
-import { PENDING_QUIZ_PREFERENCES_KEY } from './welcome';
+import OnboardingModal from '@/components/OnboardingModal';
 
 export default function SignUpScreen() {
   const insets = useSafeAreaInsets();
@@ -33,29 +32,8 @@ export default function SignUpScreen() {
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [pendingPreferences, setPendingPreferences] = useState<any>(null);
-  const [hasCompletedQuiz, setHasCompletedQuiz] = useState(false);
-
-  // Check for pending quiz preferences on mount
-  useEffect(() => {
-    const checkPendingPreferences = async () => {
-      try {
-        const stored = await AsyncStorage.getItem(PENDING_QUIZ_PREFERENCES_KEY);
-        if (stored) {
-          const preferences = JSON.parse(stored);
-          setPendingPreferences(preferences);
-          setHasCompletedQuiz(true);
-          // Auto-select client role since they completed the quiz
-          setSelectedRole('client');
-          // Skip role selection if quiz was completed
-          setStep('credentials');
-        }
-      } catch (error) {
-        console.error('Error checking pending preferences:', error);
-      }
-    };
-    checkPendingPreferences();
-  }, []);
+  const [showOnboardingModal, setShowOnboardingModal] = useState(false);
+  const [newUserId, setNewUserId] = useState<string | null>(null);
 
   const handleRoleContinue = () => {
     if (!selectedRole) {
@@ -95,19 +73,27 @@ export default function SignUpScreen() {
       return;
     }
 
-    // If user completed quiz before signup, save their preferences
-    if (pendingPreferences && user && selectedRole === 'client') {
+    setIsLoading(false);
+
+    // Show matching quiz for clients after account creation
+    if (selectedRole === 'client' && user) {
+      setNewUserId(user.id);
+      setShowOnboardingModal(true);
+    }
+    // Supporters go directly to their dashboard (handled by auth context)
+  };
+
+  const handleQuizComplete = async (preferences: any) => {
+    if (newUserId) {
       try {
-        await saveClientPreferences(user.id, pendingPreferences);
-        // Clear the pending preferences from storage
-        await AsyncStorage.removeItem(PENDING_QUIZ_PREFERENCES_KEY);
-      } catch (prefError) {
-        console.error('Error saving preferences:', prefError);
-        // Don't block signup if preferences fail to save
+        await saveClientPreferences(newUserId, preferences);
+      } catch (error) {
+        console.error('Error saving preferences:', error);
       }
     }
-
-    setIsLoading(false);
+    setShowOnboardingModal(false);
+    // Navigate to client dashboard
+    router.replace('/(client)');
   };
 
   // Role Selection Screen (Step 1)
@@ -273,16 +259,6 @@ export default function SignUpScreen() {
       >
         <View style={[styles.formCard, { paddingBottom: insets.bottom + Spacing.lg }]}>
           <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-            {/* Quiz Completed Banner */}
-            {hasCompletedQuiz && selectedRole === 'client' && (
-              <View style={styles.quizCompletedBanner}>
-                <CheckCircleIcon size={20} color={PsychiColors.success} />
-                <Text style={styles.quizCompletedText}>
-                  Matching quiz completed! Your preferences will be saved.
-                </Text>
-              </View>
-            )}
-
             {/* Email Input */}
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Email</Text>
@@ -385,6 +361,16 @@ export default function SignUpScreen() {
           </ScrollView>
         </View>
       </KeyboardAvoidingView>
+
+      {/* Matching Quiz Modal - shown after account creation for clients */}
+      <OnboardingModal
+        visible={showOnboardingModal}
+        onClose={() => {
+          setShowOnboardingModal(false);
+          router.replace('/(client)');
+        }}
+        onComplete={handleQuizComplete}
+      />
     </View>
   );
 }
@@ -653,23 +639,6 @@ const styles = StyleSheet.create({
   },
   termsLink: {
     color: PsychiColors.royalBlue,
-    fontWeight: '500',
-  },
-  quizCompletedBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: `${PsychiColors.success}15`,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
-    marginBottom: Spacing.lg,
-    gap: Spacing.sm,
-    borderWidth: 1,
-    borderColor: `${PsychiColors.success}30`,
-  },
-  quizCompletedText: {
-    flex: 1,
-    fontSize: Typography.fontSize.sm,
-    color: PsychiColors.success,
     fontWeight: '500',
   },
 });
