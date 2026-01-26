@@ -74,7 +74,7 @@ export default function TrustSection() {
           return (
             <View key={step.id} style={styles.trainingStep}>
               {/* Icon */}
-              <View style={styles.stepIconContainer}>
+              <View style={styles.stepIcon}>
                 <IconComponent size={24} color={PsychiColors.midnight} />
               </View>
 
@@ -94,8 +94,8 @@ export default function TrustSection() {
         <View style={styles.safetyGrid}>
           {safetyFeatures.map((feature, index) => (
             <View key={index} style={styles.safetyItem}>
-              <View style={styles.checkIconContainer}>
-                <CheckIcon size={16} color={PsychiColors.midnight} />
+              <View style={styles.checkIcon}>
+                <CheckIcon size={16} color={PsychiColors.success} />
               </View>
               <Text style={styles.safetyText}>{feature}</Text>
             </View>
@@ -162,15 +162,9 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: Spacing.lg,
   },
-  stepIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: BorderRadius.lg,
-    backgroundColor: PsychiColors.glassWhiteStrong,
-    justifyContent: 'center',
-    alignItems: 'center',
+  stepIcon: {
     marginRight: Spacing.md,
-    ...Shadows.soft,
+    marginTop: 2,
   },
   stepContent: {
     flex: 1,
@@ -212,13 +206,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  checkIconContainer: {
-    width: 28,
-    height: 28,
-    borderRadius: BorderRadius.full,
-    backgroundColor: 'rgba(74, 144, 226, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
+  checkIcon: {
     marginRight: Spacing.sm,
   },
   safetyText: {
