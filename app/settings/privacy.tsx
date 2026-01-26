@@ -187,9 +187,7 @@ export default function PrivacySecurityScreen() {
                 ]}
                 onPress={item.onPress}
               >
-                <View style={styles.settingIcon}>
-                  <item.icon size={20} color={PsychiColors.azure} />
-                </View>
+                <item.icon size={20} color={PsychiColors.azure} />
                 <View style={styles.settingInfo}>
                   <Text style={styles.settingTitle}>{item.title}</Text>
                   <Text style={styles.settingDescription}>{item.description}</Text>
@@ -205,9 +203,7 @@ export default function PrivacySecurityScreen() {
           <Text style={styles.sectionTitle}>Your Data</Text>
           <View style={styles.settingsCard}>
             <TouchableOpacity style={[styles.settingRow, styles.settingRowBorder]} onPress={handleExportData}>
-              <View style={styles.settingIcon}>
-                <DownloadIcon size={20} color={PsychiColors.azure} />
-              </View>
+              <DownloadIcon size={20} color={PsychiColors.azure} />
               <View style={styles.settingInfo}>
                 <Text style={styles.settingTitle}>Export Your Data</Text>
                 <Text style={styles.settingDescription}>Download a copy of your information</Text>
@@ -215,9 +211,7 @@ export default function PrivacySecurityScreen() {
               <ChevronRightIcon size={20} color={PsychiColors.textMuted} />
             </TouchableOpacity>
             <TouchableOpacity style={styles.settingRow} onPress={handleDeleteAccount}>
-              <View style={[styles.settingIcon, styles.dangerIcon]}>
-                <TrashIcon size={20} color={PsychiColors.error} />
-              </View>
+              <TrashIcon size={20} color={PsychiColors.error} />
               <View style={styles.settingInfo}>
                 <Text style={[styles.settingTitle, styles.dangerText]}>Delete Account</Text>
                 <Text style={styles.settingDescription}>Permanently delete your account and data</Text>
@@ -240,9 +234,7 @@ export default function PrivacySecurityScreen() {
                 ]}
                 onPress={() => openLink(item.url)}
               >
-                <View style={styles.settingIcon}>
-                  <item.icon size={20} color={PsychiColors.azure} />
-                </View>
+                <item.icon size={20} color={PsychiColors.azure} />
                 <View style={styles.settingInfo}>
                   <Text style={styles.settingTitle}>{item.title}</Text>
                 </View>
@@ -337,30 +329,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: Spacing.md,
-  },
-  toggleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: Spacing.md,
+    gap: Spacing.md,
   },
   settingRowBorder: {
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0, 0, 0, 0.05)',
-  },
-  settingIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: BorderRadius.sm,
-    backgroundColor: 'rgba(74, 144, 226, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: Spacing.md,
-  },
-  dangerIcon: {
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-  },
-  settingIconText: {
-    fontSize: 20,
   },
   settingInfo: {
     flex: 1,

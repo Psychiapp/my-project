@@ -317,17 +317,13 @@ export default function ClientHomeScreen() {
           <Text style={styles.sectionLabel}>YOUR PROGRESS</Text>
           <View style={styles.statsGrid}>
             <View style={styles.statCard}>
-              <View style={styles.statIcon}>
-                <CalendarIcon size={20} color={PsychiColors.royalBlue} />
-              </View>
+              <CalendarIcon size={20} color={PsychiColors.royalBlue} />
               <Text style={styles.statValue}>{upcomingSessions}</Text>
               <Text style={styles.statLabel}>Upcoming</Text>
             </View>
 
             <View style={styles.statCard}>
-              <View style={styles.statIcon}>
-                <CheckCircleIcon size={20} color={PsychiColors.success} />
-              </View>
+              <CheckCircleIcon size={20} color={PsychiColors.success} />
               <Text style={styles.statValue}>{completedSessions}</Text>
               <Text style={styles.statLabel}>Completed</Text>
             </View>
@@ -337,9 +333,7 @@ export default function ClientHomeScreen() {
               onPress={() => router.push('/(client)/subscription')}
               activeOpacity={0.7}
             >
-              <View style={styles.statIcon}>
-                <CardIcon size={20} color={PsychiColors.violet} />
-              </View>
+              <CardIcon size={20} color={PsychiColors.violet} />
               <Text style={styles.statValueSmall}>
                 {subscriptionTier ? planLabels[subscriptionTier] || subscriptionTier : 'Pay-As-You-Go'}
               </Text>
@@ -590,9 +584,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     borderWidth: 1,
     borderColor: PsychiColors.borderUltraLight,
-  },
-  statIcon: {
-    marginBottom: Spacing['3'],
+    gap: Spacing['1'],
   },
   statValue: {
     fontSize: Typography.fontSize['3xl'],

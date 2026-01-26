@@ -212,9 +212,7 @@ export default function NotificationSettingsScreen() {
                     index < notificationTypes.length - 1 && styles.settingRowBorder,
                   ]}
                 >
-                  <View style={styles.settingIcon}>
-                    <item.icon size={20} color={PsychiColors.azure} />
-                  </View>
+                  <item.icon size={20} color={PsychiColors.azure} />
                   <View style={styles.settingInfo}>
                     <Text style={styles.settingTitle}>{item.title}</Text>
                     <Text style={styles.settingDescription}>{item.description}</Text>
@@ -413,22 +411,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: Spacing.md,
+    gap: Spacing.md,
   },
   settingRowBorder: {
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(37, 99, 235, 0.06)',
-  },
-  settingIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: 'rgba(37, 99, 235, 0.08)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: Spacing.md,
-  },
-  settingIconText: {
-    fontSize: 20,
   },
   settingInfo: {
     flex: 1,

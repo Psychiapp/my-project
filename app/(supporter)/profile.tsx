@@ -215,9 +215,7 @@ export default function SupporterProfileScreen() {
                 onPress={item.onPress}
                 activeOpacity={0.7}
               >
-                <View style={styles.menuIcon}>
-                  <IconComponent size={20} color={PsychiColors.azure} />
-                </View>
+                <IconComponent size={20} color={PsychiColors.azure} />
                 <View style={styles.menuInfo}>
                   <Text style={styles.menuTitle}>{item.title}</Text>
                   <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
@@ -375,15 +373,7 @@ const styles = StyleSheet.create({
     padding: Spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0,0,0,0.05)',
-  },
-  menuIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: BorderRadius.sm,
-    backgroundColor: 'rgba(74, 144, 226, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: Spacing.md,
+    gap: Spacing.md,
   },
   menuInfo: {
     flex: 1,

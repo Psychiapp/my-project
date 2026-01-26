@@ -107,30 +107,22 @@ export default function ClientsScreen() {
         {/* Stats */}
         <View style={styles.statsRow}>
           <View style={styles.statCard}>
-            <View style={[styles.statIcon, { backgroundColor: 'rgba(59, 130, 246, 0.2)' }]}>
-              <UsersIcon size={18} color="#3b82f6" />
-            </View>
+            <UsersIcon size={18} color="#3b82f6" />
             <Text style={styles.statValue}>{activeCount}</Text>
             <Text style={styles.statLabel}>Active</Text>
           </View>
           <View style={styles.statCard}>
-            <View style={[styles.statIcon, { backgroundColor: 'rgba(74, 144, 226, 0.2)' }]}>
-              <ProfileIcon size={18} color={PsychiColors.azure} />
-            </View>
+            <ProfileIcon size={18} color={PsychiColors.azure} />
             <Text style={styles.statValue}>{clients.length}</Text>
             <Text style={styles.statLabel}>Total</Text>
           </View>
           <View style={styles.statCard}>
-            <View style={[styles.statIcon, { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
-              <CalendarIcon size={18} color="#3b82f6" />
-            </View>
+            <CalendarIcon size={18} color="#3b82f6" />
             <Text style={styles.statValue}>{totalSessions}</Text>
             <Text style={styles.statLabel}>Sessions</Text>
           </View>
           <View style={styles.statCard}>
-            <View style={[styles.statIcon, { backgroundColor: 'rgba(255, 184, 166, 0.2)' }]}>
-              <StarIcon size={18} color="#FFB8A6" />
-            </View>
+            <StarIcon size={18} color="#FFB8A6" />
             <Text style={styles.statValue}>
               {clients.length > 0 ? (totalSessions / clients.length).toFixed(1) : '0'}
             </Text>
@@ -387,14 +379,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: 'rgba(176, 224, 230, 0.4)',
-  },
-  statIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: BorderRadius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: Spacing.xs,
+    gap: Spacing.xs,
   },
   statValue: {
     fontSize: 20,

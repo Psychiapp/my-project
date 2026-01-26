@@ -33,7 +33,6 @@ import {
 
 interface MenuItem {
   icon: React.ReactNode;
-  iconBgColor: string;
   title: string;
   subtitle: string;
   onPress: () => void;
@@ -63,49 +62,42 @@ export default function ProfileScreen() {
   const menuItems: MenuItem[] = [
     {
       icon: <ProfileIcon size={20} color={PsychiColors.royalBlue} />,
-      iconBgColor: `${PsychiColors.royalBlue}12`,
       title: 'Edit Profile',
       subtitle: 'Update your personal information',
       onPress: () => router.push('/settings/edit-profile'),
     },
     {
       icon: <SlidersIcon size={20} color={PsychiColors.violet} />,
-      iconBgColor: `${PsychiColors.lavender}20`,
       title: 'Preferences',
       subtitle: 'Timezone, session types & matching',
       onPress: () => router.push('/settings/preferences'),
     },
     {
       icon: <CardIcon size={20} color={PsychiColors.coral} />,
-      iconBgColor: `${PsychiColors.coral}12`,
       title: 'Subscription',
       subtitle: 'Manage your subscription plan',
       onPress: () => router.push('/(client)/subscription'),
     },
     {
       icon: <NotificationsIcon size={20} color={PsychiColors.warning} />,
-      iconBgColor: `${PsychiColors.warning}12`,
       title: 'Notifications',
       subtitle: 'Configure notification settings',
       onPress: () => router.push('/settings/notifications'),
     },
     {
       icon: <PhoneIcon size={20} color={PsychiColors.success} />,
-      iconBgColor: `${PsychiColors.success}12`,
       title: 'Device Permissions',
       subtitle: 'Camera, microphone & notifications',
       onPress: () => router.push('/permissions'),
     },
     {
       icon: <ShieldIcon size={20} color={PsychiColors.sapphire} />,
-      iconBgColor: `${PsychiColors.sapphire}12`,
       title: 'Privacy & Security',
       subtitle: 'Manage your account security',
       onPress: () => router.push('/settings/privacy'),
     },
     {
       icon: <HelpIcon size={20} color={PsychiColors.textMuted} />,
-      iconBgColor: `${PsychiColors.textMuted}12`,
       title: 'Help & Support',
       subtitle: 'Get help or contact us',
       onPress: () => router.push('/settings/help'),
@@ -186,9 +178,7 @@ export default function ProfileScreen() {
               onPress={item.onPress}
               activeOpacity={0.7}
             >
-              <View style={[styles.menuIcon, { backgroundColor: item.iconBgColor }]}>
-                {item.icon}
-              </View>
+              {item.icon}
               <View style={styles.menuInfo}>
                 <Text style={styles.menuTitle}>{item.title}</Text>
                 <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
@@ -341,17 +331,10 @@ const styles = StyleSheet.create({
     padding: Spacing['4'],
     borderBottomWidth: 1,
     borderBottomColor: PsychiColors.borderUltraLight,
+    gap: Spacing['4'],
   },
   menuItemLast: {
     borderBottomWidth: 0,
-  },
-  menuIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: BorderRadius.lg,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: Spacing['4'],
   },
   menuInfo: {
     flex: 1,
