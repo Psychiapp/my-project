@@ -200,8 +200,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logoImage: {
-    width: 120,
-    height: 44,
+    width: 160,
+    height: 60,
     marginBottom: Spacing.md,
   },
   headerTitle: {
