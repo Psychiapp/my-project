@@ -112,7 +112,7 @@ export default function CheckoutModal({
 
   const renderReview = () => (
     <View style={styles.stepContent}>
-      <View style={styles.iconContainer}>
+      <View style={styles.iconWrapper}>
         {sessionType === 'chat' ? (
           <ChatIcon size={40} color={PsychiColors.azure} />
         ) : sessionType === 'phone' ? (
@@ -354,11 +354,7 @@ const styles = StyleSheet.create({
   stepContent: {
     alignItems: 'center',
   },
-  iconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(74, 144, 226, 0.1)',
+  iconWrapper: {
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: Spacing.md,

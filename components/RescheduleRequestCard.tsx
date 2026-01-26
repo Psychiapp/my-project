@@ -141,7 +141,7 @@ export default function RescheduleRequestCard({
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <View style={styles.iconContainer}>
+        <View style={styles.icon}>
           <RefreshIcon size={20} color="#D97706" />
         </View>
         <View style={styles.headerText}>
@@ -224,14 +224,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: Spacing.md,
   },
-  iconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: Spacing.sm,
+  icon: {
+    marginRight: Spacing.md,
   },
   headerText: {
     flex: 1,

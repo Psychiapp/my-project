@@ -391,10 +391,6 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   iconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: BorderRadius.lg,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },

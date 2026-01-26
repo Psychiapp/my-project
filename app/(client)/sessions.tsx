@@ -386,7 +386,7 @@ export default function SessionsScreen() {
             null
           ) : (
             <View style={styles.emptyState}>
-              <View style={styles.emptyIconBg}>
+              <View style={styles.emptyIcon}>
                 <CalendarIcon size={32} color={PsychiColors.azure} />
               </View>
               <Text style={styles.emptyTitle}>No upcoming sessions</Text>
@@ -411,7 +411,7 @@ export default function SessionsScreen() {
           pastSessions.map((session) => renderSession(session, false))
         ) : (
           <View style={styles.emptyState}>
-            <View style={styles.emptyIconBg}>
+            <View style={styles.emptyIcon}>
               <CheckCircleIcon size={32} color={PsychiColors.azure} />
             </View>
             <Text style={styles.emptyTitle}>No past sessions</Text>
@@ -804,13 +804,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: Spacing.xl * 2,
   },
-  emptyIconBg: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: 'rgba(74, 144, 226, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
+  emptyIcon: {
     marginBottom: Spacing.md,
   },
   emptyTitle: {

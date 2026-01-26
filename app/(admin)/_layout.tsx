@@ -194,6 +194,6 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.sm,
   },
   iconContainerFocused: {
-    backgroundColor: 'rgba(43, 58, 103, 0.15)',
+    // No background - icon color change indicates focus
   },
 });
