@@ -31,8 +31,6 @@ const plans = [
     features: [
       '4 chat sessions per month',
       '2 phone sessions per month',
-      'Priority matching',
-      'Session notes & history',
     ],
     popular: false,
   },
