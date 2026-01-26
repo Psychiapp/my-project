@@ -26,7 +26,8 @@ import {
   sendBookingConfirmedNotification,
   scheduleAllSessionReminders,
 } from '@/lib/notifications';
-import { createSession, getSupporterDetail, getSupporterAvailability } from '@/lib/database';
+import { createSession, getSupporterDetail, getSupporterAvailability, saveClientPreferences } from '@/lib/database';
+import OnboardingModal from '@/components/OnboardingModal';
 
 type SessionType = 'chat' | 'phone' | 'video';
 type BookingStep = 'type' | 'date' | 'time' | 'confirm';
@@ -138,6 +139,7 @@ export default function BookSessionScreen() {
   const [isBooking, setIsBooking] = useState(false);
   const [supporterAvailability, setSupporterAvailability] = useState<Record<string, string[]>>({});
   const [isLoadingAvailability, setIsLoadingAvailability] = useState(true);
+  const [showOnboardingModal, setShowOnboardingModal] = useState(false);
 
   // Get supporter from route params
   const supporter = params.supporterId ? {
@@ -145,6 +147,27 @@ export default function BookSessionScreen() {
     name: params.supporterName || 'Your Supporter',
     specialty: 'Peer Support',
   } : null;
+
+  // Show onboarding modal if no supporter assigned
+  React.useEffect(() => {
+    if (!params.supporterId) {
+      setShowOnboardingModal(true);
+    }
+  }, [params.supporterId]);
+
+  // Handle onboarding completion - save preferences and go to dashboard
+  const handleOnboardingComplete = async (preferences: any) => {
+    if (user?.id) {
+      try {
+        await saveClientPreferences(user.id, preferences);
+      } catch (error) {
+        console.error('Error saving preferences:', error);
+      }
+    }
+    setShowOnboardingModal(false);
+    // Navigate to dashboard where they'll be matched with a supporter
+    router.replace('/(client)');
+  };
 
   // Fetch supporter availability on mount
   React.useEffect(() => {
@@ -305,29 +328,18 @@ export default function BookSessionScreen() {
 
   const stepIndex = ['type', 'date', 'time', 'confirm'].indexOf(step);
 
-  // Show message if no supporter selected
+  // Show matching quiz if no supporter assigned
   if (!supporter) {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <ChevronLeftIcon size={24} color={PsychiColors.midnight} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Book a Session</Text>
-          <View style={styles.headerSpacer} />
-        </View>
-        <View style={styles.noSupporterContainer}>
-          <Text style={styles.noSupporterTitle}>No Supporter Selected</Text>
-          <Text style={styles.noSupporterText}>
-            Please select a supporter first before booking a session.
-          </Text>
-          <TouchableOpacity
-            style={styles.noSupporterButton}
-            onPress={() => router.back()}
-          >
-            <Text style={styles.noSupporterButtonText}>Go Back</Text>
-          </TouchableOpacity>
-        </View>
+        <OnboardingModal
+          visible={showOnboardingModal}
+          onClose={() => {
+            setShowOnboardingModal(false);
+            router.back();
+          }}
+          onComplete={handleOnboardingComplete}
+        />
       </SafeAreaView>
     );
   }
@@ -674,35 +686,6 @@ const styles = StyleSheet.create({
   },
   headerSpacer: {
     width: 40,
-  },
-  noSupporterContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: Spacing.xl,
-  },
-  noSupporterTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: PsychiColors.midnight,
-    marginBottom: Spacing.md,
-  },
-  noSupporterText: {
-    fontSize: 16,
-    color: PsychiColors.textSecondary,
-    textAlign: 'center',
-    marginBottom: Spacing.xl,
-  },
-  noSupporterButton: {
-    backgroundColor: PsychiColors.azure,
-    paddingHorizontal: Spacing.xl,
-    paddingVertical: Spacing.md,
-    borderRadius: BorderRadius.lg,
-  },
-  noSupporterButtonText: {
-    color: PsychiColors.white,
-    fontWeight: '600',
-    fontSize: 16,
   },
   progressContainer: {
     flexDirection: 'row',
