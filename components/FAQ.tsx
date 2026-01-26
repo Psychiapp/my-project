@@ -47,7 +47,7 @@ const faqItems = [
   },
   {
     question: 'Is my information private?',
-    answer: 'Absolutely. All conversations are confidential and protected with end-to-end encryption. We never share your personal information with third parties, and supporters are bound by strict confidentiality agreements.',
+    answer: 'Absolutely. All conversations are confidential and protected with end-to-end encryption.',
   },
   {
     question: 'What if I need immediate crisis support?',
