@@ -83,6 +83,7 @@ export const ExternalUrls = {
   // Legal documents - replace with your actual hosted URLs before App Store submission
   termsOfService: 'https://psychi.app/terms-of-use.pdf',
   privacyPolicy: 'https://psychi.app/privacy-policy.pdf',
+  confidentialityAgreement: 'https://psychi.app/confidentiality-agreement.pdf',
   supporterGuidelines: 'https://psychi.app/supporter-guidelines',
 
   // Contact
