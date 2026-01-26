@@ -101,6 +101,69 @@ export async function getClientProfile(userId: string): Promise<ClientProfile | 
 }
 
 /**
+ * Update or create client subscription
+ */
+export async function updateClientSubscription(
+  userId: string,
+  tier: SubscriptionTier
+): Promise<boolean> {
+  if (!supabase) return false;
+
+  // Calculate expiration date (1 month from now)
+  const expiresAt = new Date();
+  expiresAt.setMonth(expiresAt.getMonth() + 1);
+
+  // Default sessions based on tier
+  const sessionsRemaining = {
+    basic: { chat: 2, phone: 1, video: 0 },
+    standard: { chat: 3, phone: 2, video: 0 },
+    premium: { chat: 999, phone: 3, video: 0 },
+  }[tier];
+
+  const { error } = await supabase
+    .from('subscriptions')
+    .upsert({
+      user_id: userId,
+      tier,
+      status: 'active',
+      expires_at: expiresAt.toISOString(),
+      sessions_remaining: sessionsRemaining,
+      updated_at: new Date().toISOString(),
+    }, {
+      onConflict: 'user_id',
+    });
+
+  if (error) {
+    console.error('Error updating subscription:', error);
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Cancel client subscription
+ */
+export async function cancelClientSubscription(userId: string): Promise<boolean> {
+  if (!supabase) return false;
+
+  const { error } = await supabase
+    .from('subscriptions')
+    .update({
+      status: 'cancelled',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('user_id', userId);
+
+  if (error) {
+    console.error('Error cancelling subscription:', error);
+    return false;
+  }
+
+  return true;
+}
+
+/**
  * Get supporter profile with all details
  */
 export async function getSupporterProfile(userId: string): Promise<SupporterProfile | null> {

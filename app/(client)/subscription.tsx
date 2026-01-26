@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -13,6 +14,8 @@ import { useRouter } from 'expo-router';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
 import { ChevronLeftIcon, CheckIcon, MinusCircleIcon } from '@/components/icons';
 import { Config } from '@/constants/config';
+import { useAuth } from '@/contexts/AuthContext';
+import { getClientProfile, updateClientSubscription, cancelClientSubscription } from '@/lib/database';
 
 type PlanTier = 'basic' | 'standard' | 'premium';
 
@@ -25,8 +28,34 @@ interface PlanFeature {
 
 export default function SubscriptionScreen() {
   const router = useRouter();
+  const { user } = useAuth();
   const [currentPlan, setCurrentPlan] = useState<PlanTier | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<PlanTier | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  // Fetch current subscription on mount
+  useEffect(() => {
+    const fetchSubscription = async () => {
+      if (!user?.id) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const profile = await getClientProfile(user.id);
+        if (profile?.subscription_tier && profile?.subscription_status === 'active') {
+          setCurrentPlan(profile.subscription_tier as PlanTier);
+        }
+      } catch (error) {
+        console.error('Error fetching subscription:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchSubscription();
+  }, [user?.id]);
 
   const plans: Record<PlanTier, { name: string; price: string; description: string; color: string }> = {
     basic: {
@@ -69,7 +98,7 @@ export default function SubscriptionScreen() {
   };
 
   const handleSubscribe = () => {
-    if (!selectedPlan) return;
+    if (!selectedPlan || !user?.id) return;
 
     Alert.alert(
       'Confirm Subscription',
@@ -78,11 +107,23 @@ export default function SubscriptionScreen() {
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Subscribe',
-          onPress: () => {
-            // In production, this would integrate with Stripe
-            Alert.alert('Success', 'Subscription updated! (Demo mode)');
-            setCurrentPlan(selectedPlan);
-            setSelectedPlan(null);
+          onPress: async () => {
+            setIsProcessing(true);
+            try {
+              const success = await updateClientSubscription(user.id, selectedPlan);
+              if (success) {
+                Alert.alert('Success', 'Subscription updated!');
+                setCurrentPlan(selectedPlan);
+                setSelectedPlan(null);
+              } else {
+                Alert.alert('Error', 'Failed to update subscription. Please try again.');
+              }
+            } catch (error) {
+              console.error('Subscription error:', error);
+              Alert.alert('Error', 'Something went wrong. Please try again.');
+            } finally {
+              setIsProcessing(false);
+            }
           },
         },
       ]
@@ -90,7 +131,7 @@ export default function SubscriptionScreen() {
   };
 
   const handleCancelSubscription = () => {
-    if (!currentPlan) return;
+    if (!currentPlan || !user?.id) return;
 
     Alert.alert(
       'Cancel Subscription',
@@ -100,9 +141,22 @@ export default function SubscriptionScreen() {
         {
           text: 'Cancel Plan',
           style: 'destructive',
-          onPress: () => {
-            setCurrentPlan(null);
-            Alert.alert('Subscription Cancelled', 'Your subscription has been cancelled.');
+          onPress: async () => {
+            setIsProcessing(true);
+            try {
+              const success = await cancelClientSubscription(user.id);
+              if (success) {
+                setCurrentPlan(null);
+                Alert.alert('Subscription Cancelled', 'Your subscription has been cancelled.');
+              } else {
+                Alert.alert('Error', 'Failed to cancel subscription. Please try again.');
+              }
+            } catch (error) {
+              console.error('Cancel error:', error);
+              Alert.alert('Error', 'Something went wrong. Please try again.');
+            } finally {
+              setIsProcessing(false);
+            }
           },
         },
       ]
@@ -119,6 +173,16 @@ export default function SubscriptionScreen() {
     }
     return <Text style={styles.featureText}>{value}</Text>;
   };
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={PsychiColors.violet} />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -216,17 +280,22 @@ export default function SubscriptionScreen() {
               </Text>
             </View>
             <TouchableOpacity
-              style={styles.subscribeButton}
+              style={[styles.subscribeButton, isProcessing && styles.subscribeButtonDisabled]}
               onPress={handleSubscribe}
               activeOpacity={0.9}
+              disabled={isProcessing}
             >
               <LinearGradient
                 colors={[PsychiColors.violet, PsychiColors.periwinkle]}
                 style={styles.subscribeGradient}
               >
-                <Text style={styles.subscribeText}>
-                  Subscribe to {plans[selectedPlan].name}
-                </Text>
+                {isProcessing ? (
+                  <ActivityIndicator color={PsychiColors.white} />
+                ) : (
+                  <Text style={styles.subscribeText}>
+                    Subscribe to {plans[selectedPlan].name}
+                  </Text>
+                )}
               </LinearGradient>
             </TouchableOpacity>
           </View>
@@ -347,6 +416,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: PsychiColors.cream,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   scrollView: {
     flex: 1,
@@ -531,6 +605,9 @@ const styles = StyleSheet.create({
   subscribeButton: {
     borderRadius: BorderRadius.lg,
     overflow: 'hidden',
+  },
+  subscribeButtonDisabled: {
+    opacity: 0.7,
   },
   subscribeGradient: {
     paddingVertical: Spacing.md,

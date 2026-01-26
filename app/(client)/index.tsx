@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import {
   AppState,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '@/contexts/AuthContext';
@@ -35,7 +35,7 @@ import {
   AlertIcon,
 } from '@/components/icons';
 import DashboardTutorial from '@/components/DashboardTutorial';
-import { getClientCurrentAssignment, requestSupporterReassignment, getSupporterDetail } from '@/lib/database';
+import { getClientCurrentAssignment, requestSupporterReassignment, getSupporterDetail, getClientProfile } from '@/lib/database';
 
 const TUTORIAL_COMPLETED_KEY = '@psychi_client_tutorial_completed';
 
@@ -51,6 +51,9 @@ interface AssignedSupporter {
 }
 
 const planLabels: Record<string, string> = {
+  'basic': 'Basic',
+  'standard': 'Standard',
+  'premium': 'Premium',
   'tier-1': 'Essential',
   'tier-2': 'Growth',
   'tier-3': 'Unlimited',
@@ -69,6 +72,31 @@ export default function ClientHomeScreen() {
   const [isLoadingSupporter, setIsLoadingSupporter] = useState(true);
   const [pendingReportEmail, setPendingReportEmail] = useState(false);
 
+  // Subscription state
+  const [subscriptionTier, setSubscriptionTier] = useState<string | null>(null);
+
+  // Function to fetch subscription (used for refetching on focus)
+  const fetchSubscription = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      const clientProfile = await getClientProfile(user.id);
+      if (clientProfile?.subscription_tier && clientProfile?.subscription_status === 'active') {
+        setSubscriptionTier(clientProfile.subscription_tier);
+      } else {
+        setSubscriptionTier(null);
+      }
+    } catch (error) {
+      console.error('Error fetching subscription:', error);
+    }
+  }, [user?.id]);
+
+  // Refetch subscription when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      fetchSubscription();
+    }, [fetchSubscription])
+  );
+
   // Check if tutorial has been completed on mount
   useEffect(() => {
     const checkTutorialStatus = async () => {
@@ -84,16 +112,27 @@ export default function ClientHomeScreen() {
     checkTutorialStatus();
   }, []);
 
-  // Fetch assigned supporter
+  // Fetch assigned supporter and subscription
   useEffect(() => {
-    const fetchAssignedSupporter = async () => {
+    const fetchData = async () => {
       if (!user?.id) {
         setIsLoadingSupporter(false);
         return;
       }
 
       try {
-        const assignment = await getClientCurrentAssignment(user.id);
+        // Fetch supporter and profile in parallel
+        const [assignment, clientProfile] = await Promise.all([
+          getClientCurrentAssignment(user.id),
+          getClientProfile(user.id),
+        ]);
+
+        // Set subscription tier
+        if (clientProfile?.subscription_tier && clientProfile?.subscription_status === 'active') {
+          setSubscriptionTier(clientProfile.subscription_tier);
+        }
+
+        // Set assigned supporter
         if (assignment?.supporter_id) {
           const supporterDetail = await getSupporterDetail(assignment.supporter_id);
           if (supporterDetail) {
@@ -110,13 +149,13 @@ export default function ClientHomeScreen() {
           }
         }
       } catch (error) {
-        console.error('Error fetching assigned supporter:', error);
+        console.error('Error fetching data:', error);
       } finally {
         setIsLoadingSupporter(false);
       }
     };
 
-    fetchAssignedSupporter();
+    fetchData();
   }, [user?.id]);
 
   // Listen for app returning from email
@@ -200,7 +239,6 @@ export default function ClientHomeScreen() {
 
   // Real data - no mock data
   const bookingHistory: { id: string; status: string; session_date: string }[] = [];
-  const selectedPlan: string | null = null;
 
   // Calculate stats from real data
   const upcomingSessions = bookingHistory.filter(
@@ -294,15 +332,19 @@ export default function ClientHomeScreen() {
               <Text style={styles.statLabel}>Completed</Text>
             </View>
 
-            <View style={styles.statCard}>
+            <TouchableOpacity
+              style={styles.statCard}
+              onPress={() => router.push('/(client)/subscription')}
+              activeOpacity={0.7}
+            >
               <View style={styles.statIcon}>
                 <CardIcon size={20} color={PsychiColors.violet} />
               </View>
               <Text style={styles.statValueSmall}>
-                {selectedPlan ? planLabels[selectedPlan] : 'Free'}
+                {subscriptionTier ? planLabels[subscriptionTier] || subscriptionTier : 'Free'}
               </Text>
               <Text style={styles.statLabel}>Plan</Text>
-            </View>
+            </TouchableOpacity>
           </View>
         </View>
 
