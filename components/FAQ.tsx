@@ -43,7 +43,7 @@ const faqItems = [
   },
   {
     question: 'What types of sessions are available?',
-    answer: 'We offer three formats: Chat sessions ($7/25 min) for text-based support, Phone calls ($15/45 min) for voice conversations, and Video chats ($20/45 min) for face-to-face connection. You can mix and match based on your comfort level.',
+    answer: 'We offer three formats: Chat sessions for text-based support, Phone calls for voice conversations, and Video chats for face-to-face connection. You can mix and match based on your comfort level.',
   },
   {
     question: 'Is my information private?',
