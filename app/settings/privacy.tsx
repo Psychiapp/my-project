@@ -22,7 +22,6 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   ShieldIcon,
-  ChartIcon,
   DownloadIcon,
   TrashIcon,
 } from '@/components/icons';
@@ -33,7 +32,6 @@ export default function PrivacySecurityScreen() {
   const { signOut, profile } = useAuth();
 
   const [biometricEnabled, setBiometricEnabled] = useState(false);
-  const [analyticsEnabled, setAnalyticsEnabled] = useState(true);
   const [isSendingReset, setIsSendingReset] = useState(false);
 
   const handleChangePassword = () => {
@@ -221,29 +219,6 @@ export default function PrivacySecurityScreen() {
                 onValueChange={setBiometricEnabled}
                 trackColor={{ false: '#E5E7EB', true: 'rgba(74, 144, 226, 0.4)' }}
                 thumbColor={biometricEnabled ? PsychiColors.azure : '#F3F4F6'}
-                ios_backgroundColor="#E5E7EB"
-              />
-            </View>
-          </View>
-        </View>
-
-        {/* Privacy Settings */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Privacy</Text>
-          <View style={styles.settingsCard}>
-            <View style={styles.toggleRow}>
-              <View style={styles.settingIcon}>
-                <ChartIcon size={20} color={PsychiColors.azure} />
-              </View>
-              <View style={styles.settingInfo}>
-                <Text style={styles.settingTitle}>Analytics</Text>
-                <Text style={styles.settingDescription}>Help improve Psychi with anonymous usage data</Text>
-              </View>
-              <Switch
-                value={analyticsEnabled}
-                onValueChange={setAnalyticsEnabled}
-                trackColor={{ false: '#E5E7EB', true: 'rgba(74, 144, 226, 0.4)' }}
-                thumbColor={analyticsEnabled ? PsychiColors.azure : '#F3F4F6'}
                 ios_backgroundColor="#E5E7EB"
               />
             </View>
