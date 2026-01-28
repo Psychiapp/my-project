@@ -286,13 +286,6 @@ export default function SupporterEditProfileScreen() {
             </Text>
           </View>
 
-          {/* Preview Profile Button */}
-          <View style={styles.section}>
-            <TouchableOpacity style={styles.previewButton}>
-              <Text style={styles.previewButtonText}>Preview Public Profile</Text>
-            </TouchableOpacity>
-          </View>
-
           <View style={{ height: 40 }} />
         </ScrollView>
       </KeyboardAvoidingView>
@@ -499,18 +492,5 @@ const styles = StyleSheet.create({
   rateLabel: {
     fontSize: 16,
     color: PsychiColors.textMuted,
-  },
-  previewButton: {
-    backgroundColor: PsychiColors.white,
-    borderRadius: BorderRadius.lg,
-    paddingVertical: Spacing.md,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: PsychiColors.azure,
-  },
-  previewButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: PsychiColors.azure,
   },
 });
