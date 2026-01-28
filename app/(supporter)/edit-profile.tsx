@@ -47,7 +47,6 @@ export default function SupporterEditProfileScreen() {
     'Depression',
     'Life Transitions',
   ]);
-  const [hourlyRate, setHourlyRate] = useState('45');
   const [availableDays, setAvailableDays] = useState<string[]>(['Mon', 'Wed', 'Fri']);
   const [sessionTypes, setSessionTypes] = useState({
     chat: true,
@@ -266,26 +265,6 @@ export default function SupporterEditProfileScreen() {
             </View>
           </View>
 
-          {/* Hourly Rate */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Hourly Rate</Text>
-            <View style={styles.rateContainer}>
-              <Text style={styles.currencySymbol}>$</Text>
-              <TextInput
-                style={styles.rateInput}
-                value={hourlyRate}
-                onChangeText={setHourlyRate}
-                placeholder="45"
-                keyboardType="numeric"
-                maxLength={3}
-              />
-              <Text style={styles.rateLabel}>/ hour</Text>
-            </View>
-            <Text style={styles.hint}>
-              Platform fee: 20% | You receive: ${Math.round(Number(hourlyRate) * 0.8) || 0}/hr
-            </Text>
-          </View>
-
           <View style={{ height: 40 }} />
         </ScrollView>
       </KeyboardAvoidingView>
@@ -467,30 +446,5 @@ const styles = StyleSheet.create({
   },
   dayTextActive: {
     color: PsychiColors.white,
-  },
-  rateContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: PsychiColors.white,
-    borderRadius: BorderRadius.md,
-    paddingHorizontal: Spacing.md,
-    ...Shadows.soft,
-  },
-  currencySymbol: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#2A2A2A',
-  },
-  rateInput: {
-    flex: 1,
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#2A2A2A',
-    paddingVertical: Spacing.md,
-    marginLeft: Spacing.xs,
-  },
-  rateLabel: {
-    fontSize: 16,
-    color: PsychiColors.textMuted,
   },
 });
