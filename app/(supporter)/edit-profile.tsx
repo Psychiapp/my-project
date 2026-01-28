@@ -14,7 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
-import { ChevronLeftIcon, ChatIcon, PhoneIcon, VideoIcon } from '@/components/icons';
+import { ChevronLeftIcon } from '@/components/icons';
 
 const SPECIALTIES = [
   'Anxiety',
@@ -48,11 +48,6 @@ export default function SupporterEditProfileScreen() {
     'Life Transitions',
   ]);
   const [availableDays, setAvailableDays] = useState<string[]>(['Mon', 'Wed', 'Fri']);
-  const [sessionTypes, setSessionTypes] = useState({
-    chat: true,
-    phone: true,
-    video: true,
-  });
 
   const toggleSpecialty = (specialty: string) => {
     setSelectedSpecialties((prev) =>
@@ -193,43 +188,6 @@ export default function SupporterEditProfileScreen() {
                     ]}
                   >
                     {specialty}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-
-          {/* Session Types */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Session Types Offered</Text>
-            <View style={styles.sessionTypesContainer}>
-              {(['chat', 'phone', 'video'] as const).map((type) => (
-                <TouchableOpacity
-                  key={type}
-                  style={[
-                    styles.sessionTypeCard,
-                    sessionTypes[type] && styles.sessionTypeCardActive,
-                  ]}
-                  onPress={() =>
-                    setSessionTypes((prev) => ({ ...prev, [type]: !prev[type] }))
-                  }
-                >
-                  <View style={styles.sessionTypeIcon}>
-                    {type === 'chat' ? (
-                      <ChatIcon size={20} color={sessionTypes[type] ? PsychiColors.azure : PsychiColors.textMuted} />
-                    ) : type === 'phone' ? (
-                      <PhoneIcon size={20} color={sessionTypes[type] ? PsychiColors.azure : PsychiColors.textMuted} />
-                    ) : (
-                      <VideoIcon size={20} color={sessionTypes[type] ? PsychiColors.azure : PsychiColors.textMuted} />
-                    )}
-                  </View>
-                  <Text
-                    style={[
-                      styles.sessionTypeText,
-                      sessionTypes[type] && styles.sessionTypeTextActive,
-                    ]}
-                  >
-                    {type.charAt(0).toUpperCase() + type.slice(1)}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -391,36 +349,6 @@ const styles = StyleSheet.create({
   },
   tagTextSelected: {
     color: PsychiColors.white,
-    fontWeight: '600',
-  },
-  sessionTypesContainer: {
-    flexDirection: 'row',
-    gap: Spacing.md,
-  },
-  sessionTypeCard: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: Spacing.md,
-    borderRadius: BorderRadius.lg,
-    backgroundColor: PsychiColors.white,
-    borderWidth: 2,
-    borderColor: 'transparent',
-    ...Shadows.soft,
-  },
-  sessionTypeCardActive: {
-    borderColor: PsychiColors.azure,
-    backgroundColor: 'rgba(74, 144, 226, 0.1)',
-  },
-  sessionTypeIcon: {
-    fontSize: 24,
-    marginBottom: Spacing.xs,
-  },
-  sessionTypeText: {
-    fontSize: 14,
-    color: PsychiColors.textSecondary,
-  },
-  sessionTypeTextActive: {
-    color: PsychiColors.azure,
     fontWeight: '600',
   },
   daysContainer: {
