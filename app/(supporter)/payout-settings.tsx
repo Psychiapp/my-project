@@ -25,6 +25,7 @@ import {
   createConnectAccount,
   openConnectOnboarding,
   isPayoutReady,
+  stripeAvailable,
 } from '@/lib/stripe';
 import type { StripeConnectStatus, PayoutSchedule } from '@/types/database';
 
@@ -48,7 +49,7 @@ function getOrdinalSuffix(n: number): string {
 }
 
 export default function PayoutSettingsScreen() {
-  const { user } = useAuth();
+  const { user, isDemoMode } = useAuth();
   const params = useLocalSearchParams();
 
   // Stripe Connect state
@@ -117,6 +118,16 @@ export default function PayoutSettingsScreen() {
   };
 
   const handleSetupPayouts = async () => {
+    // Check for demo mode - payout setup requires real Stripe integration
+    if (isDemoMode || !stripeAvailable) {
+      Alert.alert(
+        'Demo Mode',
+        'Payout setup is not available in demo mode. In the live app, you\'ll be guided through a secure process to verify your identity and link your bank account.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
     if (!user?.id || !user?.email) {
       Alert.alert('Error', 'User information not available');
       return;
