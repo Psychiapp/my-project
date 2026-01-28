@@ -7,12 +7,23 @@ import {
   TouchableOpacity,
   Linking,
   Alert,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { PsychiColors, Spacing, BorderRadius, Shadows, Typography } from '@/constants/theme';
 import { BookIcon, AlertTriangleIcon, ShieldIcon, PhoneIcon, DocumentIcon, LightbulbIcon, HelpIcon, ChevronLeftIcon, ArrowLeftIcon, LockIcon, ClipboardIcon } from '@/components/icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
+import { Asset } from 'expo-asset';
+
+// PDF asset imports
+const pdfAssets: Record<string, any> = {
+  handbook: require('@/assets/documents/Supporter Handbook.pdf'),
+  diversion: require('@/assets/documents/Supporter Diversion Advice.pdf'),
+  conduct: require('@/assets/documents/Supporter Code of Conduct.pdf'),
+};
 
 interface PDFResource {
   id: string;
@@ -118,25 +129,56 @@ const getCategoryColors = (category: PDFResource['category']) => {
 };
 
 export default function ResourcesScreen() {
-  const handleViewDocument = (resource: PDFResource) => {
+  const handleViewDocument = async (resource: PDFResource) => {
     // If the resource has an in-app route, navigate there
     if (resource.route) {
       router.push(resource.route as any);
       return;
     }
 
-    // For PDF documents, show alert with info
-    Alert.alert(
-      resource.title,
-      `This document contains essential information for supporters.\n\nIn the full release, you'll be able to view "${resource.filename}" directly in the app or download it for offline access.`,
-      [
-        { text: 'OK' },
-        {
-          text: 'Contact Support',
-          onPress: () => Linking.openURL('mailto:psychiapp@outlook.com?subject=Request: ' + resource.title),
-        },
-      ]
-    );
+    // For PDF documents, open with system viewer
+    try {
+      const pdfAsset = pdfAssets[resource.id];
+      if (!pdfAsset) {
+        Alert.alert('Error', 'Document not found');
+        return;
+      }
+
+      // Load the asset
+      const asset = Asset.fromModule(pdfAsset);
+      await asset.downloadAsync();
+
+      if (!asset.localUri) {
+        throw new Error('Failed to load document');
+      }
+
+      // Check if sharing is available
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (!isAvailable) {
+        Alert.alert(
+          'Not Available',
+          'Document viewing is not available on this device. Please contact support for a copy.',
+          [
+            { text: 'OK' },
+            {
+              text: 'Contact Support',
+              onPress: () => Linking.openURL('mailto:psychiapp@outlook.com?subject=Request: ' + resource.title),
+            },
+          ]
+        );
+        return;
+      }
+
+      // Open the PDF with system viewer
+      await Sharing.shareAsync(asset.localUri, {
+        mimeType: 'application/pdf',
+        dialogTitle: resource.title,
+        UTI: 'com.adobe.pdf',
+      });
+    } catch (error) {
+      console.error('Error opening document:', error);
+      Alert.alert('Error', 'Failed to open document. Please try again.');
+    }
   };
 
   const handleCallHotline = (number: string) => {
