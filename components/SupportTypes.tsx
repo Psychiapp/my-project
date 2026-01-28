@@ -84,7 +84,7 @@ export default function SupportTypes({ onSelectType }: SupportTypesProps) {
             >
               {/* Icon - simple black icon at top (matches web) */}
               <View style={styles.iconContainer}>
-                <IconComponent size={48} color={PsychiColors.midnight} />
+                <IconComponent size={32} color={PsychiColors.midnight} />
               </View>
 
               {/* Title */}
@@ -150,29 +150,29 @@ const styles = StyleSheet.create({
   // Individual card styles - vertical layout matching web
   card: {
     backgroundColor: PsychiColors.glassWhiteStrong,
-    borderRadius: BorderRadius['2xl'],
-    padding: Spacing.xl,
-    marginBottom: Spacing.md,
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.md,
+    marginBottom: Spacing.sm,
     ...Shadows.card,
   },
 
   iconContainer: {
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.sm,
   },
 
   cardTitle: {
     fontFamily: Typography.fontFamily.serif,
-    fontSize: Typography.fontSize['2xl'],
+    fontSize: Typography.fontSize.lg,
     fontWeight: '500',
     color: PsychiColors.textPrimary,
-    marginBottom: Spacing.sm,
+    marginBottom: Spacing.xs,
   },
   cardDescription: {
     fontFamily: Typography.fontFamily.sans,
-    fontSize: Typography.fontSize.base,
+    fontSize: Typography.fontSize.sm,
     color: PsychiColors.warmBrown,
-    lineHeight: 24,
-    marginBottom: Spacing.lg,
+    lineHeight: 20,
+    marginBottom: Spacing.sm,
   },
 
   priceContainer: {
@@ -181,13 +181,13 @@ const styles = StyleSheet.create({
   },
   price: {
     fontFamily: Typography.fontFamily.serif,
-    fontSize: Typography.fontSize['3xl'],
+    fontSize: Typography.fontSize['2xl'],
     fontWeight: '500',
     color: PsychiColors.textPrimary,
   },
   duration: {
     fontFamily: Typography.fontFamily.sans,
-    fontSize: Typography.fontSize.sm,
+    fontSize: Typography.fontSize.xs,
     color: PsychiColors.textMuted,
   },
 
