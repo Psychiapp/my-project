@@ -22,7 +22,6 @@ import {
   ClipboardIcon,
   InfoIcon,
   LogoutIcon,
-  CertificateIcon,
   ChevronRightIcon,
 } from '@/components/icons';
 import { getSupporterDetail, getSupporterSessionCount } from '@/lib/database';
@@ -107,12 +106,6 @@ export default function SupporterProfileScreen() {
       icon: ProfileIcon,
       title: 'Edit Profile',
       subtitle: 'Update bio, photo, and specialties',
-      onPress: () => router.push('/(supporter)/edit-profile'),
-    },
-    {
-      icon: CertificateIcon,
-      title: 'Education & Experience',
-      subtitle: 'Update credentials and background',
       onPress: () => router.push('/(supporter)/edit-profile'),
     },
     {
