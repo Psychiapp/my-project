@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   ScrollView,
   Image,
+  Modal,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -18,7 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/contexts/AuthContext';
 import { PsychiColors, Gradients, Spacing, BorderRadius, Shadows, Typography } from '@/constants/theme';
 import { UserRole } from '@/types';
-import { ChevronLeftIcon, HeartIcon, BookIcon, EyeIcon, CheckIcon } from '@/components/icons';
+import { ChevronLeftIcon, HeartIcon, BookIcon, EyeIcon, CheckIcon, VideoIcon, MicIcon } from '@/components/icons';
 import { saveClientPreferences } from '@/lib/database';
 import OnboardingModal from '@/components/OnboardingModal';
 
@@ -46,10 +47,20 @@ export default function SignUpScreen() {
   const [agreedToPrivacy, setAgreedToPrivacy] = useState(false);
   const [agreedToDisclaimer, setAgreedToDisclaimer] = useState(false);
 
+  // Agreement checkboxes for supporters
+  const [supporterAgreedToTerms, setSupporterAgreedToTerms] = useState(false);
+  const [supporterAgreedToPrivacy, setSupporterAgreedToPrivacy] = useState(false);
+  const [supporterAgreedToConfidentiality, setSupporterAgreedToConfidentiality] = useState(false);
+
+  // Equipment requirements modal for supporters
+  const [showEquipmentModal, setShowEquipmentModal] = useState(false);
+
   // Check if all required agreements are accepted
   const allAgreementsAccepted = selectedRole === 'client'
     ? agreedToTerms && agreedToPrivacy && agreedToDisclaimer
-    : true; // Supporters have their own onboarding with agreements
+    : selectedRole === 'supporter'
+    ? supporterAgreedToTerms && supporterAgreedToPrivacy && supporterAgreedToConfidentiality
+    : true;
 
   const handleRoleContinue = () => {
     if (!selectedRole) {
@@ -80,8 +91,8 @@ export default function SignUpScreen() {
       return;
     }
 
-    // Check agreements for clients
-    if (selectedRole === 'client' && !allAgreementsAccepted) {
+    // Check agreements
+    if (!allAgreementsAccepted) {
       Alert.alert('Agreement Required', 'Please read and agree to all documents before creating your account.');
       return;
     }
@@ -102,7 +113,17 @@ export default function SignUpScreen() {
       setNewUserId(user.id);
       setShowOnboardingModal(true);
     }
-    // Supporters go directly to their dashboard (handled by auth context)
+
+    // Show equipment requirements modal for supporters after account creation
+    if (selectedRole === 'supporter' && user) {
+      setShowEquipmentModal(true);
+    }
+  };
+
+  // Handle supporter equipment agreement
+  const handleEquipmentAgree = () => {
+    setShowEquipmentModal(false);
+    router.replace('/(supporter)');
   };
 
   const handleQuizComplete = async (preferences: any) => {
@@ -338,14 +359,14 @@ export default function SignUpScreen() {
             <TouchableOpacity
               style={[
                 styles.submitButtonWrapper,
-                (selectedRole === 'client' && !allAgreementsAccepted) && styles.submitButtonDisabled
+                !allAgreementsAccepted && styles.submitButtonDisabled
               ]}
               onPress={handleSignUp}
-              disabled={isLoading || (selectedRole === 'client' && !allAgreementsAccepted)}
+              disabled={isLoading || !allAgreementsAccepted}
               activeOpacity={0.9}
             >
               <LinearGradient
-                colors={(selectedRole === 'client' && !allAgreementsAccepted) ? ['#94A3B8', '#94A3B8'] : Gradients.primaryButton}
+                colors={!allAgreementsAccepted ? ['#94A3B8', '#94A3B8'] : Gradients.primaryButton}
                 style={styles.submitButton}
               >
                 {isLoading ? (
@@ -356,67 +377,112 @@ export default function SignUpScreen() {
               </LinearGradient>
             </TouchableOpacity>
 
-            {/* Agreement Checkboxes for Clients */}
-            {selectedRole === 'client' ? (
-              <View style={styles.agreementsContainer}>
-                <Text style={styles.agreementsTitle}>Please review and agree to the following:</Text>
+            {/* Agreement Checkboxes */}
+            <View style={styles.agreementsContainer}>
+              <Text style={styles.agreementsTitle}>Please review and agree to the following:</Text>
 
-                {/* Terms of Service */}
-                <View style={styles.agreementRow}>
-                  <TouchableOpacity
-                    style={[styles.checkbox, agreedToTerms && styles.checkboxChecked]}
-                    onPress={() => setAgreedToTerms(!agreedToTerms)}
-                  >
-                    {agreedToTerms && <CheckIcon size={14} color={PsychiColors.white} />}
-                  </TouchableOpacity>
-                  <Text style={styles.agreementText}>
-                    I have read and agree to the{' '}
-                    <Text style={styles.termsLink} onPress={() => router.push('/legal/terms-of-service')}>
-                      Terms of Service
+              {selectedRole === 'client' ? (
+                <>
+                  {/* Client: Terms of Service */}
+                  <View style={styles.agreementRow}>
+                    <TouchableOpacity
+                      style={[styles.checkbox, agreedToTerms && styles.checkboxChecked]}
+                      onPress={() => setAgreedToTerms(!agreedToTerms)}
+                    >
+                      {agreedToTerms && <CheckIcon size={14} color={PsychiColors.white} />}
+                    </TouchableOpacity>
+                    <Text style={styles.agreementText}>
+                      I have read and agree to the{' '}
+                      <Text style={styles.termsLink} onPress={() => router.push('/legal/terms-of-service')}>
+                        Terms of Service
+                      </Text>
                     </Text>
-                  </Text>
-                </View>
+                  </View>
 
-                {/* Privacy Policy */}
-                <View style={styles.agreementRow}>
-                  <TouchableOpacity
-                    style={[styles.checkbox, agreedToPrivacy && styles.checkboxChecked]}
-                    onPress={() => setAgreedToPrivacy(!agreedToPrivacy)}
-                  >
-                    {agreedToPrivacy && <CheckIcon size={14} color={PsychiColors.white} />}
-                  </TouchableOpacity>
-                  <Text style={styles.agreementText}>
-                    I have read and agree to the{' '}
-                    <Text style={styles.termsLink} onPress={() => router.push('/legal/privacy-policy')}>
-                      Privacy Policy
+                  {/* Client: Privacy Policy */}
+                  <View style={styles.agreementRow}>
+                    <TouchableOpacity
+                      style={[styles.checkbox, agreedToPrivacy && styles.checkboxChecked]}
+                      onPress={() => setAgreedToPrivacy(!agreedToPrivacy)}
+                    >
+                      {agreedToPrivacy && <CheckIcon size={14} color={PsychiColors.white} />}
+                    </TouchableOpacity>
+                    <Text style={styles.agreementText}>
+                      I have read and agree to the{' '}
+                      <Text style={styles.termsLink} onPress={() => router.push('/legal/privacy-policy')}>
+                        Privacy Policy
+                      </Text>
                     </Text>
-                  </Text>
-                </View>
+                  </View>
 
-                {/* Client Disclaimer */}
-                <View style={styles.agreementRow}>
-                  <TouchableOpacity
-                    style={[styles.checkbox, agreedToDisclaimer && styles.checkboxChecked]}
-                    onPress={() => setAgreedToDisclaimer(!agreedToDisclaimer)}
-                  >
-                    {agreedToDisclaimer && <CheckIcon size={14} color={PsychiColors.white} />}
-                  </TouchableOpacity>
-                  <Text style={styles.agreementText}>
-                    I have read and agree to the{' '}
-                    <Text style={styles.termsLink} onPress={() => router.push('/legal/client-disclaimer')}>
-                      Client Disclaimer
+                  {/* Client: Disclaimer */}
+                  <View style={styles.agreementRow}>
+                    <TouchableOpacity
+                      style={[styles.checkbox, agreedToDisclaimer && styles.checkboxChecked]}
+                      onPress={() => setAgreedToDisclaimer(!agreedToDisclaimer)}
+                    >
+                      {agreedToDisclaimer && <CheckIcon size={14} color={PsychiColors.white} />}
+                    </TouchableOpacity>
+                    <Text style={styles.agreementText}>
+                      I have read and agree to the{' '}
+                      <Text style={styles.termsLink} onPress={() => router.push('/legal/client-disclaimer')}>
+                        Client Disclaimer
+                      </Text>
                     </Text>
-                  </Text>
-                </View>
-              </View>
-            ) : (
-              <Text style={styles.termsText}>
-                By creating an account, you agree to our{' '}
-                <Text style={styles.termsLink} onPress={() => router.push('/legal/terms-of-service')}>Terms of Service</Text>,{' '}
-                <Text style={styles.termsLink} onPress={() => router.push('/legal/privacy-policy')}>Privacy Policy</Text>, and the{' '}
-                <Text style={styles.termsLink} onPress={() => router.push('/legal/confidentiality-agreement')}>Confidentiality Agreement</Text>
-              </Text>
-            )}
+                  </View>
+                </>
+              ) : (
+                <>
+                  {/* Supporter: Terms of Service */}
+                  <View style={styles.agreementRow}>
+                    <TouchableOpacity
+                      style={[styles.checkbox, supporterAgreedToTerms && styles.checkboxChecked]}
+                      onPress={() => setSupporterAgreedToTerms(!supporterAgreedToTerms)}
+                    >
+                      {supporterAgreedToTerms && <CheckIcon size={14} color={PsychiColors.white} />}
+                    </TouchableOpacity>
+                    <Text style={styles.agreementText}>
+                      I have read and agree to the{' '}
+                      <Text style={styles.termsLink} onPress={() => router.push('/legal/terms-of-service')}>
+                        Terms of Service
+                      </Text>
+                    </Text>
+                  </View>
+
+                  {/* Supporter: Privacy Policy */}
+                  <View style={styles.agreementRow}>
+                    <TouchableOpacity
+                      style={[styles.checkbox, supporterAgreedToPrivacy && styles.checkboxChecked]}
+                      onPress={() => setSupporterAgreedToPrivacy(!supporterAgreedToPrivacy)}
+                    >
+                      {supporterAgreedToPrivacy && <CheckIcon size={14} color={PsychiColors.white} />}
+                    </TouchableOpacity>
+                    <Text style={styles.agreementText}>
+                      I have read and agree to the{' '}
+                      <Text style={styles.termsLink} onPress={() => router.push('/legal/privacy-policy')}>
+                        Privacy Policy
+                      </Text>
+                    </Text>
+                  </View>
+
+                  {/* Supporter: Confidentiality Agreement */}
+                  <View style={styles.agreementRow}>
+                    <TouchableOpacity
+                      style={[styles.checkbox, supporterAgreedToConfidentiality && styles.checkboxChecked]}
+                      onPress={() => setSupporterAgreedToConfidentiality(!supporterAgreedToConfidentiality)}
+                    >
+                      {supporterAgreedToConfidentiality && <CheckIcon size={14} color={PsychiColors.white} />}
+                    </TouchableOpacity>
+                    <Text style={styles.agreementText}>
+                      I have read and agree to the{' '}
+                      <Text style={styles.termsLink} onPress={() => router.push('/legal/confidentiality-agreement')}>
+                        Confidentiality Agreement
+                      </Text>
+                    </Text>
+                  </View>
+                </>
+              )}
+            </View>
 
             {/* Divider */}
             <View style={styles.divider}>
@@ -451,6 +517,71 @@ export default function SignUpScreen() {
         }}
         onComplete={handleQuizComplete}
       />
+
+      {/* Equipment Requirements Modal - shown after account creation for supporters */}
+      <Modal
+        visible={showEquipmentModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {}}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.equipmentModal}>
+            <View style={styles.equipmentIconRow}>
+              <View style={styles.equipmentIconContainer}>
+                <VideoIcon size={32} color={PsychiColors.azure} />
+              </View>
+              <View style={styles.equipmentIconContainer}>
+                <MicIcon size={32} color={PsychiColors.azure} />
+              </View>
+            </View>
+
+            <Text style={styles.equipmentTitle}>Equipment Requirements</Text>
+
+            <Text style={styles.equipmentDescription}>
+              To provide peer support services through Psychi, you must have:
+            </Text>
+
+            <View style={styles.equipmentList}>
+              <View style={styles.equipmentItem}>
+                <View style={styles.equipmentBullet} />
+                <Text style={styles.equipmentItemText}>
+                  A working <Text style={styles.equipmentBold}>video camera</Text> for video sessions
+                </Text>
+              </View>
+              <View style={styles.equipmentItem}>
+                <View style={styles.equipmentBullet} />
+                <Text style={styles.equipmentItemText}>
+                  A working <Text style={styles.equipmentBold}>microphone</Text> for phone and video sessions
+                </Text>
+              </View>
+              <View style={styles.equipmentItem}>
+                <View style={styles.equipmentBullet} />
+                <Text style={styles.equipmentItemText}>
+                  A stable <Text style={styles.equipmentBold}>internet connection</Text>
+                </Text>
+              </View>
+            </View>
+
+            <Text style={styles.equipmentNote}>
+              You will not be able to accept sessions without functioning audio and video equipment.
+            </Text>
+
+            <TouchableOpacity
+              style={styles.equipmentAgreeButton}
+              onPress={handleEquipmentAgree}
+              activeOpacity={0.9}
+            >
+              <LinearGradient
+                colors={Gradients.primaryButton}
+                style={styles.equipmentAgreeGradient}
+              >
+                <Text style={styles.equipmentAgreeText}>I Understand and Agree</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -757,5 +888,98 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.sm,
     color: PsychiColors.textSecondary,
     lineHeight: 20,
+  },
+  // Equipment Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.lg,
+  },
+  equipmentModal: {
+    backgroundColor: PsychiColors.white,
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.xl,
+    width: '100%',
+    maxWidth: 360,
+    alignItems: 'center',
+  },
+  equipmentIconRow: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+    marginBottom: Spacing.lg,
+  },
+  equipmentIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(74, 144, 226, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  equipmentTitle: {
+    fontSize: Typography.fontSize.xl,
+    fontWeight: '700',
+    color: PsychiColors.textPrimary,
+    fontFamily: Typography.fontFamily.serif,
+    marginBottom: Spacing.md,
+    textAlign: 'center',
+  },
+  equipmentDescription: {
+    fontSize: Typography.fontSize.sm,
+    color: PsychiColors.textSecondary,
+    textAlign: 'center',
+    marginBottom: Spacing.lg,
+    lineHeight: 20,
+  },
+  equipmentList: {
+    alignSelf: 'stretch',
+    marginBottom: Spacing.lg,
+  },
+  equipmentItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: Spacing.sm,
+    gap: Spacing.sm,
+  },
+  equipmentBullet: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: PsychiColors.azure,
+    marginTop: 7,
+  },
+  equipmentItemText: {
+    flex: 1,
+    fontSize: Typography.fontSize.sm,
+    color: PsychiColors.textSecondary,
+    lineHeight: 20,
+  },
+  equipmentBold: {
+    fontWeight: '600',
+    color: PsychiColors.textPrimary,
+  },
+  equipmentNote: {
+    fontSize: Typography.fontSize.xs,
+    color: PsychiColors.textMuted,
+    textAlign: 'center',
+    marginBottom: Spacing.lg,
+    fontStyle: 'italic',
+  },
+  equipmentAgreeButton: {
+    borderRadius: BorderRadius.lg,
+    overflow: 'hidden',
+    alignSelf: 'stretch',
+  },
+  equipmentAgreeGradient: {
+    paddingVertical: Spacing.md,
+    alignItems: 'center',
+    borderRadius: BorderRadius.lg,
+  },
+  equipmentAgreeText: {
+    fontSize: Typography.fontSize.base,
+    fontWeight: '600',
+    color: PsychiColors.white,
   },
 });
