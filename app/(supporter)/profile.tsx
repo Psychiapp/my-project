@@ -16,7 +16,6 @@ import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme'
 import {
   ProfileIcon,
   BookIcon,
-  BankIcon,
   NotificationsIcon,
   PhoneIcon,
   InfoIcon,
@@ -106,12 +105,6 @@ export default function SupporterProfileScreen() {
       title: 'Edit Profile',
       subtitle: 'Update bio, photo, and specialties',
       onPress: () => router.push('/(supporter)/edit-profile'),
-    },
-    {
-      icon: BankIcon,
-      title: 'Payout Settings',
-      subtitle: 'Manage bank account and schedule',
-      onPress: () => router.push('/(supporter)/payout-settings'),
     },
     {
       icon: BookIcon,
