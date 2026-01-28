@@ -18,7 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/contexts/AuthContext';
 import { PsychiColors, Gradients, Spacing, BorderRadius, Shadows, Typography } from '@/constants/theme';
 import { UserRole } from '@/types';
-import { ChevronLeftIcon, HeartIcon, BookIcon, EyeIcon } from '@/components/icons';
+import { ChevronLeftIcon, HeartIcon, BookIcon, EyeIcon, CheckIcon } from '@/components/icons';
 import { saveClientPreferences } from '@/lib/database';
 import OnboardingModal from '@/components/OnboardingModal';
 
@@ -40,6 +40,16 @@ export default function SignUpScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [showOnboardingModal, setShowOnboardingModal] = useState(false);
   const [newUserId, setNewUserId] = useState<string | null>(null);
+
+  // Agreement checkboxes for clients
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [agreedToPrivacy, setAgreedToPrivacy] = useState(false);
+  const [agreedToDisclaimer, setAgreedToDisclaimer] = useState(false);
+
+  // Check if all required agreements are accepted
+  const allAgreementsAccepted = selectedRole === 'client'
+    ? agreedToTerms && agreedToPrivacy && agreedToDisclaimer
+    : true; // Supporters have their own onboarding with agreements
 
   const handleRoleContinue = () => {
     if (!selectedRole) {
@@ -67,6 +77,12 @@ export default function SignUpScreen() {
 
     if (!selectedRole) {
       Alert.alert('Error', 'Please select a role');
+      return;
+    }
+
+    // Check agreements for clients
+    if (selectedRole === 'client' && !allAgreementsAccepted) {
+      Alert.alert('Agreement Required', 'Please read and agree to all documents before creating your account.');
       return;
     }
 
@@ -320,13 +336,16 @@ export default function SignUpScreen() {
 
             {/* Submit Button */}
             <TouchableOpacity
-              style={styles.submitButtonWrapper}
+              style={[
+                styles.submitButtonWrapper,
+                (selectedRole === 'client' && !allAgreementsAccepted) && styles.submitButtonDisabled
+              ]}
               onPress={handleSignUp}
-              disabled={isLoading}
+              disabled={isLoading || (selectedRole === 'client' && !allAgreementsAccepted)}
               activeOpacity={0.9}
             >
               <LinearGradient
-                colors={Gradients.primaryButton}
+                colors={(selectedRole === 'client' && !allAgreementsAccepted) ? ['#94A3B8', '#94A3B8'] : Gradients.primaryButton}
                 style={styles.submitButton}
               >
                 {isLoading ? (
@@ -337,18 +356,67 @@ export default function SignUpScreen() {
               </LinearGradient>
             </TouchableOpacity>
 
-            {/* Terms */}
-            <Text style={styles.termsText}>
-              By creating an account, you agree to our{' '}
-              <Text style={styles.termsLink} onPress={() => router.push('/legal/terms-of-service')}>Terms of Service</Text> and{' '}
-              <Text style={styles.termsLink} onPress={() => router.push('/legal/privacy-policy')}>Privacy Policy</Text>
-              {selectedRole === 'supporter' && (
-                <>
-                  {', and the '}
-                  <Text style={styles.termsLink} onPress={() => router.push('/legal/confidentiality-agreement')}>Confidentiality Agreement</Text>
-                </>
-              )}
-            </Text>
+            {/* Agreement Checkboxes for Clients */}
+            {selectedRole === 'client' ? (
+              <View style={styles.agreementsContainer}>
+                <Text style={styles.agreementsTitle}>Please review and agree to the following:</Text>
+
+                {/* Terms of Service */}
+                <View style={styles.agreementRow}>
+                  <TouchableOpacity
+                    style={[styles.checkbox, agreedToTerms && styles.checkboxChecked]}
+                    onPress={() => setAgreedToTerms(!agreedToTerms)}
+                  >
+                    {agreedToTerms && <CheckIcon size={14} color={PsychiColors.white} />}
+                  </TouchableOpacity>
+                  <Text style={styles.agreementText}>
+                    I have read and agree to the{' '}
+                    <Text style={styles.termsLink} onPress={() => router.push('/legal/terms-of-service')}>
+                      Terms of Service
+                    </Text>
+                  </Text>
+                </View>
+
+                {/* Privacy Policy */}
+                <View style={styles.agreementRow}>
+                  <TouchableOpacity
+                    style={[styles.checkbox, agreedToPrivacy && styles.checkboxChecked]}
+                    onPress={() => setAgreedToPrivacy(!agreedToPrivacy)}
+                  >
+                    {agreedToPrivacy && <CheckIcon size={14} color={PsychiColors.white} />}
+                  </TouchableOpacity>
+                  <Text style={styles.agreementText}>
+                    I have read and agree to the{' '}
+                    <Text style={styles.termsLink} onPress={() => router.push('/legal/privacy-policy')}>
+                      Privacy Policy
+                    </Text>
+                  </Text>
+                </View>
+
+                {/* Client Disclaimer */}
+                <View style={styles.agreementRow}>
+                  <TouchableOpacity
+                    style={[styles.checkbox, agreedToDisclaimer && styles.checkboxChecked]}
+                    onPress={() => setAgreedToDisclaimer(!agreedToDisclaimer)}
+                  >
+                    {agreedToDisclaimer && <CheckIcon size={14} color={PsychiColors.white} />}
+                  </TouchableOpacity>
+                  <Text style={styles.agreementText}>
+                    I have read and agree to the{' '}
+                    <Text style={styles.termsLink} onPress={() => router.push('/legal/client-disclaimer')}>
+                      Client Disclaimer
+                    </Text>
+                  </Text>
+                </View>
+              </View>
+            ) : (
+              <Text style={styles.termsText}>
+                By creating an account, you agree to our{' '}
+                <Text style={styles.termsLink} onPress={() => router.push('/legal/terms-of-service')}>Terms of Service</Text>,{' '}
+                <Text style={styles.termsLink} onPress={() => router.push('/legal/privacy-policy')}>Privacy Policy</Text>, and the{' '}
+                <Text style={styles.termsLink} onPress={() => router.push('/legal/confidentiality-agreement')}>Confidentiality Agreement</Text>
+              </Text>
+            )}
 
             {/* Divider */}
             <View style={styles.divider}>
@@ -652,5 +720,42 @@ const styles = StyleSheet.create({
   termsLink: {
     color: PsychiColors.royalBlue,
     fontWeight: '500',
+  },
+  // Agreement Checkboxes
+  agreementsContainer: {
+    marginTop: Spacing.lg,
+    paddingHorizontal: Spacing.sm,
+  },
+  agreementsTitle: {
+    fontSize: Typography.fontSize.sm,
+    fontWeight: '600',
+    color: PsychiColors.textPrimary,
+    marginBottom: Spacing.md,
+  },
+  agreementRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: Spacing.md,
+    gap: Spacing.sm,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: PsychiColors.textMuted,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 1,
+  },
+  checkboxChecked: {
+    backgroundColor: PsychiColors.royalBlue,
+    borderColor: PsychiColors.royalBlue,
+  },
+  agreementText: {
+    flex: 1,
+    fontSize: Typography.fontSize.sm,
+    color: PsychiColors.textSecondary,
+    lineHeight: 20,
   },
 });
