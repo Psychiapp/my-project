@@ -8,7 +8,7 @@ import {
   BorderRadius,
   Spacing,
 } from '@/constants/theme';
-import { HomeIcon, CalendarIcon, ChatIcon, DollarIcon, ProfileIcon } from '@/components/icons';
+import { HomeIcon, CalendarIcon, ChatIcon, DollarIcon, ProfileIcon, BookIcon } from '@/components/icons';
 import { hasRequestedPermissions } from '@/lib/permissions';
 
 // Premium tab bar icon with subtle active indicator
@@ -28,6 +28,8 @@ function TabIcon({ name, focused }: { name: string; focused: boolean }) {
         return <DollarIcon size={iconSize} color={iconColor} weight={focused ? 'regular' : 'light'} />;
       case 'profile':
         return <ProfileIcon size={iconSize} color={iconColor} weight={focused ? 'regular' : 'light'} />;
+      case 'training':
+        return <BookIcon size={iconSize} color={iconColor} weight={focused ? 'regular' : 'light'} />;
       default:
         return <HomeIcon size={iconSize} color={iconColor} weight={focused ? 'regular' : 'light'} />;
     }
@@ -101,6 +103,13 @@ export default function SupporterLayout() {
         }}
       />
       <Tabs.Screen
+        name="training"
+        options={{
+          title: 'Training',
+          tabBarIcon: ({ focused }) => <TabIcon name="training" focused={focused} />,
+        }}
+      />
+      <Tabs.Screen
         name="profile"
         options={{
           title: 'Profile',
@@ -109,12 +118,6 @@ export default function SupporterLayout() {
       />
       <Tabs.Screen
         name="feedback"
-        options={{
-          href: null,
-        }}
-      />
-      <Tabs.Screen
-        name="training"
         options={{
           href: null,
         }}
