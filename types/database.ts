@@ -375,6 +375,10 @@ export interface SupporterApplication {
   training_complete: boolean;
   training_completed_at: string | null;
   is_verified: boolean;
+  // W-9 fields
+  w9_completed?: boolean;
+  w9_completed_at?: string | null;
+  w9_data?: W9FormData | null;
 }
 
 // Admin user listing (for user management)

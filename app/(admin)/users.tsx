@@ -21,6 +21,7 @@ interface User {
   status: 'active' | 'pending' | 'suspended';
   joinDate: string;
   sessions: number;
+  w9Completed?: boolean;
 }
 
 export default function AdminUsersScreen() {
@@ -156,10 +157,22 @@ export default function AdminUsersScreen() {
                     <Text style={styles.userStatLabel}>Joined</Text>
                     <Text style={styles.userStatValue}>{user.joinDate}</Text>
                   </View>
-                  <View style={styles.userStat}>
-                    <Text style={styles.userStatLabel}>Sessions</Text>
-                    <Text style={styles.userStatValue}>{user.sessions}</Text>
-                  </View>
+                  {user.type === 'supporter' ? (
+                    <View style={styles.userStat}>
+                      <Text style={styles.userStatLabel}>W-9</Text>
+                      <View style={styles.statusRow}>
+                        <View style={[styles.statusDot, { backgroundColor: user.w9Completed ? PsychiColors.success : '#F59E0B' }]} />
+                        <Text style={[styles.userStatValue, { color: user.w9Completed ? PsychiColors.success : '#F59E0B' }]}>
+                          {user.w9Completed ? 'Complete' : 'Pending'}
+                        </Text>
+                      </View>
+                    </View>
+                  ) : (
+                    <View style={styles.userStat}>
+                      <Text style={styles.userStatLabel}>Sessions</Text>
+                      <Text style={styles.userStatValue}>{user.sessions}</Text>
+                    </View>
+                  )}
                 </View>
 
                 <View style={styles.userActions}>

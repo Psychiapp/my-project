@@ -288,6 +288,74 @@ export default function AdminSupporterDetailScreen() {
           </View>
         </View>
 
+        {/* W-9 Tax Information */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>W-9 Tax Information</Text>
+          <View style={styles.infoCard}>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>W-9 Status</Text>
+              <View style={[
+                styles.trainingBadge,
+                supporter.w9_completed ? styles.trainingCompleteBadge : styles.trainingInProgressBadge
+              ]}>
+                <Text style={[
+                  styles.trainingBadgeText,
+                  supporter.w9_completed ? styles.trainingCompleteText : styles.trainingInProgressText
+                ]}>
+                  {supporter.w9_completed ? 'Complete' : 'Pending'}
+                </Text>
+              </View>
+            </View>
+            {supporter.w9_completed_at && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Submitted On</Text>
+                <Text style={styles.infoValue}>{formatDate(supporter.w9_completed_at)}</Text>
+              </View>
+            )}
+            {supporter.w9_data && (
+              <>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Legal Name</Text>
+                  <Text style={styles.infoValue}>{supporter.w9_data.legal_name || 'N/A'}</Text>
+                </View>
+                {supporter.w9_data.business_name && (
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>Business Name</Text>
+                    <Text style={styles.infoValue}>{supporter.w9_data.business_name}</Text>
+                  </View>
+                )}
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Tax Classification</Text>
+                  <Text style={styles.infoValue}>
+                    {supporter.w9_data.tax_classification === 'individual' ? 'Individual/Sole Proprietor' :
+                     supporter.w9_data.tax_classification === 'llc_single' ? 'Single-member LLC' :
+                     supporter.w9_data.tax_classification === 'llc_c' ? 'LLC (C Corp)' :
+                     supporter.w9_data.tax_classification === 'llc_s' ? 'LLC (S Corp)' :
+                     supporter.w9_data.tax_classification === 'llc_p' ? 'LLC (Partnership)' :
+                     supporter.w9_data.tax_classification || 'N/A'}
+                  </Text>
+                </View>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Address</Text>
+                  <Text style={styles.infoValue}>
+                    {supporter.w9_data.city && supporter.w9_data.state
+                      ? `${supporter.w9_data.city}, ${supporter.w9_data.state} ${supporter.w9_data.zip_code || ''}`
+                      : 'N/A'}
+                  </Text>
+                </View>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>SSN/EIN</Text>
+                  <Text style={styles.infoValue}>
+                    {supporter.w9_data.ssn_ein
+                      ? `***-**-${supporter.w9_data.ssn_ein.slice(-4)}`
+                      : 'N/A'}
+                  </Text>
+                </View>
+              </>
+            )}
+          </View>
+        </View>
+
         {/* Profile Information */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Profile Information</Text>

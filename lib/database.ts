@@ -1853,6 +1853,9 @@ export async function getAdminSupporterDetail(supporterId: string): Promise<Supp
       full_name,
       avatar_url,
       created_at,
+      w9_completed,
+      w9_completed_at,
+      w9_data,
       supporter_details (
         bio,
         specialties,
@@ -1893,6 +1896,9 @@ export async function getAdminSupporterDetail(supporterId: string): Promise<Supp
     training_complete: details.training_complete || false,
     training_completed_at: details.training_completed_at,
     is_verified: details.is_verified || false,
+    w9_completed: data.w9_completed || false,
+    w9_completed_at: data.w9_completed_at,
+    w9_data: data.w9_data,
   };
 }
 
