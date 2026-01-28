@@ -1,7 +1,20 @@
 import { Alert, Linking } from 'react-native';
-import { initPaymentSheet, presentPaymentSheet } from '@stripe/stripe-react-native';
 import { StripeConfig, Config, SupabaseConfig } from '@/constants/config';
 import type { StripeConnectStatus } from '@/types/database';
+
+// Conditionally import Stripe to avoid crash in Expo Go
+let initPaymentSheet: any = null;
+let presentPaymentSheet: any = null;
+export let stripeAvailable = false;
+
+try {
+  const stripe = require('@stripe/stripe-react-native');
+  initPaymentSheet = stripe.initPaymentSheet;
+  presentPaymentSheet = stripe.presentPaymentSheet;
+  stripeAvailable = true;
+} catch (e) {
+  console.log('Stripe native module not available (running in Expo Go)');
+}
 
 // Stripe integration with payment sheet support
 
@@ -181,10 +194,10 @@ export async function processSessionPayment(
   const pricing = Config.pricing[sessionType];
 
   // Check if Stripe is configured
-  if (!StripeConfig.publishableKey) {
+  if (!StripeConfig.publishableKey || !stripeAvailable) {
     Alert.alert(
       'Payment Not Available',
-      'Payment processing is not configured. Please contact support.',
+      'Payment processing is not available in this environment.',
       [{ text: 'OK' }]
     );
     return false;
@@ -238,10 +251,10 @@ export async function processSubscriptionPaymentSheet(
   if (!plan) return false;
 
   // Check if Stripe is configured
-  if (!StripeConfig.publishableKey) {
+  if (!StripeConfig.publishableKey || !stripeAvailable) {
     Alert.alert(
       'Payment Not Available',
-      'Payment processing is not configured. Please contact support.',
+      'Payment processing is not available in this environment.',
       [{ text: 'OK' }]
     );
     return false;
