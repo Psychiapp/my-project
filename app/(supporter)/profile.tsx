@@ -21,6 +21,7 @@ import {
   InfoIcon,
   LogoutIcon,
   ChevronRightIcon,
+  DocumentIcon,
 } from '@/components/icons';
 import { getSupporterDetail, getSupporterSessionCount } from '@/lib/database';
 
@@ -105,6 +106,12 @@ export default function SupporterProfileScreen() {
       title: 'Edit Profile',
       subtitle: 'Update bio, photo, and specialties',
       onPress: () => router.push('/(supporter)/edit-profile'),
+    },
+    {
+      icon: DocumentIcon,
+      title: 'W-9 Tax Form',
+      subtitle: 'View or update your tax information',
+      onPress: () => router.push('/(supporter)/w9-form'),
     },
     {
       icon: BookIcon,

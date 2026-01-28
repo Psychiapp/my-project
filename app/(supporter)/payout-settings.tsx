@@ -492,24 +492,6 @@ export default function PayoutSettingsScreen() {
           </View>
         </View>
 
-        {/* Tax Info */}
-        <View style={styles.section}>
-          <TouchableOpacity
-            style={styles.taxCard}
-            activeOpacity={0.7}
-            onPress={() => router.push('/(supporter)/tax-documents')}
-          >
-            <View style={styles.taxIcon}>
-              <DocumentIcon size={24} color={PsychiColors.azure} />
-            </View>
-            <View style={styles.taxInfo}>
-              <Text style={styles.taxTitle}>Tax Documents</Text>
-              <Text style={styles.taxSubtitle}>View and download 1099 forms</Text>
-            </View>
-            <ChevronRightIcon size={20} color={PsychiColors.textMuted} />
-          </TouchableOpacity>
-        </View>
-
         <View style={{ height: 32 }} />
       </ScrollView>
     </SafeAreaView>
@@ -795,36 +777,6 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: 'rgba(0,0,0,0.05)',
     marginVertical: Spacing.sm,
-  },
-  taxCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: PsychiColors.white,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
-    ...Shadows.soft,
-  },
-  taxIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: BorderRadius.md,
-    backgroundColor: 'rgba(74, 144, 226, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: Spacing.md,
-  },
-  taxInfo: {
-    flex: 1,
-  },
-  taxTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: PsychiColors.midnight,
-  },
-  taxSubtitle: {
-    fontSize: 13,
-    color: PsychiColors.textMuted,
-    marginTop: 2,
   },
   dayPickerCard: {
     backgroundColor: PsychiColors.white,
