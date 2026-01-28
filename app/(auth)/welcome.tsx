@@ -90,7 +90,7 @@ export default function WelcomeScreen() {
     if (isAuthenticated) {
       goToDashboard();
     } else {
-      router.push('/(auth)/sign-up');
+      router.push('/(auth)/sign-up?role=client');
     }
   };
 

@@ -13,7 +13,7 @@ import {
   Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/contexts/AuthContext';
 import { PsychiColors, Gradients, Spacing, BorderRadius, Shadows, Typography } from '@/constants/theme';
@@ -25,11 +25,17 @@ import OnboardingModal from '@/components/OnboardingModal';
 export default function SignUpScreen() {
   const insets = useSafeAreaInsets();
   const { signUp } = useAuth();
-  const [step, setStep] = useState<'role' | 'credentials'>('role');
+  const { role: roleParam } = useLocalSearchParams<{ role?: string }>();
+
+  // Pre-select role and skip to credentials if role is passed via URL
+  const initialRole = roleParam === 'client' ? 'client' : roleParam === 'supporter' ? 'supporter' : null;
+  const initialStep = initialRole ? 'credentials' : 'role';
+
+  const [step, setStep] = useState<'role' | 'credentials'>(initialStep);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
+  const [selectedRole, setSelectedRole] = useState<UserRole | null>(initialRole);
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showOnboardingModal, setShowOnboardingModal] = useState(false);
