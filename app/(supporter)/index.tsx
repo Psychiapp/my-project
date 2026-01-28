@@ -24,6 +24,7 @@ import {
   DollarIcon,
   EditIcon,
   ChevronRightIcon,
+  DocumentIcon,
 } from '@/components/icons';
 import DashboardTutorial from '@/components/DashboardTutorial';
 import SupporterOnboardingChecklist from '@/components/SupporterOnboardingChecklist';
@@ -276,6 +277,19 @@ export default function SupporterHomeScreen() {
             <View style={styles.actionInfo}>
               <Text style={styles.actionTitle}>Training Modules</Text>
               <Text style={styles.actionSubtitle}>Continue your certification</Text>
+            </View>
+            <ChevronRightIcon size={18} color={PsychiColors.textMuted} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionItem}
+            onPress={() => router.push('/(supporter)/resources')}
+            activeOpacity={0.6}
+          >
+            <DocumentIcon size={22} color={PsychiColors.violet} />
+            <View style={styles.actionInfo}>
+              <Text style={styles.actionTitle}>Resources</Text>
+              <Text style={styles.actionSubtitle}>Policies, agreements & guides</Text>
             </View>
             <ChevronRightIcon size={18} color={PsychiColors.textMuted} />
           </TouchableOpacity>

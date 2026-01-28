@@ -19,7 +19,6 @@ import {
   BankIcon,
   NotificationsIcon,
   PhoneIcon,
-  ClipboardIcon,
   InfoIcon,
   LogoutIcon,
   ChevronRightIcon,
@@ -131,12 +130,6 @@ export default function SupporterProfileScreen() {
       title: 'Device Permissions',
       subtitle: 'Camera, microphone & notifications',
       onPress: () => router.push('/permissions'),
-    },
-    {
-      icon: ClipboardIcon,
-      title: 'Guidelines',
-      subtitle: 'Review supporter guidelines',
-      onPress: () => router.push('/(supporter)/training'),
     },
     {
       icon: InfoIcon,

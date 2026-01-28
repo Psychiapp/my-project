@@ -11,7 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { PsychiColors, Spacing, BorderRadius, Shadows, Typography } from '@/constants/theme';
-import { BookIcon, AlertTriangleIcon, ShieldIcon, PhoneIcon, DocumentIcon, LightbulbIcon, HelpIcon, ChevronLeftIcon, ArrowLeftIcon } from '@/components/icons';
+import { BookIcon, AlertTriangleIcon, ShieldIcon, PhoneIcon, DocumentIcon, LightbulbIcon, HelpIcon, ChevronLeftIcon, ArrowLeftIcon, LockIcon, ClipboardIcon } from '@/components/icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
 interface PDFResource {
@@ -19,8 +19,9 @@ interface PDFResource {
   title: string;
   description: string;
   filename: string;
-  category: 'handbook' | 'crisis' | 'conduct';
+  category: 'handbook' | 'crisis' | 'conduct' | 'legal';
   Icon: React.FC<{ size?: number; color?: string }>;
+  route?: string; // Optional route for in-app screens
 }
 
 const pdfResources: PDFResource[] = [
@@ -47,6 +48,33 @@ const pdfResources: PDFResource[] = [
     filename: 'Supporter Code of Conduct.pdf',
     category: 'conduct',
     Icon: ShieldIcon,
+  },
+  {
+    id: 'confidentiality',
+    title: 'Confidentiality Agreement',
+    description: 'Your commitment to protecting client privacy. Review the terms you agreed to regarding confidential information.',
+    filename: 'Confidentiality Agreement',
+    category: 'legal',
+    Icon: LockIcon,
+    route: '/legal/confidentiality-agreement',
+  },
+  {
+    id: 'terms',
+    title: 'Terms of Service',
+    description: 'The terms and conditions governing your use of the Psychi platform as a supporter.',
+    filename: 'Terms of Service',
+    category: 'legal',
+    Icon: ClipboardIcon,
+    route: '/legal/terms-of-service',
+  },
+  {
+    id: 'privacy',
+    title: 'Privacy Policy',
+    description: 'How Psychi collects, uses, and protects your personal information and client data.',
+    filename: 'Privacy Policy',
+    category: 'legal',
+    Icon: ShieldIcon,
+    route: '/legal/privacy-policy',
   },
 ];
 
@@ -79,13 +107,25 @@ const getCategoryColors = (category: PDFResource['category']) => {
         color: '#8B6B96',
         gradient: ['#8B6B96', '#6B4F7A'] as const,
       };
+    case 'legal':
+      return {
+        bg: 'rgba(107, 114, 128, 0.1)',
+        border: 'rgba(107, 114, 128, 0.3)',
+        color: '#6B7280',
+        gradient: ['#6B7280', '#4B5563'] as const,
+      };
   }
 };
 
 export default function ResourcesScreen() {
   const handleViewDocument = (resource: PDFResource) => {
-    // In production, this would open a PDF viewer or web link
-    // For now, show alert with info about the document
+    // If the resource has an in-app route, navigate there
+    if (resource.route) {
+      router.push(resource.route as any);
+      return;
+    }
+
+    // For PDF documents, show alert with info
     Alert.alert(
       resource.title,
       `This document contains essential information for supporters.\n\nIn the full release, you'll be able to view "${resource.filename}" directly in the app or download it for offline access.`,
@@ -160,16 +200,16 @@ export default function ResourcesScreen() {
           </View>
         </View>
 
-        {/* Required Documents */}
+        {/* Required Documents - Training Materials */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <View style={styles.sectionIconContainer}>
               <DocumentIcon size={20} color={PsychiColors.azure} />
             </View>
-            <Text style={styles.sectionTitle}>Required Documents</Text>
+            <Text style={styles.sectionTitle}>Training Materials</Text>
           </View>
 
-          {pdfResources.map((resource) => {
+          {pdfResources.filter(r => r.category !== 'legal').map((resource) => {
             const colors = getCategoryColors(resource.category);
             return (
               <View
@@ -188,6 +228,52 @@ export default function ResourcesScreen() {
                     <View style={[styles.pdfBadge, { backgroundColor: colors.color + '20' }]}>
                       <Text style={[styles.pdfBadgeText, { color: colors.color }]}>PDF</Text>
                     </View>
+                  </View>
+                </View>
+                <Text style={styles.documentDescription}>{resource.description}</Text>
+                <TouchableOpacity
+                  style={styles.viewButton}
+                  onPress={() => handleViewDocument(resource)}
+                >
+                  <LinearGradient
+                    colors={colors.gradient}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.viewButtonGradient}
+                  >
+                    <Text style={styles.viewButtonText}>View Document</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            );
+          })}
+        </View>
+
+        {/* Legal Documents */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionIconContainer}>
+              <ShieldIcon size={20} color={PsychiColors.textSecondary} />
+            </View>
+            <Text style={styles.sectionTitle}>Legal & Policies</Text>
+          </View>
+
+          {pdfResources.filter(r => r.category === 'legal').map((resource) => {
+            const colors = getCategoryColors(resource.category);
+            return (
+              <View
+                key={resource.id}
+                style={[
+                  styles.documentCard,
+                  { backgroundColor: colors.bg, borderColor: colors.border },
+                ]}
+              >
+                <View style={styles.documentHeader}>
+                  <View style={[styles.documentIconContainer, { backgroundColor: 'rgba(255,255,255,0.8)' }]}>
+                    <resource.Icon size={26} color={colors.color} />
+                  </View>
+                  <View style={styles.documentTitleContainer}>
+                    <Text style={styles.documentTitle}>{resource.title}</Text>
                   </View>
                 </View>
                 <Text style={styles.documentDescription}>{resource.description}</Text>
