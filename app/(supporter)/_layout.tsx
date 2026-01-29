@@ -8,7 +8,7 @@ import {
   BorderRadius,
   Spacing,
 } from '@/constants/theme';
-import { HomeIcon, CalendarIcon, ChatIcon, DollarIcon, ProfileIcon, BookIcon } from '@/components/icons';
+import { HomeIcon, ChatIcon, DollarIcon, ProfileIcon } from '@/components/icons';
 import { hasRequestedPermissions } from '@/lib/permissions';
 
 // Premium tab bar icon with subtle active indicator
@@ -20,16 +20,12 @@ function TabIcon({ name, focused }: { name: string; focused: boolean }) {
     switch (name) {
       case 'index':
         return <HomeIcon size={iconSize} color={iconColor} weight={focused ? 'regular' : 'light'} />;
-      case 'availability':
-        return <CalendarIcon size={iconSize} color={iconColor} weight={focused ? 'regular' : 'light'} />;
       case 'sessions':
         return <ChatIcon size={iconSize} color={iconColor} weight={focused ? 'regular' : 'light'} />;
       case 'earnings':
         return <DollarIcon size={iconSize} color={iconColor} weight={focused ? 'regular' : 'light'} />;
       case 'profile':
         return <ProfileIcon size={iconSize} color={iconColor} weight={focused ? 'regular' : 'light'} />;
-      case 'training':
-        return <BookIcon size={iconSize} color={iconColor} weight={focused ? 'regular' : 'light'} />;
       default:
         return <HomeIcon size={iconSize} color={iconColor} weight={focused ? 'regular' : 'light'} />;
     }
@@ -74,18 +70,12 @@ export default function SupporterLayout() {
         tabBarItemStyle: styles.tabItem,
       }}
     >
+      {/* 4 Main Tabs */}
       <Tabs.Screen
         name="index"
         options={{
           title: 'Home',
           tabBarIcon: ({ focused }) => <TabIcon name="index" focused={focused} />,
-        }}
-      />
-      <Tabs.Screen
-        name="availability"
-        options={{
-          title: 'Schedule',
-          tabBarIcon: ({ focused }) => <TabIcon name="availability" focused={focused} />,
         }}
       />
       <Tabs.Screen
@@ -103,17 +93,23 @@ export default function SupporterLayout() {
         }}
       />
       <Tabs.Screen
-        name="training"
-        options={{
-          title: 'Training',
-          tabBarIcon: ({ focused }) => <TabIcon name="training" focused={focused} />,
-        }}
-      />
-      <Tabs.Screen
         name="profile"
         options={{
           title: 'Profile',
           tabBarIcon: ({ focused }) => <TabIcon name="profile" focused={focused} />,
+        }}
+      />
+      {/* Hidden screens - accessible via navigation */}
+      <Tabs.Screen
+        name="availability"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="training"
+        options={{
+          href: null,
         }}
       />
       <Tabs.Screen
@@ -142,6 +138,18 @@ export default function SupporterLayout() {
       />
       <Tabs.Screen
         name="resources"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="w9-form"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="tax-documents"
         options={{
           href: null,
         }}

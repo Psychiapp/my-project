@@ -108,16 +108,16 @@ export default function SupporterProfileScreen() {
       onPress: () => router.push('/(supporter)/edit-profile'),
     },
     {
-      icon: DocumentIcon,
-      title: 'W-9 Tax Form',
-      subtitle: 'View or update your tax information',
-      onPress: () => router.push('/(supporter)/w9-form'),
-    },
-    {
       icon: BookIcon,
       title: 'Training Center',
       subtitle: 'Access training materials',
       onPress: () => router.push('/(supporter)/training'),
+    },
+    {
+      icon: DocumentIcon,
+      title: 'Resources',
+      subtitle: 'Policies, agreements & guides',
+      onPress: () => router.push('/(supporter)/resources'),
     },
     {
       icon: NotificationsIcon,

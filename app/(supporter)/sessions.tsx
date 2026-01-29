@@ -25,6 +25,7 @@ import {
   DollarIcon,
   InfoIcon,
   CloseIcon,
+  ChevronRightIcon,
 } from '@/components/icons';
 import {
   cancelSessionWithRefund,
@@ -372,6 +373,14 @@ export default function SupporterSessionsScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Sessions</Text>
+        <TouchableOpacity
+          style={styles.scheduleButton}
+          onPress={() => router.push('/(supporter)/availability')}
+          activeOpacity={0.7}
+        >
+          <CalendarIcon size={18} color={PsychiColors.azure} />
+          <Text style={styles.scheduleButtonText}>Schedule</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Tabs */}
@@ -652,6 +661,9 @@ const styles = StyleSheet.create({
     backgroundColor: PsychiColors.cream,
   },
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.md,
     paddingBottom: Spacing.sm,
@@ -661,6 +673,20 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#2A2A2A',
     fontFamily: 'Georgia',
+  },
+  scheduleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(74, 144, 226, 0.1)',
+    paddingVertical: Spacing.xs,
+    paddingHorizontal: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    gap: 4,
+  },
+  scheduleButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: PsychiColors.azure,
   },
   tabContainer: {
     flexDirection: 'row',

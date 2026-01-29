@@ -21,6 +21,7 @@ import {
   ChevronRightIcon,
   ClockIcon,
   AlertIcon,
+  DocumentIcon,
 } from '@/components/icons';
 import { Config } from '@/constants/config';
 import { useAuth } from '@/contexts/AuthContext';
@@ -394,8 +395,9 @@ export default function EarningsScreen() {
           )}
         </View>
 
-        {/* Payout Settings */}
+        {/* Payout & Tax Settings */}
         <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Settings</Text>
           <TouchableOpacity
             style={styles.settingsButton}
             activeOpacity={0.8}
@@ -411,6 +413,21 @@ export default function EarningsScreen() {
                   ? 'Manage bank account & payout schedule'
                   : 'Set up your payout account'}
               </Text>
+            </View>
+            <ChevronRightIcon size={20} color={PsychiColors.textMuted} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.settingsButton, { marginTop: Spacing.sm }]}
+            activeOpacity={0.8}
+            onPress={() => router.push('/(supporter)/w9-form')}
+          >
+            <View style={[styles.settingsIcon, { backgroundColor: 'rgba(107, 114, 128, 0.1)' }]}>
+              <DocumentIcon size={24} color={PsychiColors.textSecondary} />
+            </View>
+            <View style={styles.settingsInfo}>
+              <Text style={styles.settingsTitle}>W-9 Tax Form</Text>
+              <Text style={styles.settingsSubtitle}>View or update your tax information</Text>
             </View>
             <ChevronRightIcon size={20} color={PsychiColors.textMuted} />
           </TouchableOpacity>
