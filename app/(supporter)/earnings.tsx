@@ -329,6 +329,60 @@ export default function EarningsScreen() {
         {/* Commission Breakdown */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>How Earnings Work</Text>
+          <View style={styles.earningsIntroCard}>
+            <Text style={styles.earningsIntroText}>
+              You earn <Text style={styles.earningsHighlight}>75%</Text> of every membership or pay-as-you-go session. The remaining 25% supports platform operations and growth.
+            </Text>
+          </View>
+
+          {/* Memberships */}
+          <Text style={styles.breakdownSubtitle}>Memberships (Monthly)</Text>
+          <View style={styles.breakdownCard}>
+            <View style={styles.breakdownRow}>
+              <View style={styles.breakdownLabelContainer}>
+                <Text style={styles.breakdownLabel}>Basic</Text>
+                <Text style={styles.breakdownDescription}>1 call/week + 2 chats</Text>
+              </View>
+              <View style={styles.breakdownValues}>
+                <Text style={styles.breakdownGross}>{Config.subscriptions.basic.display}</Text>
+                <ArrowRightIcon size={14} color={PsychiColors.textMuted} />
+                <Text style={styles.breakdownNet}>
+                  ${(Config.subscriptions.basic.amount * 0.75 / 100).toFixed(2)}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.breakdownDivider} />
+            <View style={styles.breakdownRow}>
+              <View style={styles.breakdownLabelContainer}>
+                <Text style={styles.breakdownLabel}>Standard</Text>
+                <Text style={styles.breakdownDescription}>2 calls/week + 3 chats</Text>
+              </View>
+              <View style={styles.breakdownValues}>
+                <Text style={styles.breakdownGross}>{Config.subscriptions.standard.display}</Text>
+                <ArrowRightIcon size={14} color={PsychiColors.textMuted} />
+                <Text style={styles.breakdownNet}>
+                  ${(Config.subscriptions.standard.amount * 0.75 / 100).toFixed(2)}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.breakdownDivider} />
+            <View style={styles.breakdownRow}>
+              <View style={styles.breakdownLabelContainer}>
+                <Text style={styles.breakdownLabel}>Premium</Text>
+                <Text style={styles.breakdownDescription}>3 calls/week + unlimited chat</Text>
+              </View>
+              <View style={styles.breakdownValues}>
+                <Text style={styles.breakdownGross}>{Config.subscriptions.premium.display}</Text>
+                <ArrowRightIcon size={14} color={PsychiColors.textMuted} />
+                <Text style={styles.breakdownNet}>
+                  ${(Config.subscriptions.premium.amount * 0.75 / 100).toFixed(2)}
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Pay-as-you-go */}
+          <Text style={styles.breakdownSubtitle}>Pay-As-You-Go (Per Session)</Text>
           <View style={styles.breakdownCard}>
             <View style={styles.breakdownRow}>
               <Text style={styles.breakdownLabel}>Chat session</Text>
@@ -576,6 +630,28 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
     fontFamily: 'Georgia',
   },
+  earningsIntroCard: {
+    backgroundColor: 'rgba(74, 144, 226, 0.1)',
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.md,
+    marginBottom: Spacing.md,
+  },
+  earningsIntroText: {
+    fontSize: 14,
+    color: PsychiColors.textSecondary,
+    lineHeight: 22,
+  },
+  earningsHighlight: {
+    fontWeight: '700',
+    color: PsychiColors.azure,
+  },
+  breakdownSubtitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: PsychiColors.textSecondary,
+    marginBottom: Spacing.sm,
+    marginTop: Spacing.sm,
+  },
   breakdownCard: {
     backgroundColor: PsychiColors.white,
     borderRadius: BorderRadius.lg,
@@ -587,9 +663,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  breakdownLabelContainer: {
+    flex: 1,
+  },
   breakdownLabel: {
     fontSize: 15,
     color: '#2A2A2A',
+  },
+  breakdownDescription: {
+    fontSize: 12,
+    color: PsychiColors.textMuted,
+    marginTop: 2,
   },
   breakdownValues: {
     flexDirection: 'row',
