@@ -103,10 +103,7 @@ export default function AboutSection({ onGetStarted }: AboutSectionProps) {
             const IconComponent = value.icon;
             return (
               <View key={value.id} style={styles.valueCard}>
-                {/* Icon - simple black icon matching app style */}
-                <View style={[styles.valueIconContainer, { backgroundColor: `${value.accentColor}20` }]}>
-                  <IconComponent size={28} color={PsychiColors.midnight} />
-                </View>
+                <IconComponent size={32} color={value.accentColor} style={styles.valueIcon} />
                 <Text style={styles.valueTitle}>{value.title}</Text>
                 <Text style={styles.valueDescription}>{value.description}</Text>
               </View>
@@ -224,12 +221,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     ...Shadows.soft,
   },
-  valueIconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: BorderRadius.lg,
-    justifyContent: 'center',
-    alignItems: 'center',
+  valueIcon: {
     marginBottom: Spacing.md,
   },
   valueTitle: {
