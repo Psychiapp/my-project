@@ -468,21 +468,37 @@ export async function updateAcceptingClients(
 ): Promise<boolean> {
   if (!supabase) return false;
 
-  // Use upsert to create row if it doesn't exist
-  const { error } = await supabase
+  // First check if the row exists
+  const { data: existing } = await supabase
     .from('supporter_details')
-    .upsert(
-      {
+    .select('id')
+    .eq('supporter_id', supporterId)
+    .single();
+
+  if (existing) {
+    // Row exists, update it
+    const { error } = await supabase
+      .from('supporter_details')
+      .update({ accepting_clients: acceptingClients })
+      .eq('supporter_id', supporterId);
+
+    if (error) {
+      console.error('Error updating accepting clients status:', error);
+      return false;
+    }
+  } else {
+    // Row doesn't exist, insert it
+    const { error } = await supabase
+      .from('supporter_details')
+      .insert({
         supporter_id: supporterId,
         accepting_clients: acceptingClients,
-        updated_at: new Date().toISOString()
-      },
-      { onConflict: 'supporter_id' }
-    );
+      });
 
-  if (error) {
-    console.error('Error updating accepting clients status:', error);
-    return false;
+    if (error) {
+      console.error('Error inserting supporter details:', error);
+      return false;
+    }
   }
 
   return true;
