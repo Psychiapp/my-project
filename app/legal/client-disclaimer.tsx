@@ -1,56 +1,21 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  ActivityIndicator,
-  Alert,
   Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, router } from 'expo-router';
 import { PsychiColors, Spacing, BorderRadius, Typography } from '@/constants/theme';
-import { DocumentIcon, ChevronLeftIcon } from '@/components/icons';
-import * as Sharing from 'expo-sharing';
-import { Asset } from 'expo-asset';
+import { DocumentIcon } from '@/components/icons';
 
 export default function ClientDisclaimerScreen() {
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleViewPDF = async () => {
-    setIsLoading(true);
-    try {
-      const pdfAsset = require('@/assets/documents/Client Disclaimer.pdf');
-      const asset = Asset.fromModule(pdfAsset);
-      await asset.downloadAsync();
-
-      if (!asset.localUri) {
-        throw new Error('Failed to load document');
-      }
-
-      const isAvailable = await Sharing.isAvailableAsync();
-      if (!isAvailable) {
-        Alert.alert(
-          'Not Available',
-          'Document viewing is not available on this device.',
-          [{ text: 'OK' }]
-        );
-        return;
-      }
-
-      await Sharing.shareAsync(asset.localUri, {
-        mimeType: 'application/pdf',
-        dialogTitle: 'Client Disclaimer',
-        UTI: 'com.adobe.pdf',
-      });
-    } catch (error) {
-      console.error('Error opening document:', error);
-      Alert.alert('Error', 'Failed to open document. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
+  const handleViewPDF = () => {
+    // Navigate to in-app document viewer
+    router.push('/document/client-disclaimer');
   };
 
   return (
@@ -93,15 +58,10 @@ export default function ClientDisclaimerScreen() {
           </View>
 
           <TouchableOpacity
-            style={[styles.viewButton, isLoading && styles.viewButtonDisabled]}
+            style={styles.viewButton}
             onPress={handleViewPDF}
-            disabled={isLoading}
           >
-            {isLoading ? (
-              <ActivityIndicator color={PsychiColors.white} />
-            ) : (
-              <Text style={styles.viewButtonText}>View Full Document</Text>
-            )}
+            <Text style={styles.viewButtonText}>View Full Document</Text>
           </TouchableOpacity>
 
           <Text style={styles.contactText}>
@@ -187,9 +147,6 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.lg,
     minWidth: 200,
     alignItems: 'center',
-  },
-  viewButtonDisabled: {
-    opacity: 0.7,
   },
   viewButtonText: {
     fontSize: 16,
