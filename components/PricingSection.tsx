@@ -120,7 +120,7 @@ export default function PricingSection({ onSelectPlan }: PricingSectionProps) {
               {plan.features.map((feature, index) => (
                 <View key={index} style={styles.featureRow}>
                   <View style={styles.checkIcon}>
-                    <CheckIcon size={16} color={PsychiColors.success} />
+                    <CheckIcon size={12} color={PsychiColors.success} />
                   </View>
                   <Text style={styles.featureText}>{feature}</Text>
                 </View>
@@ -203,14 +203,14 @@ const styles = StyleSheet.create({
 
   // Cards container
   cardsContainer: {
-    gap: Spacing.lg,
+    gap: Spacing.md,
   },
 
   // Card styles
   card: {
     backgroundColor: PsychiColors.white,
-    borderRadius: BorderRadius['2xl'],
-    padding: Spacing.lg,
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.md,
     borderWidth: 1,
     borderColor: PsychiColors.borderMedium,
     ...Shadows.card,
@@ -218,7 +218,6 @@ const styles = StyleSheet.create({
   cardPopular: {
     borderColor: PsychiColors.royalBlue,
     borderWidth: 2,
-    transform: [{ scale: 1.02 }],
   },
   cardSelected: {
     borderColor: PsychiColors.royalBlue,
@@ -244,68 +243,68 @@ const styles = StyleSheet.create({
 
   // Plan header
   planHeader: {
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.sm,
     alignItems: 'center',
   },
   planName: {
     fontFamily: Typography.fontFamily.serif,
-    fontSize: Typography.fontSize.xl,
+    fontSize: Typography.fontSize.lg,
     fontWeight: '600',
     color: PsychiColors.textPrimary,
-    marginBottom: Spacing.xs,
+    marginBottom: 2,
   },
   priceRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
-    marginBottom: Spacing.xs,
+    marginBottom: 2,
   },
   price: {
     fontFamily: Typography.fontFamily.serif,
-    fontSize: 40,
-    fontWeight: '700',
+    fontSize: Typography.fontSize['2xl'],
+    fontWeight: '600',
     color: PsychiColors.textPrimary,
   },
   period: {
     fontFamily: Typography.fontFamily.sans,
-    fontSize: Typography.fontSize.base,
+    fontSize: Typography.fontSize.xs,
     color: PsychiColors.textMuted,
-    marginLeft: 4,
+    marginLeft: 2,
   },
   planDescription: {
     fontFamily: Typography.fontFamily.sans,
-    fontSize: Typography.fontSize.sm,
+    fontSize: Typography.fontSize.xs,
     color: PsychiColors.textSecondary,
   },
 
   // Features
   featuresContainer: {
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.sm,
   },
   featureRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: Spacing.sm,
+    marginBottom: Spacing.xs,
   },
   checkIcon: {
-    width: 20,
-    height: 20,
-    marginRight: Spacing.sm,
-    marginTop: 2,
+    width: 16,
+    height: 16,
+    marginRight: Spacing.xs,
+    marginTop: 1,
   },
   featureText: {
     flex: 1,
     fontFamily: Typography.fontFamily.sans,
-    fontSize: Typography.fontSize.sm,
+    fontSize: Typography.fontSize.xs,
     color: PsychiColors.textSecondary,
-    lineHeight: 20,
+    lineHeight: 16,
   },
 
   // Select button
   selectButton: {
     borderRadius: BorderRadius.full,
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderColor: PsychiColors.royalBlue,
-    paddingVertical: 14,
+    paddingVertical: Spacing.sm,
     alignItems: 'center',
   },
   selectButtonPopular: {
@@ -314,19 +313,19 @@ const styles = StyleSheet.create({
   },
   selectButtonGradient: {
     width: '100%',
-    paddingVertical: 14,
+    paddingVertical: Spacing.sm,
     alignItems: 'center',
     borderRadius: BorderRadius.full,
   },
   selectButtonText: {
     fontFamily: Typography.fontFamily.sans,
-    fontSize: Typography.fontSize.base,
+    fontSize: Typography.fontSize.sm,
     fontWeight: '600',
     color: PsychiColors.royalBlue,
   },
   selectButtonTextWhite: {
     fontFamily: Typography.fontFamily.sans,
-    fontSize: Typography.fontSize.base,
+    fontSize: Typography.fontSize.sm,
     fontWeight: '600',
     color: PsychiColors.white,
   },
