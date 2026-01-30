@@ -207,7 +207,7 @@ const QUIZ_QUESTIONS: Record<Module, QuizQuestion[]> = {
       question: "A client says, 'I have a plan to end things tonight.' What should you do?",
       options: [
         { label: "Keep it confidential as that's the rule", value: "a" },
-        { label: "Stay calm, keep them talking, and use Psychi's emergency reporting feature", value: "b" },
+        { label: "Stay calm, keep them talking, refer them to 988, and contact Psychi support", value: "b" },
         { label: "Immediately end the session and call 911", value: "c" },
         { label: "Tell them to think positive and things will get better", value: "d" },
       ],
@@ -687,11 +687,9 @@ When it applies: A client expresses intent to seriously harm themselves or someo
 
 What to do:
 1. Stay calm and supportive with the client
-2. Use Psychi's emergency reporting feature immediately
-3. Follow any guidance provided by the platform
-4. Document what was said (within the platform only)
+2. Refer the client to the 988 Suicide & Crisis Lifeline or local emergency services, and contact Psychi support immediately at psychiapp@outlook.com
 
-Important: This is for imminent, serious threats — not general expressions of sadness or frustration. If you're unsure, use the reporting feature to consult with Psychi's support team.
+Important: This is for imminent, serious threats — not general expressions of sadness or frustration. If you're unsure, contact Psychi support at psychiapp@outlook.com.
 
 EXCEPTION 2: LEGAL REQUIREMENTS
 
@@ -774,9 +772,7 @@ Wrong response: Keeping it confidential because "that's the rule."
 
 Right response:
 1. Stay calm: "I'm really glad you told me this. I'm concerned about your safety."
-2. Keep them talking while you access Psychi's emergency reporting feature
-3. Follow the platform's crisis protocol
-4. Document within the platform
+2. Refer them to the 988 Suicide & Crisis Lifeline and contact Psychi support immediately at psychiapp@outlook.com
 
 Why: This is an imminent safety risk. The exception to confidentiality exists specifically for moments like this. Your job is to help keep them safe, even if it means involving others.
 
