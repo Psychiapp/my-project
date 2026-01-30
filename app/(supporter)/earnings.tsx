@@ -75,15 +75,29 @@ export default function EarningsScreen() {
     if (!user?.id || !supabase) return;
 
     try {
-      // Load profile data
+      // Load profile data (Stripe info)
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select('total_earnings, pending_payout, stripe_connect_id, stripe_connect_status, stripe_payouts_enabled')
+        .select('stripe_connect_id, stripe_connect_status, stripe_payouts_enabled')
         .eq('id', user.id)
         .single();
 
       if (profileError) throw profileError;
-      setProfile(profileData);
+
+      // Load supporter details (earnings info)
+      const { data: supporterData, error: supporterError } = await supabase
+        .from('supporter_details')
+        .select('total_earnings, pending_payout')
+        .eq('supporter_id', user.id)
+        .single();
+
+      // Combine the data (supporter_details may not exist yet)
+      const combinedProfile = {
+        ...profileData,
+        total_earnings: supporterData?.total_earnings || 0,
+        pending_payout: supporterData?.pending_payout || 0,
+      };
+      setProfile(combinedProfile);
 
       // Load session counts for different time ranges
       const now = new Date();
@@ -119,17 +133,17 @@ export default function EarningsScreen() {
         week: {
           total: calculateEarnings(weekSessions),
           sessions: weekSessions.length,
-          pending: (profileData?.pending_payout || 0) / 100,
+          pending: (combinedProfile?.pending_payout || 0) / 100,
         },
         month: {
           total: calculateEarnings(monthSessions),
           sessions: monthSessions.length,
-          pending: (profileData?.pending_payout || 0) / 100,
+          pending: (combinedProfile?.pending_payout || 0) / 100,
         },
         all: {
-          total: (profileData?.total_earnings || 0) / 100,
+          total: (combinedProfile?.total_earnings || 0) / 100,
           sessions: allSessions.length,
-          pending: (profileData?.pending_payout || 0) / 100,
+          pending: (combinedProfile?.pending_payout || 0) / 100,
         },
       });
 
