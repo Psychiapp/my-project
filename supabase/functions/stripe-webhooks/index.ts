@@ -70,20 +70,20 @@ serve(async (req) => {
           if (paymentIntent.metadata?.supporter_id) {
             const supporterCut = Math.floor(paymentIntent.amount * 0.75);
 
-            const { data: profile } = await supabase
-              .from('profiles')
+            const { data: supporterDetails } = await supabase
+              .from('supporter_details')
               .select('pending_payout, total_earnings')
-              .eq('id', paymentIntent.metadata.supporter_id)
+              .eq('supporter_id', paymentIntent.metadata.supporter_id)
               .single();
 
-            if (profile) {
+            if (supporterDetails) {
               await supabase
-                .from('profiles')
+                .from('supporter_details')
                 .update({
-                  pending_payout: (profile.pending_payout || 0) + supporterCut,
-                  total_earnings: (profile.total_earnings || 0) + supporterCut,
+                  pending_payout: (supporterDetails.pending_payout || 0) + supporterCut,
+                  total_earnings: (supporterDetails.total_earnings || 0) + supporterCut,
                 })
-                .eq('id', paymentIntent.metadata.supporter_id);
+                .eq('supporter_id', paymentIntent.metadata.supporter_id);
             }
           }
         }
@@ -138,19 +138,19 @@ serve(async (req) => {
 
         // Return amount to pending payout
         if (supporterId) {
-          const { data: profile } = await supabase
-            .from('profiles')
+          const { data: supporterDetails } = await supabase
+            .from('supporter_details')
             .select('pending_payout')
-            .eq('id', supporterId)
+            .eq('supporter_id', supporterId)
             .single();
 
-          if (profile) {
+          if (supporterDetails) {
             await supabase
-              .from('profiles')
+              .from('supporter_details')
               .update({
-                pending_payout: (profile.pending_payout || 0) + transfer.amount,
+                pending_payout: (supporterDetails.pending_payout || 0) + transfer.amount,
               })
-              .eq('id', supporterId);
+              .eq('supporter_id', supporterId);
           }
         }
         break;

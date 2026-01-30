@@ -345,46 +345,49 @@ export async function searchSupporters(
 export async function getSupporterDetail(supporterId: string): Promise<SupporterDetail | null> {
   if (!supabase) return null;
 
-  const { data, error } = await supabase
+  // Query profiles for basic info (only columns that definitely exist)
+  const { data: profileData, error: profileError } = await supabase
     .from('profiles')
-    .select(`
-      id,
-      full_name,
-      avatar_url,
-      onboarding_complete,
-      supporter_details (
-        bio,
-        specialties,
-        education,
-        languages,
-        years_experience,
-        approach,
-        total_sessions,
-        is_available,
-        accepting_clients,
-        training_complete,
-        availability,
-        session_types
-      )
-    `)
+    .select('id, full_name, avatar_url')
     .eq('id', supporterId)
     .eq('role', 'supporter')
     .single();
 
-  if (error) {
-    console.error('Error fetching supporter detail:', error);
+  if (profileError) {
+    console.error('Error fetching supporter profile:', profileError);
     return null;
   }
 
-  const details = data.supporter_details?.[0] || {};
+  // Query supporter_details separately for supporter-specific info
+  const { data: detailsData, error: detailsError } = await supabase
+    .from('supporter_details')
+    .select(`
+      bio,
+      specialties,
+      education,
+      languages,
+      years_experience,
+      approach,
+      total_sessions,
+      is_available,
+      accepting_clients,
+      training_complete,
+      availability,
+      session_types
+    `)
+    .eq('supporter_id', supporterId)
+    .single();
+
+  // Details may not exist yet for new supporters - that's ok
+  const details = detailsData || {};
 
   // Fetch reviews/feedback separately
   const reviews = await getSupporterReviews(supporterId);
 
   return {
-    id: data.id,
-    full_name: data.full_name,
-    avatar_url: data.avatar_url,
+    id: profileData.id,
+    full_name: profileData.full_name,
+    avatar_url: profileData.avatar_url,
     bio: details.bio || '',
     specialties: details.specialties || [],
     education: details.education || '',
@@ -395,7 +398,7 @@ export async function getSupporterDetail(supporterId: string): Promise<Supporter
     is_available: details.is_available || false,
     accepting_clients: details.accepting_clients || false,
     training_complete: details.training_complete || false,
-    onboarding_complete: data.onboarding_complete || false,
+    onboarding_complete: details.training_complete || false, // Use training_complete as proxy
     availability: details.availability || {},
     session_types: details.session_types || ['chat', 'phone', 'video'],
     reviews,

@@ -87,13 +87,13 @@ serve(async (req) => {
       // Transfer was successful, just log the error
     }
 
-    // Update pending_payout in supporter profile
+    // Update pending_payout in supporter_details
     const { error: updateError } = await supabase
-      .from('profiles')
+      .from('supporter_details')
       .update({
         pending_payout: 0,
       })
-      .eq('id', supporterId);
+      .eq('supporter_id', supporterId);
 
     if (updateError) {
       console.error('Failed to update pending payout:', updateError);
