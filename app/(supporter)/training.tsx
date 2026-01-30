@@ -697,7 +697,7 @@ When it applies: You receive a court order or legal demand requiring disclosure.
 
 What to do:
 1. Do not respond to the request directly
-2. Contact Psychi immediately
+2. Contact Psychi immediately at psychiapp@outlook.com
 3. We will guide you through the proper process
 4. Never disclose without confirming with Psychi first
 
@@ -707,7 +707,7 @@ When it applies: A client discloses that a child is being abused or neglected, o
 
 What to do:
 1. Report to appropriate local authorities (laws vary by location)
-2. Notify Psychi through the platform
+2. Notify Psychi at psychiapp@outlook.com
 3. Document the disclosure within the platform
 
 Note: "Child" typically means anyone under 18. Reporting requirements vary by jurisdiction — when in doubt, report and let authorities assess.
