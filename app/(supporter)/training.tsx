@@ -2605,39 +2605,6 @@ export default function TrainingScreen() {
           })}
         </View>
 
-        {/* Resources Section */}
-        <View style={styles.resourcesSection}>
-          <Text style={styles.resourcesSectionTitle}>Essential Documents</Text>
-          <TouchableOpacity
-            style={styles.resourceCard}
-            onPress={() => router.push('/legal/confidentiality-agreement')}
-            activeOpacity={0.7}
-          >
-            <View style={styles.resourceCardIcon}>
-              <ShieldIcon size={20} color={PsychiColors.azure} />
-            </View>
-            <View style={styles.resourceCardContent}>
-              <Text style={styles.resourceCardTitle}>Confidentiality Agreement</Text>
-              <Text style={styles.resourceCardDescription}>Review your obligations regarding client privacy</Text>
-            </View>
-            <Text style={styles.resourceCardArrow}>→</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.resourceCard}
-            onPress={() => Linking.openURL('https://psychi.app/supporter-guidelines')}
-            activeOpacity={0.7}
-          >
-            <View style={styles.resourceCardIcon}>
-              <BookIcon size={20} color={PsychiColors.azure} />
-            </View>
-            <View style={styles.resourceCardContent}>
-              <Text style={styles.resourceCardTitle}>Supporter Guidelines</Text>
-              <Text style={styles.resourceCardDescription}>Best practices and community standards</Text>
-            </View>
-            <Text style={styles.resourceCardArrow}>→</Text>
-          </TouchableOpacity>
-        </View>
-
         {allComplete && (
           <TouchableOpacity
             style={styles.viewCertificateButton}
@@ -3080,45 +3047,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: PsychiColors.azure,
-  },
-  resourcesSection: {
-    marginTop: Spacing.xl,
-    marginBottom: Spacing.lg,
-  },
-  resourcesSectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: PsychiColors.midnight,
-    marginBottom: Spacing.md,
-  },
-  resourceCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: PsychiColors.white,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
-    marginBottom: Spacing.sm,
-    ...Shadows.soft,
-  },
-  resourceCardIcon: {
-    marginRight: Spacing.md,
-  },
-  resourceCardContent: {
-    flex: 1,
-  },
-  resourceCardTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: PsychiColors.midnight,
-    marginBottom: 2,
-  },
-  resourceCardDescription: {
-    fontSize: 13,
-    color: PsychiColors.textMuted,
-  },
-  resourceCardArrow: {
-    fontSize: 18,
-    color: PsychiColors.textMuted,
   },
   viewCertificateButton: {
     marginTop: Spacing.lg,
