@@ -13,8 +13,6 @@ import { useRouter } from 'expo-router';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
 import {
   MailIcon,
-  ChatIcon,
-  EditIcon,
   BookIcon,
   VideoIcon,
   ClipboardIcon,
@@ -59,27 +57,6 @@ export default function HelpSupportScreen() {
     {
       question: 'How do subscription plans work?',
       answer: 'Subscription plans give you a set number of sessions per month at a discounted rate. Unused sessions do not roll over. You can cancel or change your plan at any time.',
-    },
-  ];
-
-  const contactOptions = [
-    {
-      icon: MailIcon,
-      title: 'Email Support',
-      description: 'Get help via email',
-      action: () => Linking.openURL(`mailto:${ExternalUrls.supportEmail}`),
-    },
-    {
-      icon: ChatIcon,
-      title: 'In-App Chat',
-      description: 'Chat with our support team',
-      action: () => Alert.alert('Coming Soon', 'In-app support chat will be available soon.'),
-    },
-    {
-      icon: EditIcon,
-      title: 'Submit Feedback',
-      description: 'Help us improve Psychi',
-      action: () => Alert.alert('Thank You', 'Your feedback helps us improve. Feature coming soon.'),
     },
   ];
 
@@ -139,20 +116,18 @@ export default function HelpSupportScreen() {
         {/* Contact Options */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Contact Us</Text>
-          <View style={styles.contactGrid}>
-            {contactOptions.map((option) => (
-              <TouchableOpacity
-                key={option.title}
-                style={styles.contactCard}
-                onPress={option.action}
-                activeOpacity={0.7}
-              >
-                <option.icon size={32} color={PsychiColors.azure} />
-                <Text style={styles.contactTitle}>{option.title}</Text>
-                <Text style={styles.contactDescription}>{option.description}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          <TouchableOpacity
+            style={styles.emailCard}
+            onPress={() => Linking.openURL(`mailto:${ExternalUrls.supportEmail}`)}
+            activeOpacity={0.7}
+          >
+            <MailIcon size={24} color={PsychiColors.azure} />
+            <View style={styles.emailContent}>
+              <Text style={styles.emailTitle}>Email Support</Text>
+              <Text style={styles.emailDescription}>{ExternalUrls.supportEmail}</Text>
+            </View>
+            <ChevronRightIcon size={20} color={PsychiColors.textMuted} />
+          </TouchableOpacity>
         </View>
 
         {/* FAQ Section */}
@@ -314,34 +289,27 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: PsychiColors.white,
   },
-  contactGrid: {
+  emailCard: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.sm,
-  },
-  contactCard: {
-    width: '31%',
+    alignItems: 'center',
     backgroundColor: PsychiColors.white,
     borderRadius: BorderRadius.lg,
     padding: Spacing.md,
-    alignItems: 'center',
     ...Shadows.soft,
   },
-  contactIcon: {
-    fontSize: 28,
-    marginBottom: Spacing.xs,
+  emailContent: {
+    flex: 1,
+    marginLeft: Spacing.md,
   },
-  contactTitle: {
-    fontSize: 13,
+  emailTitle: {
+    fontSize: 15,
     fontWeight: '600',
     color: '#2A2A2A',
-    textAlign: 'center',
-    marginBottom: 2,
   },
-  contactDescription: {
-    fontSize: 11,
+  emailDescription: {
+    fontSize: 13,
     color: PsychiColors.textMuted,
-    textAlign: 'center',
+    marginTop: 2,
   },
   faqContainer: {
     backgroundColor: PsychiColors.white,
