@@ -13,9 +13,6 @@ import { useRouter } from 'expo-router';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
 import {
   MailIcon,
-  BookIcon,
-  VideoIcon,
-  ClipboardIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   AlertIcon,
@@ -60,23 +57,6 @@ export default function HelpSupportScreen() {
     },
   ];
 
-  const resourceLinks = [
-    {
-      icon: BookIcon,
-      title: 'User Guide',
-      action: () => Alert.alert('User Guide', 'Comprehensive guide coming soon.'),
-    },
-    {
-      icon: VideoIcon,
-      title: 'Video Tutorials',
-      action: () => Alert.alert('Video Tutorials', 'Tutorial videos coming soon.'),
-    },
-    {
-      icon: ClipboardIcon,
-      title: 'Community Guidelines',
-      action: () => Linking.openURL(ExternalUrls.supporterGuidelines),
-    },
-  ];
 
   const toggleFaq = (index: number) => {
     setExpandedFaq(expandedFaq === index ? null : index);
@@ -155,29 +135,6 @@ export default function HelpSupportScreen() {
                 {expandedFaq === index && (
                   <Text style={styles.faqAnswer}>{item.answer}</Text>
                 )}
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        {/* Resources */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Resources</Text>
-          <View style={styles.resourcesCard}>
-            {resourceLinks.map((link, index) => (
-              <TouchableOpacity
-                key={link.title}
-                style={[
-                  styles.resourceRow,
-                  index < resourceLinks.length - 1 && styles.resourceRowBorder,
-                ]}
-                onPress={link.action}
-              >
-                <View style={styles.resourceIcon}>
-                  <link.icon size={20} color={PsychiColors.azure} />
-                </View>
-                <Text style={styles.resourceTitle}>{link.title}</Text>
-                <ChevronRightIcon size={20} color={PsychiColors.textMuted} />
               </TouchableOpacity>
             ))}
           </View>
@@ -345,42 +302,6 @@ const styles = StyleSheet.create({
     color: PsychiColors.textSecondary,
     lineHeight: 21,
     marginTop: Spacing.sm,
-  },
-  resourcesCard: {
-    backgroundColor: PsychiColors.white,
-    borderRadius: BorderRadius.lg,
-    ...Shadows.soft,
-  },
-  resourceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: Spacing.md,
-  },
-  resourceRowBorder: {
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 0, 0, 0.05)',
-  },
-  resourceIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: BorderRadius.sm,
-    backgroundColor: 'rgba(74, 144, 226, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: Spacing.md,
-  },
-  resourceIconText: {
-    fontSize: 20,
-  },
-  resourceTitle: {
-    flex: 1,
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#2A2A2A',
-  },
-  resourceArrow: {
-    fontSize: 24,
-    color: PsychiColors.textSoft,
   },
   appInfoCard: {
     backgroundColor: PsychiColors.white,
