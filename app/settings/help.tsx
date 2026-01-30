@@ -49,7 +49,7 @@ export default function HelpSupportScreen() {
     },
     {
       question: 'What if I need to cancel a session?',
-      answer: 'You can cancel sessions up to 4 hours before the scheduled time for a full refund. Cancellations within 4 hours may be subject to fees.',
+      answer: 'You can cancel sessions up to 4 hours before the scheduled time for a full refund.',
     },
     {
       question: 'How do subscription plans work?',
