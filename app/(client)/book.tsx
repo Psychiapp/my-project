@@ -349,11 +349,11 @@ export default function BookSessionScreen() {
       {/* Header */}
       <View style={styles.header}>
         {step !== 'type' && (
-          <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+          <TouchableOpacity style={styles.backButton} onPress={handleBack} accessibilityRole="button" accessibilityLabel="Go back" accessibilityHint="Returns to the previous step">
             <ChevronLeftIcon size={24} color={PsychiColors.midnight} />
           </TouchableOpacity>
         )}
-        <Text style={styles.headerTitle}>Book a Session</Text>
+        <Text style={styles.headerTitle} accessibilityRole="header">Book a Session</Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -393,6 +393,9 @@ export default function BookSessionScreen() {
                   style={styles.typeCard}
                   onPress={() => handleSelectType(type.id)}
                   activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${type.name}, ${type.duration}, ${type.price}`}
+                  accessibilityHint={type.description}
                 >
                   <LinearGradient
                     colors={[PsychiColors.azure, PsychiColors.deep] as const}
@@ -432,6 +435,9 @@ export default function BookSessionScreen() {
                   ]}
                   onPress={() => handleSelectDate(date)}
                   activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel={date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                  accessibilityState={{ selected: selectedDate?.toDateString() === date.toDateString() }}
                 >
                   <Text
                     style={[
@@ -492,6 +498,9 @@ export default function BookSessionScreen() {
                               selectedSlot?.startTime === slot.startTime && styles.timeSlotSelected,
                             ]}
                             onPress={() => handleSelectTime(slot)}
+                            accessibilityRole="button"
+                            accessibilityLabel={slot.display}
+                            accessibilityState={{ selected: selectedSlot?.startTime === slot.startTime }}
                           >
                             <Text
                               style={[
@@ -528,6 +537,9 @@ export default function BookSessionScreen() {
                               selectedSlot?.startTime === slot.startTime && styles.timeSlotSelected,
                             ]}
                             onPress={() => handleSelectTime(slot)}
+                            accessibilityRole="button"
+                            accessibilityLabel={slot.display}
+                            accessibilityState={{ selected: selectedSlot?.startTime === slot.startTime }}
                           >
                             <Text
                               style={[
@@ -558,6 +570,9 @@ export default function BookSessionScreen() {
                               selectedSlot?.startTime === slot.startTime && styles.timeSlotSelected,
                             ]}
                             onPress={() => handleSelectTime(slot)}
+                            accessibilityRole="button"
+                            accessibilityLabel={slot.display}
+                            accessibilityState={{ selected: selectedSlot?.startTime === slot.startTime }}
                           >
                             <Text
                               style={[
@@ -628,6 +643,10 @@ export default function BookSessionScreen() {
               onPress={handleConfirmBooking}
               disabled={isBooking}
               activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel="Confirm and Pay"
+              accessibilityHint="Confirms your booking and proceeds to payment"
+              accessibilityState={{ disabled: isBooking }}
             >
               <LinearGradient
                 colors={[PsychiColors.azure, PsychiColors.deep] as const}

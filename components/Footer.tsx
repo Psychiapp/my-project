@@ -46,13 +46,8 @@ const footerLinks = {
     links: [
       { label: 'Terms of Service', action: `url:${ExternalUrls.termsOfService}` },
       { label: 'Privacy Policy', action: `url:${ExternalUrls.privacyPolicy}` },
-    ],
-  },
-  supporters: {
-    title: 'For Supporters',
-    links: [
-      { label: 'Become a Supporter', action: 'signup:supporter' },
-      { label: 'Supporter Guidelines', action: `url:${ExternalUrls.supporterGuidelines}` },
+      { label: 'Safety Policy', action: `url:${ExternalUrls.safetyPolicy}` },
+      { label: 'Refund Policy', action: `url:${ExternalUrls.refundPolicy}` },
     ],
   },
 };
@@ -103,15 +98,36 @@ export default function Footer({ onNavigate, onScrollToSection }: FooterProps) {
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
         style={styles.crisisBanner}
+        accessible={true}
+        accessibilityRole="alert"
+        accessibilityLabel="Crisis resources available"
       >
         <Text style={styles.crisisText}>
           <Text style={styles.crisisLabel}>Need immediate help? </Text>
           Call or text{' '}
-          <Text style={styles.crisisNumber} onPress={handleCrisisCall}>988</Text>
+          <Text
+            style={styles.crisisNumber}
+            onPress={handleCrisisCall}
+            accessibilityRole="link"
+            accessibilityLabel="Call 988 Suicide and Crisis Lifeline"
+            accessibilityHint="Opens phone dialer to call 988"
+          >988</Text>
           {' '}(Suicide & Crisis Lifeline) or text{' '}
-          <Text style={styles.crisisNumber} onPress={handleCrisisText}>HOME</Text>
+          <Text
+            style={styles.crisisNumber}
+            onPress={handleCrisisText}
+            accessibilityRole="link"
+            accessibilityLabel="Text HOME to Crisis Text Line"
+            accessibilityHint="Opens messaging app"
+          >HOME</Text>
           {' '}to{' '}
-          <Text style={styles.crisisNumber} onPress={handleCrisisText}>741741</Text>
+          <Text
+            style={styles.crisisNumber}
+            onPress={handleCrisisText}
+            accessibilityRole="link"
+            accessibilityLabel="Text 741741 Crisis Text Line"
+            accessibilityHint="Opens messaging app"
+          >741741</Text>
           {' '}(Crisis Text Line)
         </Text>
       </LinearGradient>
@@ -129,21 +145,28 @@ export default function Footer({ onNavigate, onScrollToSection }: FooterProps) {
             source={require('@/assets/images/logo.png')}
             style={styles.logo}
             resizeMode="contain"
+            accessibilityLabel="Psychi logo"
+            accessibilityRole="image"
           />
-          <Text style={styles.tagline}>
+          <Text style={styles.tagline} accessibilityRole="text">
             Peer support for everyone
           </Text>
         </View>
 
         {/* Links Grid - matches web app exactly */}
-        <View style={styles.linksContainer}>
+        <View style={styles.linksContainer} accessibilityRole="navigation">
           {/* Row 1: Support & Company */}
           <View style={styles.linksRow}>
             {/* Support Links */}
             <View style={styles.linkColumn}>
-              <Text style={styles.linkHeader}>{footerLinks.support.title}</Text>
+              <Text style={styles.linkHeader} accessibilityRole="header">{footerLinks.support.title}</Text>
               {footerLinks.support.links.map((link, index) => (
-                <TouchableOpacity key={index} onPress={() => handleLinkPress(link.action)}>
+                <TouchableOpacity
+                  key={index}
+                  onPress={() => handleLinkPress(link.action)}
+                  accessibilityRole="link"
+                  accessibilityLabel={link.label}
+                >
                   <Text style={styles.link}>{link.label}</Text>
                 </TouchableOpacity>
               ))}
@@ -151,32 +174,33 @@ export default function Footer({ onNavigate, onScrollToSection }: FooterProps) {
 
             {/* Company Links */}
             <View style={styles.linkColumn}>
-              <Text style={styles.linkHeader}>{footerLinks.company.title}</Text>
+              <Text style={styles.linkHeader} accessibilityRole="header">{footerLinks.company.title}</Text>
               {footerLinks.company.links.map((link, index) => (
-                <TouchableOpacity key={index} onPress={() => handleLinkPress(link.action)}>
+                <TouchableOpacity
+                  key={index}
+                  onPress={() => handleLinkPress(link.action)}
+                  accessibilityRole="link"
+                  accessibilityLabel={link.label}
+                >
                   <Text style={styles.link}>{link.label}</Text>
                 </TouchableOpacity>
               ))}
             </View>
           </View>
 
-          {/* Row 2: Legal & For Supporters */}
+          {/* Row 2: Legal */}
           <View style={styles.linksRow}>
             {/* Legal Links */}
             <View style={styles.linkColumn}>
-              <Text style={styles.linkHeader}>{footerLinks.legal.title}</Text>
+              <Text style={styles.linkHeader} accessibilityRole="header">{footerLinks.legal.title}</Text>
               {footerLinks.legal.links.map((link, index) => (
-                <TouchableOpacity key={index} onPress={() => handleLinkPress(link.action)}>
-                  <Text style={styles.link}>{link.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            {/* For Supporters Links */}
-            <View style={styles.linkColumn}>
-              <Text style={styles.linkHeader}>{footerLinks.supporters.title}</Text>
-              {footerLinks.supporters.links.map((link, index) => (
-                <TouchableOpacity key={index} onPress={() => handleLinkPress(link.action)}>
+                <TouchableOpacity
+                  key={index}
+                  onPress={() => handleLinkPress(link.action)}
+                  accessibilityRole="link"
+                  accessibilityLabel={link.label}
+                  accessibilityHint="Opens in browser"
+                >
                   <Text style={styles.link}>{link.label}</Text>
                 </TouchableOpacity>
               ))}

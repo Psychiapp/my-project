@@ -61,22 +61,28 @@ export default function ForgotPasswordScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.content}>
-          <View style={styles.successIcon}>
+          <View style={styles.successIcon} accessibilityLabel="Email sent">
             <MailIcon size={72} color={PsychiColors.azure} />
           </View>
-          <Text style={styles.title}>Check Your Email</Text>
+          <Text style={styles.title} accessibilityRole="header">Check Your Email</Text>
           <Text style={styles.description}>
             If an account exists for {email}, you'll receive a password reset link shortly.
           </Text>
           <TouchableOpacity
             style={styles.primaryButton}
             onPress={() => router.back()}
+            accessibilityRole="button"
+            accessibilityLabel="Back to Sign In"
+            accessibilityHint="Returns to the sign in screen"
           >
             <Text style={styles.primaryButtonText}>Back to Sign In</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.textButton}
             onPress={() => setEmailSent(false)}
+            accessibilityRole="button"
+            accessibilityLabel="Try a different email"
+            accessibilityHint="Allows you to enter a different email address"
           >
             <Text style={styles.textButtonText}>Try a different email</Text>
           </TouchableOpacity>
@@ -96,18 +102,21 @@ export default function ForgotPasswordScreen() {
           <TouchableOpacity
             style={styles.backButton}
             onPress={() => router.back()}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+            accessibilityHint="Returns to the previous screen"
           >
             <ChevronLeftIcon size={24} color={PsychiColors.azure} />
             <Text style={styles.backText}>Back</Text>
           </TouchableOpacity>
 
           {/* Icon */}
-          <View style={styles.iconContainer}>
+          <View style={styles.iconContainer} accessibilityLabel="Password reset">
             <LockIcon size={64} color={PsychiColors.azure} />
           </View>
 
           {/* Title */}
-          <Text style={styles.title}>Reset Password</Text>
+          <Text style={styles.title} accessibilityRole="header">Reset Password</Text>
           <Text style={styles.description}>
             Enter your email address and we'll send you a link to reset your password.
           </Text>
@@ -115,7 +124,7 @@ export default function ForgotPasswordScreen() {
           {/* Form */}
           <View style={styles.form}>
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Email Address</Text>
+              <Text style={styles.label} nativeID="emailLabel">Email Address</Text>
               <TextInput
                 style={styles.input}
                 value={email}
@@ -126,6 +135,9 @@ export default function ForgotPasswordScreen() {
                 autoCapitalize="none"
                 autoCorrect={false}
                 autoComplete="email"
+                accessibilityLabel="Email address"
+                accessibilityHint="Enter your email to receive a password reset link"
+                accessibilityLabelledBy="emailLabel"
               />
             </View>
 
@@ -133,6 +145,10 @@ export default function ForgotPasswordScreen() {
               style={[styles.primaryButton, isLoading && styles.buttonDisabled]}
               onPress={handleResetPassword}
               disabled={isLoading}
+              accessibilityRole="button"
+              accessibilityLabel={isLoading ? 'Sending reset link' : 'Send Reset Link'}
+              accessibilityHint="Sends a password reset link to your email"
+              accessibilityState={{ disabled: isLoading }}
             >
               <Text style={styles.primaryButtonText}>
                 {isLoading ? 'Sending...' : 'Send Reset Link'}
@@ -144,7 +160,7 @@ export default function ForgotPasswordScreen() {
           <View style={styles.helpContainer}>
             <Text style={styles.helpText}>
               Remember your password?{' '}
-              <Text style={styles.helpLink} onPress={() => router.back()}>
+              <Text style={styles.helpLink} onPress={() => router.back()} accessibilityRole="link" accessibilityLabel="Sign in" accessibilityHint="Returns to sign in screen">
                 Sign in
               </Text>
             </Text>

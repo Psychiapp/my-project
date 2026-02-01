@@ -295,7 +295,7 @@ export default function SessionsScreen() {
         <>
           <View style={styles.refundStatusRow}>
             {renderRefundBadge(session)}
-            <TouchableOpacity onPress={() => setPolicyModalVisible(true)}>
+            <TouchableOpacity onPress={() => setPolicyModalVisible(true)} accessibilityRole="link" accessibilityLabel="View cancellation policy">
               <Text style={styles.policyLink}>View cancellation policy</Text>
             </TouchableOpacity>
           </View>
@@ -303,6 +303,9 @@ export default function SessionsScreen() {
             <TouchableOpacity
               style={styles.cancelButton}
               onPress={() => handleCancelPress(session)}
+              accessibilityRole="button"
+              accessibilityLabel="Cancel session"
+              accessibilityHint="Opens cancellation options for this session"
             >
               <Text style={styles.cancelButtonText}>Cancel</Text>
             </TouchableOpacity>
@@ -310,6 +313,9 @@ export default function SessionsScreen() {
               style={styles.joinButton}
               activeOpacity={0.8}
               onPress={() => router.push(`/session/${session.id}?type=${session.type}`)}
+              accessibilityRole="button"
+              accessibilityLabel={session.type === 'chat' ? 'Open Chat' : 'Join Call'}
+              accessibilityHint={`Start your ${session.type} session with ${session.supporterName}`}
             >
               <LinearGradient
                 colors={[PsychiColors.azure, PsychiColors.deep]}
@@ -330,14 +336,17 @@ export default function SessionsScreen() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>My Sessions</Text>
+        <Text style={styles.headerTitle} accessibilityRole="header">My Sessions</Text>
       </View>
 
       {/* Tabs */}
-      <View style={styles.tabContainer}>
+      <View style={styles.tabContainer} accessibilityRole="tablist">
         <TouchableOpacity
           style={[styles.tab, activeTab === 'upcoming' && styles.tabActive]}
           onPress={() => setActiveTab('upcoming')}
+          accessibilityRole="tab"
+          accessibilityLabel={`Upcoming sessions${upcomingSessions.length > 0 ? `, ${upcomingSessions.length} sessions` : ''}`}
+          accessibilityState={{ selected: activeTab === 'upcoming' }}
         >
           <Text style={[styles.tabText, activeTab === 'upcoming' && styles.tabTextActive]}>
             Upcoming
@@ -351,6 +360,9 @@ export default function SessionsScreen() {
         <TouchableOpacity
           style={[styles.tab, activeTab === 'past' && styles.tabActive]}
           onPress={() => setActiveTab('past')}
+          accessibilityRole="tab"
+          accessibilityLabel="Past sessions"
+          accessibilityState={{ selected: activeTab === 'past' }}
         >
           <Text style={[styles.tabText, activeTab === 'past' && styles.tabTextActive]}>
             Past
@@ -397,6 +409,9 @@ export default function SessionsScreen() {
                 style={styles.emptyButton}
                 activeOpacity={0.8}
                 onPress={() => router.push('/(client)/book')}
+                accessibilityRole="button"
+                accessibilityLabel="Find Support"
+                accessibilityHint="Navigate to book a session with a supporter"
               >
                 <LinearGradient
                   colors={[PsychiColors.azure, PsychiColors.deep]}
@@ -429,14 +444,18 @@ export default function SessionsScreen() {
         animationType="slide"
         transparent={true}
         onRequestClose={() => setCancelModalVisible(false)}
+        accessibilityViewIsModal={true}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={styles.modalContent} accessibilityRole="alert">
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Cancel Session</Text>
+              <Text style={styles.modalTitle} accessibilityRole="header">Cancel Session</Text>
               <TouchableOpacity
                 onPress={() => setCancelModalVisible(false)}
                 style={styles.closeButton}
+                accessibilityRole="button"
+                accessibilityLabel="Close"
+                accessibilityHint="Closes this dialog"
               >
                 <CloseIcon size={20} color={PsychiColors.textMuted} />
               </TouchableOpacity>
@@ -512,6 +531,9 @@ export default function SessionsScreen() {
                   <TouchableOpacity
                     style={styles.keepSessionButton}
                     onPress={() => setCancelModalVisible(false)}
+                    accessibilityRole="button"
+                    accessibilityLabel="Keep Session"
+                    accessibilityHint="Closes this dialog and keeps your session"
                   >
                     <Text style={styles.keepSessionButtonText}>Keep Session</Text>
                   </TouchableOpacity>
@@ -519,6 +541,10 @@ export default function SessionsScreen() {
                     style={[styles.confirmCancelButton, isProcessing && styles.buttonDisabled]}
                     onPress={confirmCancellation}
                     disabled={isProcessing}
+                    accessibilityRole="button"
+                    accessibilityLabel="Cancel Session"
+                    accessibilityHint="Confirms cancellation of your session"
+                    accessibilityState={{ disabled: isProcessing }}
                   >
                     {isProcessing ? (
                       <ActivityIndicator color={PsychiColors.white} size="small" />
@@ -539,14 +565,18 @@ export default function SessionsScreen() {
         animationType="slide"
         transparent={true}
         onRequestClose={() => setPolicyModalVisible(false)}
+        accessibilityViewIsModal={true}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Cancellation Policy</Text>
+              <Text style={styles.modalTitle} accessibilityRole="header">Cancellation Policy</Text>
               <TouchableOpacity
                 onPress={() => setPolicyModalVisible(false)}
                 style={styles.closeButton}
+                accessibilityRole="button"
+                accessibilityLabel="Close"
+                accessibilityHint="Closes this dialog"
               >
                 <CloseIcon size={16} color={PsychiColors.textMuted} />
               </TouchableOpacity>
@@ -594,6 +624,9 @@ export default function SessionsScreen() {
             <TouchableOpacity
               style={styles.gotItButton}
               onPress={() => setPolicyModalVisible(false)}
+              accessibilityRole="button"
+              accessibilityLabel="Got It"
+              accessibilityHint="Closes this dialog"
             >
               <Text style={styles.gotItButtonText}>Got It</Text>
             </TouchableOpacity>

@@ -12,6 +12,7 @@ import {
   ScrollView,
   Image,
   Modal,
+  Linking,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -19,7 +20,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/contexts/AuthContext';
 import { PsychiColors, Gradients, Spacing, BorderRadius, Shadows, Typography } from '@/constants/theme';
 import { UserRole } from '@/types';
-import { ChevronLeftIcon, HeartIcon, BookIcon, EyeIcon, CheckIcon, VideoIcon, MicIcon } from '@/components/icons';
+import { ChevronLeftIcon, HeartIcon, BookIcon, EyeIcon, CheckIcon, VideoIcon, MicIcon, AlertTriangleIcon, PhoneIcon } from '@/components/icons';
 import { saveClientPreferences } from '@/lib/database';
 import OnboardingModal from '@/components/OnboardingModal';
 
@@ -30,9 +31,10 @@ export default function SignUpScreen() {
 
   // Pre-select role and skip to credentials if role is passed via URL
   const initialRole = roleParam === 'client' ? 'client' : roleParam === 'supporter' ? 'supporter' : null;
-  const initialStep = initialRole ? 'credentials' : 'role';
+  // For clients coming via URL param, show safety check first
+  const initialStep = initialRole === 'client' ? 'safety' : initialRole === 'supporter' ? 'credentials' : 'role';
 
-  const [step, setStep] = useState<'role' | 'credentials'>(initialStep);
+  const [step, setStep] = useState<'role' | 'safety' | 'credentials'>(initialStep);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -67,7 +69,31 @@ export default function SignUpScreen() {
       Alert.alert('Error', 'Please select a role');
       return;
     }
-    setStep('credentials');
+    // Clients go through safety screening first
+    if (selectedRole === 'client') {
+      setStep('safety');
+    } else {
+      setStep('credentials');
+    }
+  };
+
+  // Handle safety screening response
+  const handleSafetyResponse = (isSafe: boolean) => {
+    if (isSafe) {
+      // User is not in crisis, proceed to credentials
+      setStep('credentials');
+    }
+    // If not safe, they stay on the safety screen with crisis resources
+  };
+
+  // Call crisis hotline
+  const handleCallCrisisLine = () => {
+    Linking.openURL('tel:988');
+  };
+
+  // Text crisis line
+  const handleTextCrisisLine = () => {
+    Linking.openURL('sms:741741&body=HOME');
   };
 
   const handleSignUp = async () => {
@@ -139,6 +165,145 @@ export default function SignUpScreen() {
     router.replace('/(client)');
   };
 
+  // Safety Screening Screen (for clients)
+  if (step === 'safety') {
+    return (
+      <View style={styles.container}>
+        {/* Header Gradient */}
+        <LinearGradient
+          colors={['#1e3a5f', '#2d5a87']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.headerGradient, { paddingTop: insets.top + Spacing.md }]}
+        >
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => setStep('role')}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+            accessibilityHint="Returns to role selection"
+          >
+            <View style={styles.backButtonContent}>
+              <ChevronLeftIcon size={20} color={PsychiColors.white} />
+              <Text style={styles.backButtonText}>Back</Text>
+            </View>
+          </TouchableOpacity>
+
+          <View style={styles.logoSection}>
+            <View style={styles.safetyIconContainer} accessibilityLabel="Heart icon">
+              <HeartIcon size={40} color={PsychiColors.white} />
+            </View>
+            <Text style={styles.headerTitle} accessibilityRole="header">Your Safety Matters</Text>
+            <Text style={styles.headerSubtitle}>Before we continue, we want to check in</Text>
+          </View>
+        </LinearGradient>
+
+        {/* Safety Content */}
+        <View style={[styles.formCard, { paddingBottom: insets.bottom + Spacing.lg }]}>
+          <ScrollView showsVerticalScrollIndicator={false}>
+            <View style={styles.safetyContent}>
+              <Text style={styles.safetyQuestion}>
+                Are you currently experiencing thoughts of self-harm or suicide?
+              </Text>
+
+              <Text style={styles.safetySubtext}>
+                Psychi connects you with trained peer supporters, not licensed therapists.
+                If you're in crisis, professional help is available right now.
+              </Text>
+
+              {/* Response Buttons */}
+              <View style={styles.safetyButtonsContainer}>
+                <TouchableOpacity
+                  style={styles.safetyNoButton}
+                  onPress={() => handleSafetyResponse(true)}
+                  activeOpacity={0.9}
+                  accessibilityRole="button"
+                  accessibilityLabel="No, I'm not in crisis"
+                  accessibilityHint="Continue to account creation"
+                >
+                  <LinearGradient
+                    colors={Gradients.primaryButton}
+                    style={styles.safetyButtonGradient}
+                  >
+                    <Text style={styles.safetyButtonText}>No, I'm not in crisis</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.safetyYesButton}
+                  onPress={() => handleSafetyResponse(false)}
+                  activeOpacity={0.9}
+                  accessibilityRole="button"
+                  accessibilityLabel="Yes, I need help now"
+                  accessibilityHint="Shows crisis resources and hotlines"
+                >
+                  <Text style={styles.safetyYesButtonText}>Yes, I need help now</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Crisis Resources - Always Visible */}
+              <View style={styles.crisisResourcesCard} accessibilityRole="alert" accessibilityLabel="Crisis resources available">
+                <View style={styles.crisisHeader}>
+                  <AlertTriangleIcon size={24} color={PsychiColors.error} />
+                  <Text style={styles.crisisTitle} accessibilityRole="header">Crisis Resources</Text>
+                </View>
+
+                <Text style={styles.crisisDescription}>
+                  If you or someone you know is struggling, help is available 24/7:
+                </Text>
+
+                <TouchableOpacity
+                  style={styles.crisisHotlineButton}
+                  onPress={handleCallCrisisLine}
+                  activeOpacity={0.8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Call 988 Suicide and Crisis Lifeline"
+                  accessibilityHint="Opens phone dialer to call 988"
+                >
+                  <View style={styles.crisisHotlineContent}>
+                    <PhoneIcon size={20} color={PsychiColors.white} />
+                    <View style={styles.crisisHotlineText}>
+                      <Text style={styles.crisisHotlineNumber}>988</Text>
+                      <Text style={styles.crisisHotlineLabel}>Suicide & Crisis Lifeline</Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.crisisTextButton}
+                  onPress={handleTextCrisisLine}
+                  activeOpacity={0.8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Text HOME to 741741 Crisis Text Line"
+                  accessibilityHint="Opens messaging app to text crisis line"
+                >
+                  <Text style={styles.crisisTextButtonText}>Text HOME to 741741</Text>
+                  <Text style={styles.crisisTextButtonLabel}>Crisis Text Line</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.emergencyButton}
+                  onPress={() => Linking.openURL('tel:911')}
+                  activeOpacity={0.8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Call 911 for emergencies"
+                  accessibilityHint="Opens phone dialer to call emergency services"
+                >
+                  <Text style={styles.emergencyButtonText}>Call 911 for emergencies</Text>
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.safetyNote}>
+                You can always access these resources from within the app.
+              </Text>
+            </View>
+          </ScrollView>
+        </View>
+      </View>
+    );
+  }
+
   // Role Selection Screen (Step 1)
   if (step === 'role') {
     return (
@@ -154,6 +319,9 @@ export default function SignUpScreen() {
             style={styles.backButton}
             onPress={() => router.back()}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+            accessibilityHint="Returns to the previous screen"
           >
             <View style={styles.backButtonContent}>
               <ChevronLeftIcon size={20} color={PsychiColors.white} />
@@ -166,8 +334,10 @@ export default function SignUpScreen() {
               source={require('@/assets/images/logo.png')}
               style={styles.logoImage}
               resizeMode="contain"
+              accessibilityLabel="Psychi logo"
+              accessibilityRole="image"
             />
-            <Text style={styles.headerTitle}>Join Psychi</Text>
+            <Text style={styles.headerTitle} accessibilityRole="header">Join Psychi</Text>
             <Text style={styles.headerSubtitle}>How will you use Psychi?</Text>
           </View>
         </LinearGradient>
@@ -183,6 +353,10 @@ export default function SignUpScreen() {
               ]}
               onPress={() => setSelectedRole('client')}
               activeOpacity={0.8}
+              accessibilityRole="radio"
+              accessibilityLabel="I'm looking for support"
+              accessibilityHint="Connect with trained peer supporters for chat, phone, or video sessions"
+              accessibilityState={{ selected: selectedRole === 'client' }}
             >
               <LinearGradient
                 colors={Gradients.client}
@@ -212,6 +386,10 @@ export default function SignUpScreen() {
               ]}
               onPress={() => setSelectedRole('supporter')}
               activeOpacity={0.8}
+              accessibilityRole="radio"
+              accessibilityLabel="I want to be a supporter"
+              accessibilityHint="Use your psychology education to help others while earning money"
+              accessibilityState={{ selected: selectedRole === 'supporter' }}
             >
               <LinearGradient
                 colors={Gradients.supporter}
@@ -239,6 +417,10 @@ export default function SignUpScreen() {
               onPress={handleRoleContinue}
               disabled={!selectedRole}
               activeOpacity={0.9}
+              accessibilityRole="button"
+              accessibilityLabel="Continue"
+              accessibilityHint="Proceed to the next step"
+              accessibilityState={{ disabled: !selectedRole }}
             >
               <LinearGradient
                 colors={selectedRole ? Gradients.primaryButton : ['#94A3B8', '#94A3B8']}
@@ -251,7 +433,12 @@ export default function SignUpScreen() {
             {/* Footer */}
             <View style={styles.footer}>
               <Text style={styles.footerText}>Already have an account? </Text>
-              <TouchableOpacity onPress={() => router.replace('/(auth)/sign-in')}>
+              <TouchableOpacity
+                onPress={() => router.replace('/(auth)/sign-in')}
+                accessibilityRole="link"
+                accessibilityLabel="Sign In"
+                accessibilityHint="Navigate to sign in screen"
+              >
                 <Text style={styles.footerLink}>Sign In</Text>
               </TouchableOpacity>
             </View>
@@ -275,6 +462,9 @@ export default function SignUpScreen() {
           style={styles.backButton}
           onPress={() => setStep('role')}
           activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+          accessibilityHint="Returns to role selection"
         >
           <View style={styles.backButtonContent}>
             <ChevronLeftIcon size={20} color={PsychiColors.white} />
@@ -287,8 +477,10 @@ export default function SignUpScreen() {
             source={require('@/assets/images/logo.png')}
             style={styles.logoImage}
             resizeMode="contain"
+            accessibilityLabel="Psychi logo"
+            accessibilityRole="image"
           />
-          <Text style={styles.headerTitle}>Create your account</Text>
+          <Text style={styles.headerTitle} accessibilityRole="header">Create your account</Text>
           <Text style={styles.headerSubtitle}>
             {selectedRole === 'supporter' ? 'Join as a Supporter' : 'Join as a Client'}
           </Text>
@@ -304,7 +496,7 @@ export default function SignUpScreen() {
           <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             {/* Email Input */}
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Email</Text>
+              <Text style={styles.label} nativeID="emailLabel">Email</Text>
               <View style={styles.inputWrapper}>
                 <TextInput
                   style={styles.input}
@@ -315,13 +507,16 @@ export default function SignUpScreen() {
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
+                  accessibilityLabel="Email address"
+                  accessibilityHint="Enter your email address for your account"
+                  accessibilityLabelledBy="emailLabel"
                 />
               </View>
             </View>
 
             {/* Password Input */}
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Password</Text>
+              <Text style={styles.label} nativeID="passwordLabel">Password</Text>
               <View style={styles.passwordWrapper}>
                 <TextInput
                   style={styles.passwordInput}
@@ -330,10 +525,16 @@ export default function SignUpScreen() {
                   placeholder="Create a password"
                   placeholderTextColor={PsychiColors.textMuted}
                   secureTextEntry={!showPassword}
+                  accessibilityLabel="Password"
+                  accessibilityHint="Create a password for your account"
+                  accessibilityLabelledBy="passwordLabel"
                 />
                 <TouchableOpacity
                   style={styles.eyeButton}
                   onPress={() => setShowPassword(!showPassword)}
+                  accessibilityRole="button"
+                  accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+                  accessibilityHint="Toggles password visibility"
                 >
                   <EyeIcon size={20} color={PsychiColors.textMuted} />
                 </TouchableOpacity>
@@ -342,7 +543,7 @@ export default function SignUpScreen() {
 
             {/* Confirm Password Input */}
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Confirm Password</Text>
+              <Text style={styles.label} nativeID="confirmPasswordLabel">Confirm Password</Text>
               <View style={styles.inputWrapper}>
                 <TextInput
                   style={styles.input}
@@ -351,6 +552,9 @@ export default function SignUpScreen() {
                   placeholder="Confirm your password"
                   placeholderTextColor={PsychiColors.textMuted}
                   secureTextEntry={!showPassword}
+                  accessibilityLabel="Confirm password"
+                  accessibilityHint="Re-enter your password to confirm"
+                  accessibilityLabelledBy="confirmPasswordLabel"
                 />
               </View>
             </View>
@@ -364,6 +568,10 @@ export default function SignUpScreen() {
               onPress={handleSignUp}
               disabled={isLoading || !allAgreementsAccepted}
               activeOpacity={0.9}
+              accessibilityRole="button"
+              accessibilityLabel="Create Account"
+              accessibilityHint="Creates your account and signs you in"
+              accessibilityState={{ disabled: isLoading || !allAgreementsAccepted }}
             >
               <LinearGradient
                 colors={!allAgreementsAccepted ? ['#94A3B8', '#94A3B8'] : Gradients.primaryButton}
@@ -388,12 +596,15 @@ export default function SignUpScreen() {
                     <TouchableOpacity
                       style={[styles.checkbox, agreedToTerms && styles.checkboxChecked]}
                       onPress={() => setAgreedToTerms(!agreedToTerms)}
+                      accessibilityRole="checkbox"
+                      accessibilityLabel="Agree to Terms of Service"
+                      accessibilityState={{ checked: agreedToTerms }}
                     >
                       {agreedToTerms && <CheckIcon size={14} color={PsychiColors.white} />}
                     </TouchableOpacity>
                     <Text style={styles.agreementText}>
                       I have read and agree to the{' '}
-                      <Text style={styles.termsLink} onPress={() => router.push('/legal/terms-of-service')}>
+                      <Text style={styles.termsLink} onPress={() => router.push('/legal/terms-of-service')} accessibilityRole="link">
                         Terms of Service
                       </Text>
                     </Text>
@@ -404,12 +615,15 @@ export default function SignUpScreen() {
                     <TouchableOpacity
                       style={[styles.checkbox, agreedToPrivacy && styles.checkboxChecked]}
                       onPress={() => setAgreedToPrivacy(!agreedToPrivacy)}
+                      accessibilityRole="checkbox"
+                      accessibilityLabel="Agree to Privacy Policy"
+                      accessibilityState={{ checked: agreedToPrivacy }}
                     >
                       {agreedToPrivacy && <CheckIcon size={14} color={PsychiColors.white} />}
                     </TouchableOpacity>
                     <Text style={styles.agreementText}>
                       I have read and agree to the{' '}
-                      <Text style={styles.termsLink} onPress={() => router.push('/legal/privacy-policy')}>
+                      <Text style={styles.termsLink} onPress={() => router.push('/legal/privacy-policy')} accessibilityRole="link">
                         Privacy Policy
                       </Text>
                     </Text>
@@ -420,12 +634,15 @@ export default function SignUpScreen() {
                     <TouchableOpacity
                       style={[styles.checkbox, agreedToDisclaimer && styles.checkboxChecked]}
                       onPress={() => setAgreedToDisclaimer(!agreedToDisclaimer)}
+                      accessibilityRole="checkbox"
+                      accessibilityLabel="Agree to Client Disclaimer"
+                      accessibilityState={{ checked: agreedToDisclaimer }}
                     >
                       {agreedToDisclaimer && <CheckIcon size={14} color={PsychiColors.white} />}
                     </TouchableOpacity>
                     <Text style={styles.agreementText}>
                       I have read and agree to the{' '}
-                      <Text style={styles.termsLink} onPress={() => router.push('/legal/client-disclaimer')}>
+                      <Text style={styles.termsLink} onPress={() => router.push('/legal/client-disclaimer')} accessibilityRole="link">
                         Client Disclaimer
                       </Text>
                     </Text>
@@ -438,12 +655,15 @@ export default function SignUpScreen() {
                     <TouchableOpacity
                       style={[styles.checkbox, supporterAgreedToTerms && styles.checkboxChecked]}
                       onPress={() => setSupporterAgreedToTerms(!supporterAgreedToTerms)}
+                      accessibilityRole="checkbox"
+                      accessibilityLabel="Agree to Terms of Service"
+                      accessibilityState={{ checked: supporterAgreedToTerms }}
                     >
                       {supporterAgreedToTerms && <CheckIcon size={14} color={PsychiColors.white} />}
                     </TouchableOpacity>
                     <Text style={styles.agreementText}>
                       I have read and agree to the{' '}
-                      <Text style={styles.termsLink} onPress={() => router.push('/legal/terms-of-service')}>
+                      <Text style={styles.termsLink} onPress={() => router.push('/legal/terms-of-service')} accessibilityRole="link">
                         Terms of Service
                       </Text>
                     </Text>
@@ -454,12 +674,15 @@ export default function SignUpScreen() {
                     <TouchableOpacity
                       style={[styles.checkbox, supporterAgreedToPrivacy && styles.checkboxChecked]}
                       onPress={() => setSupporterAgreedToPrivacy(!supporterAgreedToPrivacy)}
+                      accessibilityRole="checkbox"
+                      accessibilityLabel="Agree to Privacy Policy"
+                      accessibilityState={{ checked: supporterAgreedToPrivacy }}
                     >
                       {supporterAgreedToPrivacy && <CheckIcon size={14} color={PsychiColors.white} />}
                     </TouchableOpacity>
                     <Text style={styles.agreementText}>
                       I have read and agree to the{' '}
-                      <Text style={styles.termsLink} onPress={() => router.push('/legal/privacy-policy')}>
+                      <Text style={styles.termsLink} onPress={() => router.push('/legal/privacy-policy')} accessibilityRole="link">
                         Privacy Policy
                       </Text>
                     </Text>
@@ -470,12 +693,15 @@ export default function SignUpScreen() {
                     <TouchableOpacity
                       style={[styles.checkbox, supporterAgreedToConfidentiality && styles.checkboxChecked]}
                       onPress={() => setSupporterAgreedToConfidentiality(!supporterAgreedToConfidentiality)}
+                      accessibilityRole="checkbox"
+                      accessibilityLabel="Agree to Confidentiality Agreement"
+                      accessibilityState={{ checked: supporterAgreedToConfidentiality }}
                     >
                       {supporterAgreedToConfidentiality && <CheckIcon size={14} color={PsychiColors.white} />}
                     </TouchableOpacity>
                     <Text style={styles.agreementText}>
                       I have read and agree to the{' '}
-                      <Text style={styles.termsLink} onPress={() => router.push('/legal/confidentiality-agreement')}>
+                      <Text style={styles.termsLink} onPress={() => router.push('/legal/confidentiality-agreement')} accessibilityRole="link">
                         Confidentiality Agreement
                       </Text>
                     </Text>
@@ -492,7 +718,13 @@ export default function SignUpScreen() {
             </View>
 
             {/* Social Login Buttons */}
-            <TouchableOpacity style={styles.socialButton} activeOpacity={0.8}>
+            <TouchableOpacity
+              style={styles.socialButton}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel="Continue with Google"
+              accessibilityHint="Signs up using your Google account"
+            >
               <Text style={styles.socialIcon}>G</Text>
               <Text style={styles.socialButtonText}>Continue with Google</Text>
             </TouchableOpacity>
@@ -500,7 +732,12 @@ export default function SignUpScreen() {
             {/* Footer */}
             <View style={styles.footer}>
               <Text style={styles.footerText}>Already have an account? </Text>
-              <TouchableOpacity onPress={() => router.replace('/(auth)/sign-in')}>
+              <TouchableOpacity
+                onPress={() => router.replace('/(auth)/sign-in')}
+                accessibilityRole="link"
+                accessibilityLabel="Sign In"
+                accessibilityHint="Navigate to sign in screen"
+              >
                 <Text style={styles.footerLink}>Sign In</Text>
               </TouchableOpacity>
             </View>
@@ -524,19 +761,20 @@ export default function SignUpScreen() {
         transparent
         animationType="fade"
         onRequestClose={() => {}}
+        accessibilityViewIsModal={true}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.equipmentModal}>
+          <View style={styles.equipmentModal} accessibilityRole="alert">
             <View style={styles.equipmentIconRow}>
-              <View style={styles.equipmentIconContainer}>
+              <View style={styles.equipmentIconContainer} accessibilityLabel="Video camera required">
                 <VideoIcon size={32} color={PsychiColors.azure} />
               </View>
-              <View style={styles.equipmentIconContainer}>
+              <View style={styles.equipmentIconContainer} accessibilityLabel="Microphone required">
                 <MicIcon size={32} color={PsychiColors.azure} />
               </View>
             </View>
 
-            <Text style={styles.equipmentTitle}>Equipment Requirements</Text>
+            <Text style={styles.equipmentTitle} accessibilityRole="header">Equipment Requirements</Text>
 
             <Text style={styles.equipmentDescription}>
               To provide peer support services through Psychi, you must have:
@@ -571,6 +809,9 @@ export default function SignUpScreen() {
               style={styles.equipmentAgreeButton}
               onPress={handleEquipmentAgree}
               activeOpacity={0.9}
+              accessibilityRole="button"
+              accessibilityLabel="I Understand and Agree"
+              accessibilityHint="Confirms you have the required equipment and proceeds to dashboard"
             >
               <LinearGradient
                 colors={Gradients.primaryButton}
@@ -981,5 +1222,151 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.base,
     fontWeight: '600',
     color: PsychiColors.white,
+  },
+  // Safety Screening Styles
+  safetyIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: Spacing.md,
+  },
+  safetyContent: {
+    paddingTop: Spacing.md,
+  },
+  safetyQuestion: {
+    fontSize: Typography.fontSize.xl,
+    fontWeight: '600',
+    color: PsychiColors.textPrimary,
+    textAlign: 'center',
+    marginBottom: Spacing.md,
+    lineHeight: 28,
+    fontFamily: Typography.fontFamily.serif,
+  },
+  safetySubtext: {
+    fontSize: Typography.fontSize.sm,
+    color: PsychiColors.textSecondary,
+    textAlign: 'center',
+    marginBottom: Spacing.xl,
+    lineHeight: 22,
+    paddingHorizontal: Spacing.md,
+  },
+  safetyButtonsContainer: {
+    marginBottom: Spacing.xl,
+    gap: Spacing.md,
+  },
+  safetyNoButton: {
+    borderRadius: BorderRadius['2xl'],
+    overflow: 'hidden',
+    ...Shadows.button,
+  },
+  safetyButtonGradient: {
+    paddingVertical: Spacing.md + 2,
+    alignItems: 'center',
+    borderRadius: BorderRadius['2xl'],
+  },
+  safetyButtonText: {
+    fontSize: Typography.fontSize.lg,
+    fontWeight: '600',
+    color: PsychiColors.white,
+  },
+  safetyYesButton: {
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderRadius: BorderRadius['2xl'],
+    paddingVertical: Spacing.md + 2,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: PsychiColors.error,
+  },
+  safetyYesButtonText: {
+    fontSize: Typography.fontSize.lg,
+    fontWeight: '600',
+    color: PsychiColors.error,
+  },
+  crisisResourcesCard: {
+    backgroundColor: 'rgba(239, 68, 68, 0.05)',
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.2)',
+    marginBottom: Spacing.lg,
+  },
+  crisisHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: Spacing.md,
+    gap: Spacing.sm,
+  },
+  crisisTitle: {
+    fontSize: Typography.fontSize.lg,
+    fontWeight: '700',
+    color: PsychiColors.error,
+  },
+  crisisDescription: {
+    fontSize: Typography.fontSize.sm,
+    color: PsychiColors.textSecondary,
+    marginBottom: Spacing.md,
+    lineHeight: 20,
+  },
+  crisisHotlineButton: {
+    backgroundColor: PsychiColors.error,
+    borderRadius: BorderRadius.lg,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    marginBottom: Spacing.sm,
+  },
+  crisisHotlineContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.md,
+  },
+  crisisHotlineText: {
+    alignItems: 'center',
+  },
+  crisisHotlineNumber: {
+    fontSize: Typography.fontSize['2xl'],
+    fontWeight: '700',
+    color: PsychiColors.white,
+  },
+  crisisHotlineLabel: {
+    fontSize: Typography.fontSize.xs,
+    color: 'rgba(255, 255, 255, 0.9)',
+  },
+  crisisTextButton: {
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    borderRadius: BorderRadius.lg,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    alignItems: 'center',
+    marginBottom: Spacing.sm,
+  },
+  crisisTextButtonText: {
+    fontSize: Typography.fontSize.base,
+    fontWeight: '600',
+    color: PsychiColors.error,
+  },
+  crisisTextButtonLabel: {
+    fontSize: Typography.fontSize.xs,
+    color: PsychiColors.textMuted,
+    marginTop: 2,
+  },
+  emergencyButton: {
+    paddingVertical: Spacing.sm,
+    alignItems: 'center',
+  },
+  emergencyButtonText: {
+    fontSize: Typography.fontSize.sm,
+    fontWeight: '600',
+    color: PsychiColors.textSecondary,
+    textDecorationLine: 'underline',
+  },
+  safetyNote: {
+    fontSize: Typography.fontSize.xs,
+    color: PsychiColors.textMuted,
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
 });

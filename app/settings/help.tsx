@@ -49,11 +49,15 @@ export default function HelpSupportScreen() {
     },
     {
       question: 'What if I need to cancel a session?',
-      answer: 'You can cancel sessions up to 4 hours before the scheduled time for a full refund.',
+      answer: 'Our cancellation policy: Cancel more than 24 hours before for a full refund, cancel 2-24 hours before for a 50% refund, or cancel less than 2 hours before with no refund.',
     },
     {
       question: 'How do subscription plans work?',
       answer: 'Subscription plans give you a set number of sessions per month at a discounted rate. Unused sessions do not roll over. You can cancel or change your plan at any time.',
+    },
+    {
+      question: 'What are the requirements to become a supporter?',
+      answer: 'To be a supporter on the Psychi platform, one must be enrolled in or graduated from an accredited psychology or humanities program, at least 18 years of age, a U.S. citizen, and complete our comprehensive training modules upon sign-up.',
     },
   ];
 
@@ -67,25 +71,28 @@ export default function HelpSupportScreen() {
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton} accessibilityRole="button" accessibilityLabel="Go back" accessibilityHint="Returns to the previous screen">
             <ChevronLeftIcon size={24} color={PsychiColors.azure} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Help & Support</Text>
+          <Text style={styles.headerTitle} accessibilityRole="header">Help & Support</Text>
           <View style={styles.placeholder} />
         </View>
 
         {/* Emergency Notice */}
         <View style={styles.section}>
-          <View style={styles.emergencyCard}>
+          <View style={styles.emergencyCard} accessibilityRole="alert" accessibilityLabel="Crisis resources available">
             <AlertIcon size={24} color={PsychiColors.error} />
             <View style={styles.emergencyContent}>
-              <Text style={styles.emergencyTitle}>In Crisis?</Text>
+              <Text style={styles.emergencyTitle} accessibilityRole="header">In Crisis?</Text>
               <Text style={styles.emergencyText}>
                 If you're in immediate danger or having thoughts of self-harm, please contact emergency services or a crisis hotline.
               </Text>
               <TouchableOpacity
                 style={styles.crisisButton}
                 onPress={() => Linking.openURL('tel:988')}
+                accessibilityRole="button"
+                accessibilityLabel="Call 988 Suicide and Crisis Lifeline"
+                accessibilityHint="Opens phone dialer to call 988"
               >
                 <Text style={styles.crisisButtonText}>Call 988 (Suicide & Crisis Lifeline)</Text>
               </TouchableOpacity>
@@ -95,11 +102,14 @@ export default function HelpSupportScreen() {
 
         {/* Contact Options */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Contact Us</Text>
+          <Text style={styles.sectionTitle} accessibilityRole="header">Contact Us</Text>
           <TouchableOpacity
             style={styles.emailCard}
             onPress={() => Linking.openURL(`mailto:${ExternalUrls.supportEmail}`)}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Email Support"
+            accessibilityHint={`Opens email to ${ExternalUrls.supportEmail}`}
           >
             <MailIcon size={24} color={PsychiColors.azure} />
             <View style={styles.emailContent}>
@@ -112,7 +122,7 @@ export default function HelpSupportScreen() {
 
         {/* FAQ Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Frequently Asked Questions</Text>
+          <Text style={styles.sectionTitle} accessibilityRole="header">Frequently Asked Questions</Text>
           <View style={styles.faqContainer}>
             {faqItems.map((item, index) => (
               <TouchableOpacity
@@ -123,6 +133,10 @@ export default function HelpSupportScreen() {
                 ]}
                 onPress={() => toggleFaq(index)}
                 activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={item.question}
+                accessibilityHint={expandedFaq === index ? 'Collapse answer' : 'Expand to see answer'}
+                accessibilityState={{ expanded: expandedFaq === index }}
               >
                 <View style={styles.faqHeader}>
                   <Text style={styles.faqQuestion}>{item.question}</Text>
@@ -148,6 +162,9 @@ export default function HelpSupportScreen() {
             <TouchableOpacity
               style={styles.socialButton}
               onPress={() => Linking.openURL(ExternalUrls.instagram)}
+              accessibilityRole="link"
+              accessibilityLabel="Follow us on Instagram"
+              accessibilityHint="Opens Instagram in browser"
             >
               <Text style={styles.socialButtonText}>Follow us on Instagram</Text>
             </TouchableOpacity>

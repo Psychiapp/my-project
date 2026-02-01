@@ -260,12 +260,15 @@ export default function ClientHomeScreen() {
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <Text style={styles.greeting}>Welcome back</Text>
-            <Text style={styles.userName}>{profile?.firstName || 'there'}</Text>
+            <Text style={styles.userName} accessibilityRole="header">{profile?.firstName || 'there'}</Text>
           </View>
           <TouchableOpacity
             style={styles.settingsButton}
             onPress={() => router.push('/(client)/profile')}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Settings"
+            accessibilityHint="Opens your profile and settings"
           >
             <SettingsIcon size={20} color={PsychiColors.textSecondary} />
           </TouchableOpacity>
@@ -297,6 +300,9 @@ export default function ClientHomeScreen() {
                 style={styles.heroCta}
                 onPress={() => router.push('/(client)/book')}
                 activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel="Book a Session"
+                accessibilityHint="Navigate to book a new session with a supporter"
               >
                 <LinearGradient
                   colors={Gradients.primaryButton}
@@ -332,6 +338,9 @@ export default function ClientHomeScreen() {
               style={styles.statCard}
               onPress={() => router.push('/(client)/subscription')}
               activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel={`Current plan: ${subscriptionTier ? planLabels[subscriptionTier] || subscriptionTier : 'Pay-As-You-Go'}`}
+              accessibilityHint="View or change your subscription"
             >
               <CardIcon size={20} color={PsychiColors.violet} />
               <Text style={styles.statValueSmall}>
@@ -349,8 +358,8 @@ export default function ClientHomeScreen() {
         {assignedSupporter !== null && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Your Supporter</Text>
-              <TouchableOpacity activeOpacity={0.7}>
+              <Text style={styles.sectionTitle} accessibilityRole="header">Your Supporter</Text>
+              <TouchableOpacity activeOpacity={0.7} accessibilityRole="link" accessibilityLabel="View supporter profile" accessibilityHint="Opens your supporter's full profile">
                 <Text style={styles.sectionAction}>View Profile</Text>
               </TouchableOpacity>
             </View>
@@ -397,6 +406,9 @@ export default function ClientHomeScreen() {
               style={styles.reportButton}
               onPress={handleReportSupporter}
               activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Report an issue"
+              accessibilityHint="Opens email to report a problem with your supporter"
             >
               <AlertIcon size={16} color={PsychiColors.textMuted} />
               <Text style={styles.reportButtonText}>Report an issue</Text>
@@ -407,11 +419,14 @@ export default function ClientHomeScreen() {
         {/* Quick Actions */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>QUICK ACTIONS</Text>
-          <View style={styles.actionsContainer}>
+          <View style={styles.actionsContainer} accessibilityRole="menu">
             <TouchableOpacity
               style={styles.actionCard}
               onPress={() => router.push('/(client)/book')}
               activeOpacity={0.7}
+              accessibilityRole="menuitem"
+              accessibilityLabel="Book Session"
+              accessibilityHint="Schedule your next session"
             >
               <View style={styles.actionLeft}>
                 <PlusIcon size={22} color={PsychiColors.royalBlue} />
@@ -427,6 +442,9 @@ export default function ClientHomeScreen() {
               style={styles.actionCard}
               onPress={() => router.push('/(client)/sessions')}
               activeOpacity={0.7}
+              accessibilityRole="menuitem"
+              accessibilityLabel="Sessions"
+              accessibilityHint="View upcoming and past sessions"
             >
               <View style={styles.actionLeft}>
                 <CalendarIcon size={22} color={PsychiColors.coral} />
@@ -442,6 +460,9 @@ export default function ClientHomeScreen() {
               style={styles.actionCard}
               onPress={() => router.push('/(client)/profile')}
               activeOpacity={0.7}
+              accessibilityRole="menuitem"
+              accessibilityLabel="Settings"
+              accessibilityHint="Manage preferences and account"
             >
               <View style={styles.actionLeft}>
                 <SettingsIcon size={22} color={PsychiColors.violet} />

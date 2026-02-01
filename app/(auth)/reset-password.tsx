@@ -100,20 +100,26 @@ export default function ResetPasswordScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.content}>
-          <View style={styles.iconContainer}>
+          <View style={styles.iconContainer} accessibilityLabel="Warning">
             <WarningIcon size={64} color={PsychiColors.warning} />
           </View>
-          <Text style={styles.title}>Link Expired</Text>
+          <Text style={styles.title} accessibilityRole="header">Link Expired</Text>
           <Text style={styles.description}>{error}</Text>
           <TouchableOpacity
             style={styles.primaryButton}
             onPress={() => router.replace('/(auth)/forgot-password')}
+            accessibilityRole="button"
+            accessibilityLabel="Request New Link"
+            accessibilityHint="Navigate to request a new password reset link"
           >
             <Text style={styles.primaryButtonText}>Request New Link</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.textButton}
             onPress={() => router.replace('/(auth)/sign-in')}
+            accessibilityRole="button"
+            accessibilityLabel="Back to Sign In"
+            accessibilityHint="Returns to the sign in screen"
           >
             <Text style={styles.textButtonText}>Back to Sign In</Text>
           </TouchableOpacity>
@@ -127,16 +133,19 @@ export default function ResetPasswordScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.content}>
-          <View style={styles.successIcon}>
+          <View style={styles.successIcon} accessibilityLabel="Success">
             <CheckCircleIcon size={72} color={PsychiColors.success} />
           </View>
-          <Text style={styles.title}>Password Reset!</Text>
+          <Text style={styles.title} accessibilityRole="header">Password Reset!</Text>
           <Text style={styles.description}>
             Your password has been successfully reset. You can now sign in with your new password.
           </Text>
           <TouchableOpacity
             style={styles.primaryButton}
             onPress={() => router.replace('/(auth)/sign-in')}
+            accessibilityRole="button"
+            accessibilityLabel="Sign In"
+            accessibilityHint="Navigate to sign in with your new password"
           >
             <Text style={styles.primaryButtonText}>Sign In</Text>
           </TouchableOpacity>
@@ -153,12 +162,12 @@ export default function ResetPasswordScreen() {
       >
         <View style={styles.content}>
           {/* Icon */}
-          <View style={styles.iconContainer}>
+          <View style={styles.iconContainer} accessibilityLabel="Create new password">
             <LockIcon size={64} color={PsychiColors.azure} />
           </View>
 
           {/* Title */}
-          <Text style={styles.title}>Create New Password</Text>
+          <Text style={styles.title} accessibilityRole="header">Create New Password</Text>
           <Text style={styles.description}>
             Enter your new password below. Make sure it's at least 8 characters and includes uppercase, lowercase, and numbers.
           </Text>
@@ -167,7 +176,7 @@ export default function ResetPasswordScreen() {
           <View style={styles.form}>
             {/* New Password */}
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>New Password</Text>
+              <Text style={styles.label} nativeID="newPasswordLabel">New Password</Text>
               <View style={styles.passwordWrapper}>
                 <TextInput
                   style={styles.passwordInput}
@@ -177,10 +186,16 @@ export default function ResetPasswordScreen() {
                   placeholderTextColor={PsychiColors.textMuted}
                   secureTextEntry={!showPassword}
                   autoCapitalize="none"
+                  accessibilityLabel="New password"
+                  accessibilityHint="Enter your new password"
+                  accessibilityLabelledBy="newPasswordLabel"
                 />
                 <TouchableOpacity
                   style={styles.eyeButton}
                   onPress={() => setShowPassword(!showPassword)}
+                  accessibilityRole="button"
+                  accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+                  accessibilityHint="Toggles password visibility"
                 >
                   <EyeIcon size={20} color={PsychiColors.textMuted} />
                 </TouchableOpacity>
@@ -189,7 +204,7 @@ export default function ResetPasswordScreen() {
 
             {/* Confirm Password */}
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Confirm Password</Text>
+              <Text style={styles.label} nativeID="confirmPasswordLabel">Confirm Password</Text>
               <View style={styles.passwordWrapper}>
                 <TextInput
                   style={styles.passwordInput}
@@ -199,10 +214,16 @@ export default function ResetPasswordScreen() {
                   placeholderTextColor={PsychiColors.textMuted}
                   secureTextEntry={!showConfirmPassword}
                   autoCapitalize="none"
+                  accessibilityLabel="Confirm password"
+                  accessibilityHint="Re-enter your new password"
+                  accessibilityLabelledBy="confirmPasswordLabel"
                 />
                 <TouchableOpacity
                   style={styles.eyeButton}
                   onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                  accessibilityRole="button"
+                  accessibilityLabel={showConfirmPassword ? 'Hide password' : 'Show password'}
+                  accessibilityHint="Toggles password visibility"
                 >
                   <EyeIcon size={20} color={PsychiColors.textMuted} />
                 </TouchableOpacity>
@@ -251,6 +272,10 @@ export default function ResetPasswordScreen() {
               style={[styles.primaryButton, isLoading && styles.buttonDisabled]}
               onPress={handleResetPassword}
               disabled={isLoading}
+              accessibilityRole="button"
+              accessibilityLabel="Reset Password"
+              accessibilityHint="Saves your new password"
+              accessibilityState={{ disabled: isLoading }}
             >
               {isLoading ? (
                 <ActivityIndicator color={PsychiColors.white} />
@@ -264,6 +289,9 @@ export default function ResetPasswordScreen() {
           <TouchableOpacity
             style={styles.textButton}
             onPress={() => router.replace('/(auth)/sign-in')}
+            accessibilityRole="button"
+            accessibilityLabel="Cancel and return to Sign In"
+            accessibilityHint="Cancels password reset and returns to sign in screen"
           >
             <Text style={styles.textButtonText}>Cancel and return to Sign In</Text>
           </TouchableOpacity>

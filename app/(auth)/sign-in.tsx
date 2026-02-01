@@ -56,6 +56,9 @@ export default function SignInScreen() {
           style={styles.backButton}
           onPress={() => router.back()}
           activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+          accessibilityHint="Returns to the previous screen"
         >
           <View style={styles.backButtonContent}>
             <ChevronLeftIcon size={20} color={PsychiColors.white} />
@@ -69,8 +72,10 @@ export default function SignInScreen() {
             source={require('@/assets/images/logo.png')}
             style={styles.logoImage}
             resizeMode="contain"
+            accessibilityLabel="Psychi logo"
+            accessibilityRole="image"
           />
-          <Text style={styles.headerTitle}>Welcome back</Text>
+          <Text style={styles.headerTitle} accessibilityRole="header">Welcome back</Text>
           <Text style={styles.headerSubtitle}>Sign in to continue to Psychi</Text>
         </View>
       </LinearGradient>
@@ -84,7 +89,7 @@ export default function SignInScreen() {
           <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             {/* Email Input */}
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Email</Text>
+              <Text style={styles.label} nativeID="emailLabel">Email</Text>
               <View style={styles.inputWrapper}>
                 <TextInput
                   style={styles.input}
@@ -95,13 +100,16 @@ export default function SignInScreen() {
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
+                  accessibilityLabel="Email address"
+                  accessibilityHint="Enter your email address to sign in"
+                  accessibilityLabelledBy="emailLabel"
                 />
               </View>
             </View>
 
             {/* Password Input */}
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Password</Text>
+              <Text style={styles.label} nativeID="passwordLabel">Password</Text>
               <View style={styles.passwordWrapper}>
                 <TextInput
                   style={styles.passwordInput}
@@ -110,10 +118,16 @@ export default function SignInScreen() {
                   placeholder="Enter your password"
                   placeholderTextColor={PsychiColors.textMuted}
                   secureTextEntry={!showPassword}
+                  accessibilityLabel="Password"
+                  accessibilityHint="Enter your password to sign in"
+                  accessibilityLabelledBy="passwordLabel"
                 />
                 <TouchableOpacity
                   style={styles.eyeButton}
                   onPress={() => setShowPassword(!showPassword)}
+                  accessibilityRole="button"
+                  accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+                  accessibilityHint="Toggles password visibility"
                 >
                   <EyeIcon size={20} color={PsychiColors.textMuted} />
                 </TouchableOpacity>
@@ -124,6 +138,9 @@ export default function SignInScreen() {
             <TouchableOpacity
               style={styles.forgotPassword}
               onPress={() => router.push('/(auth)/forgot-password')}
+              accessibilityRole="link"
+              accessibilityLabel="Forgot password"
+              accessibilityHint="Navigate to password reset screen"
             >
               <Text style={styles.forgotPasswordText}>Forgot password?</Text>
             </TouchableOpacity>
@@ -134,6 +151,10 @@ export default function SignInScreen() {
               onPress={handleSignIn}
               disabled={isLoading}
               activeOpacity={0.9}
+              accessibilityRole="button"
+              accessibilityLabel="Sign in"
+              accessibilityHint="Signs in to your account"
+              accessibilityState={{ disabled: isLoading }}
             >
               <LinearGradient
                 colors={Gradients.primaryButton}
@@ -155,7 +176,13 @@ export default function SignInScreen() {
             </View>
 
             {/* Social Login Buttons */}
-            <TouchableOpacity style={styles.socialButton} activeOpacity={0.8}>
+            <TouchableOpacity
+              style={styles.socialButton}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel="Continue with Google"
+              accessibilityHint="Signs in using your Google account"
+            >
               <Text style={styles.socialIcon}>G</Text>
               <Text style={styles.socialButtonText}>Continue with Google</Text>
             </TouchableOpacity>
@@ -163,7 +190,12 @@ export default function SignInScreen() {
             {/* Footer */}
             <View style={styles.footer}>
               <Text style={styles.footerText}>Don't have an account? </Text>
-              <TouchableOpacity onPress={() => router.replace('/(auth)/sign-up')}>
+              <TouchableOpacity
+                onPress={() => router.replace('/(auth)/sign-up')}
+                accessibilityRole="link"
+                accessibilityLabel="Sign Up"
+                accessibilityHint="Navigate to create a new account"
+              >
                 <Text style={styles.footerLink}>Sign Up</Text>
               </TouchableOpacity>
             </View>

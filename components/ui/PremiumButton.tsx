@@ -29,6 +29,7 @@ interface PremiumButtonProps {
   style?: ViewStyle;
   textStyle?: TextStyle;
   icon?: React.ReactNode;
+  accessibilityHint?: string;
 }
 
 export function PremiumButton({
@@ -44,6 +45,7 @@ export function PremiumButton({
   style,
   textStyle,
   icon,
+  accessibilityHint,
 }: PremiumButtonProps) {
   const sizeStyles = {
     sm: {
@@ -118,6 +120,10 @@ export function PremiumButton({
         disabled={disabled || loading}
         activeOpacity={0.8}
         style={[fullWidth && styles.fullWidth, style]}
+        accessibilityRole="button"
+        accessibilityLabel={title}
+        accessibilityHint={accessibilityHint}
+        accessibilityState={{ disabled: disabled || loading }}
       >
         <LinearGradient
           colors={disabled ? [PsychiColors.textDisabled, PsychiColors.textDisabled] : Gradients.primaryButton}
@@ -146,6 +152,10 @@ export function PremiumButton({
         disabled={disabled || loading}
         activeOpacity={0.8}
         style={[fullWidth && styles.fullWidth, style]}
+        accessibilityRole="button"
+        accessibilityLabel={title}
+        accessibilityHint={accessibilityHint}
+        accessibilityState={{ disabled: disabled || loading }}
       >
         <LinearGradient
           colors={disabled ? [PsychiColors.textDisabled, PsychiColors.textDisabled] : Gradients.accentButton}
@@ -185,6 +195,10 @@ export function PremiumButton({
         fullWidth && styles.fullWidth,
         style,
       ]}
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      accessibilityHint={accessibilityHint}
+      accessibilityState={{ disabled: disabled || loading }}
     >
       {renderContent()}
     </TouchableOpacity>
@@ -198,6 +212,7 @@ interface TextButtonProps {
   color?: string;
   showArrow?: boolean;
   style?: ViewStyle;
+  accessibilityHint?: string;
 }
 
 export function TextButton({
@@ -206,12 +221,16 @@ export function TextButton({
   color = PsychiColors.royalBlue,
   showArrow = false,
   style,
+  accessibilityHint,
 }: TextButtonProps) {
   return (
     <TouchableOpacity
       onPress={onPress}
       activeOpacity={0.7}
       style={[styles.textButton, style]}
+      accessibilityRole="link"
+      accessibilityLabel={title}
+      accessibilityHint={accessibilityHint}
     >
       <Text style={[styles.textButtonLabel, { color }]}>{title}</Text>
       {showArrow && <ArrowRightIcon size={14} color={color} />}

@@ -147,6 +147,8 @@ export const PremiumInput: React.FC<PremiumInputProps> = ({
           placeholderTextColor={PsychiColors.textSoft}
           selectionColor={PsychiColors.royalBlue}
           secureTextEntry={showPasswordToggle ? !isPasswordVisible : secureTextEntry}
+          accessibilityLabel={label}
+          accessibilityHint={hint}
           {...props}
         />
 
@@ -156,6 +158,9 @@ export const PremiumInput: React.FC<PremiumInputProps> = ({
             style={styles.passwordToggle}
             onPress={() => setIsPasswordVisible(!isPasswordVisible)}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="button"
+            accessibilityLabel={isPasswordVisible ? 'Hide password' : 'Show password'}
+            accessibilityHint="Toggles password visibility"
           >
             {isPasswordVisible ? (
               <EyeOffIcon size={20} color={PsychiColors.textMuted} />
@@ -183,6 +188,7 @@ interface SimpleInputProps extends TextInputProps {
   containerStyle?: ViewStyle;
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
+  accessibilityLabelText?: string;
 }
 
 export const SimpleInput: React.FC<SimpleInputProps> = ({
@@ -191,6 +197,7 @@ export const SimpleInput: React.FC<SimpleInputProps> = ({
   containerStyle,
   leftIcon,
   rightIcon,
+  accessibilityLabelText,
   ...props
 }) => {
   const [isFocused, setIsFocused] = useState(false);
@@ -215,6 +222,8 @@ export const SimpleInput: React.FC<SimpleInputProps> = ({
           onBlur={() => setIsFocused(false)}
           placeholderTextColor={PsychiColors.textSoft}
           selectionColor={PsychiColors.royalBlue}
+          accessibilityLabel={accessibilityLabelText || props.placeholder}
+          accessibilityHint={hint}
           {...props}
         />
         {rightIcon && <View style={styles.rightIcon}>{rightIcon}</View>}
@@ -233,11 +242,13 @@ export const SimpleInput: React.FC<SimpleInputProps> = ({
 interface InlineInputProps extends TextInputProps {
   label: string;
   containerStyle?: ViewStyle;
+  accessibilityHintText?: string;
 }
 
 export const InlineInput: React.FC<InlineInputProps> = ({
   label,
   containerStyle,
+  accessibilityHintText,
   ...props
 }) => {
   const [isFocused, setIsFocused] = useState(false);
@@ -257,6 +268,8 @@ export const InlineInput: React.FC<InlineInputProps> = ({
         onBlur={() => setIsFocused(false)}
         placeholderTextColor={PsychiColors.textSoft}
         selectionColor={PsychiColors.royalBlue}
+        accessibilityLabel={label}
+        accessibilityHint={accessibilityHintText}
         {...props}
       />
     </View>
@@ -285,7 +298,10 @@ export const Textarea: React.FC<TextareaProps> = ({
   return (
     <View style={[styles.container, containerStyle]}>
       {label && (
-        <Text style={[styles.textareaLabel, error && { color: PsychiColors.error }]}>
+        <Text
+          style={[styles.textareaLabel, error && { color: PsychiColors.error }]}
+          accessibilityRole="text"
+        >
           {label}
         </Text>
       )}
@@ -306,6 +322,8 @@ export const Textarea: React.FC<TextareaProps> = ({
           selectionColor={PsychiColors.royalBlue}
           multiline
           textAlignVertical="top"
+          accessibilityLabel={label}
+          accessibilityHint={hint}
           {...props}
         />
       </View>

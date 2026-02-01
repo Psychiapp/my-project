@@ -154,16 +154,16 @@ export default function PrivacySecurityScreen() {
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton} accessibilityRole="button" accessibilityLabel="Go back" accessibilityHint="Returns to the previous screen">
             <ChevronLeftIcon size={24} color={PsychiColors.azure} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Privacy & Security</Text>
+          <Text style={styles.headerTitle} accessibilityRole="header">Privacy & Security</Text>
           <View style={styles.placeholder} />
         </View>
 
         {/* Security Info Card */}
         <View style={styles.section}>
-          <View style={styles.infoCard}>
+          <View style={styles.infoCard} accessibilityRole="text" accessibilityLabel="Your data is protected. All sessions use end-to-end encryption. Your conversations remain private.">
             <ShieldIcon size={24} color={PsychiColors.azure} />
             <View style={styles.infoContent}>
               <Text style={styles.infoTitle}>Your Data is Protected</Text>
@@ -176,7 +176,7 @@ export default function PrivacySecurityScreen() {
 
         {/* Security Settings */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Security</Text>
+          <Text style={styles.sectionTitle} accessibilityRole="header">Security</Text>
           <View style={styles.settingsCard}>
             {securitySettings.map((item, index) => (
               <TouchableOpacity
@@ -186,6 +186,9 @@ export default function PrivacySecurityScreen() {
                   index < securitySettings.length - 1 && styles.settingRowBorder,
                 ]}
                 onPress={item.onPress}
+                accessibilityRole="button"
+                accessibilityLabel={item.title}
+                accessibilityHint={item.description}
               >
                 <item.icon size={20} color={PsychiColors.azure} />
                 <View style={styles.settingInfo}>
@@ -200,9 +203,9 @@ export default function PrivacySecurityScreen() {
 
         {/* Data Management */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Your Data</Text>
+          <Text style={styles.sectionTitle} accessibilityRole="header">Your Data</Text>
           <View style={styles.settingsCard}>
-            <TouchableOpacity style={[styles.settingRow, styles.settingRowBorder]} onPress={handleExportData}>
+            <TouchableOpacity style={[styles.settingRow, styles.settingRowBorder]} onPress={handleExportData} accessibilityRole="button" accessibilityLabel="Export Your Data" accessibilityHint="Download a copy of your information">
               <DownloadIcon size={20} color={PsychiColors.azure} />
               <View style={styles.settingInfo}>
                 <Text style={styles.settingTitle}>Export Your Data</Text>
@@ -210,7 +213,7 @@ export default function PrivacySecurityScreen() {
               </View>
               <ChevronRightIcon size={20} color={PsychiColors.textMuted} />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.settingRow} onPress={handleDeleteAccount}>
+            <TouchableOpacity style={styles.settingRow} onPress={handleDeleteAccount} accessibilityRole="button" accessibilityLabel="Delete Account, destructive action" accessibilityHint="Permanently delete your account and data">
               <TrashIcon size={20} color={PsychiColors.error} />
               <View style={styles.settingInfo}>
                 <Text style={[styles.settingTitle, styles.dangerText]}>Delete Account</Text>
@@ -223,7 +226,7 @@ export default function PrivacySecurityScreen() {
 
         {/* Legal Links */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Legal</Text>
+          <Text style={styles.sectionTitle} accessibilityRole="header">Legal</Text>
           <View style={styles.settingsCard}>
             {legalLinks.map((item, index) => (
               <TouchableOpacity
@@ -233,6 +236,9 @@ export default function PrivacySecurityScreen() {
                   index < legalLinks.length - 1 && styles.settingRowBorder,
                 ]}
                 onPress={() => openLink(item.url)}
+                accessibilityRole="link"
+                accessibilityLabel={item.title}
+                accessibilityHint="Opens in browser"
               >
                 <item.icon size={20} color={PsychiColors.azure} />
                 <View style={styles.settingInfo}>

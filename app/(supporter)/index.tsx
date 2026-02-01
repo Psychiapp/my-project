@@ -97,7 +97,7 @@ export default function SupporterHomeScreen() {
         {/* Editorial Header */}
         <View style={styles.header}>
           <Text style={styles.greetingLabel}>{greeting.toUpperCase()}</Text>
-          <Text style={styles.userName}>{profile?.firstName || 'there'}</Text>
+          <Text style={styles.userName} accessibilityRole="header">{profile?.firstName || 'there'}</Text>
           <Text style={styles.headerSubtitle}>Your support dashboard</Text>
         </View>
 
@@ -126,6 +126,9 @@ export default function SupporterHomeScreen() {
               style={styles.launchButton}
               onPress={() => router.push('/(supporter)/training')}
               activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Go to Training"
+              accessibilityHint="Opens the training modules to complete your certification"
             >
               <BookIcon size={16} color={PsychiColors.white} />
               <Text style={styles.launchButtonText}>Go to Training</Text>
@@ -168,6 +171,9 @@ export default function SupporterHomeScreen() {
           <TouchableOpacity
             onPress={() => router.push('/(supporter)/earnings')}
             style={styles.commissionLink}
+            accessibilityRole="link"
+            accessibilityLabel="View earnings details"
+            accessibilityHint="Opens the earnings breakdown page"
           >
             <Text style={styles.commissionLinkText}>Details</Text>
             <ChevronRightIcon size={14} color={PsychiColors.royalBlue} />
@@ -179,10 +185,13 @@ export default function SupporterHomeScreen() {
         {/* Upcoming Sessions */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Upcoming Sessions</Text>
+            <Text style={styles.sectionTitle} accessibilityRole="header">Upcoming Sessions</Text>
             <TouchableOpacity
               onPress={() => router.push('/(supporter)/sessions')}
               style={styles.viewAllButton}
+              accessibilityRole="link"
+              accessibilityLabel="View all sessions"
+              accessibilityHint="Opens the full sessions list"
             >
               <Text style={styles.viewAllText}>View All</Text>
               <ChevronRightIcon size={14} color={PsychiColors.royalBlue} />
@@ -233,6 +242,9 @@ export default function SupporterHomeScreen() {
             style={styles.actionItem}
             onPress={() => router.push('/(supporter)/availability')}
             activeOpacity={0.6}
+            accessibilityRole="menuitem"
+            accessibilityLabel="Set Availability"
+            accessibilityHint="Manage your schedule"
           >
             <CalendarIcon size={22} color={PsychiColors.lavender} />
             <View style={styles.actionInfo}>
@@ -246,6 +258,9 @@ export default function SupporterHomeScreen() {
             style={styles.actionItem}
             onPress={() => router.push('/(supporter)/profile')}
             activeOpacity={0.6}
+            accessibilityRole="menuitem"
+            accessibilityLabel="Edit Profile"
+            accessibilityHint="Update your bio and photo"
           >
             <EditIcon size={22} color={PsychiColors.azure} />
             <View style={styles.actionInfo}>
@@ -259,6 +274,9 @@ export default function SupporterHomeScreen() {
             style={styles.actionItem}
             onPress={() => router.push('/(supporter)/earnings')}
             activeOpacity={0.6}
+            accessibilityRole="menuitem"
+            accessibilityLabel="View Earnings"
+            accessibilityHint="Track your income"
           >
             <ChartIcon size={22} color={PsychiColors.gold} />
             <View style={styles.actionInfo}>
@@ -272,6 +290,9 @@ export default function SupporterHomeScreen() {
             style={styles.actionItem}
             onPress={() => router.push('/(supporter)/training')}
             activeOpacity={0.6}
+            accessibilityRole="menuitem"
+            accessibilityLabel="Training Modules"
+            accessibilityHint="Continue your certification"
           >
             <BookIcon size={22} color={PsychiColors.coral} />
             <View style={styles.actionInfo}>
@@ -285,6 +306,9 @@ export default function SupporterHomeScreen() {
             style={styles.actionItem}
             onPress={() => router.push('/(supporter)/resources')}
             activeOpacity={0.6}
+            accessibilityRole="menuitem"
+            accessibilityLabel="Resources"
+            accessibilityHint="View policies, agreements and guides"
           >
             <DocumentIcon size={22} color={PsychiColors.violet} />
             <View style={styles.actionInfo}>

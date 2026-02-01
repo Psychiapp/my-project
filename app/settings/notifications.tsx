@@ -171,18 +171,18 @@ export default function NotificationSettingsScreen() {
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton} accessibilityRole="button" accessibilityLabel="Go back" accessibilityHint="Returns to the previous screen">
             <ChevronLeftIcon size={24} color={PsychiColors.azure} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Notifications</Text>
+          <Text style={styles.headerTitle} accessibilityRole="header">Notifications</Text>
           <View style={styles.placeholder} />
         </View>
 
         {/* Push Notifications Toggle */}
         <View style={styles.section}>
-          <View style={styles.mainToggleCard}>
+          <View style={styles.mainToggleCard} accessibilityRole="none">
             <View style={styles.mainToggleInfo}>
-              <Text style={styles.mainToggleTitle}>Push Notifications</Text>
+              <Text style={styles.mainToggleTitle} nativeID="pushToggleLabel">Push Notifications</Text>
               <Text style={styles.mainToggleDescription}>
                 {pushEnabled
                   ? 'You will receive notifications'
@@ -195,6 +195,10 @@ export default function NotificationSettingsScreen() {
               trackColor={{ false: '#E5E7EB', true: 'rgba(74, 144, 226, 0.4)' }}
               thumbColor={pushEnabled ? PsychiColors.azure : '#F3F4F6'}
               ios_backgroundColor="#E5E7EB"
+              accessibilityLabel="Push notifications"
+              accessibilityHint={pushEnabled ? 'Tap to disable notifications' : 'Tap to enable notifications'}
+              accessibilityRole="switch"
+              accessibilityState={{ checked: pushEnabled }}
             />
           </View>
         </View>
@@ -202,7 +206,7 @@ export default function NotificationSettingsScreen() {
         {/* Notification Types */}
         {pushEnabled && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Notification Types</Text>
+            <Text style={styles.sectionTitle} accessibilityRole="header">Notification Types</Text>
             <View style={styles.settingsCard}>
               {notificationTypes.map((item, index) => (
                 <View
@@ -211,6 +215,7 @@ export default function NotificationSettingsScreen() {
                     styles.settingRow,
                     index < notificationTypes.length - 1 && styles.settingRowBorder,
                   ]}
+                  accessibilityRole="none"
                 >
                   <item.icon size={20} color={PsychiColors.azure} />
                   <View style={styles.settingInfo}>
@@ -223,6 +228,10 @@ export default function NotificationSettingsScreen() {
                     trackColor={{ false: '#E5E7EB', true: 'rgba(74, 144, 226, 0.4)' }}
                     thumbColor={settings[item.key] ? PsychiColors.azure : '#F3F4F6'}
                     ios_backgroundColor="#E5E7EB"
+                    accessibilityLabel={item.title}
+                    accessibilityHint={item.description}
+                    accessibilityRole="switch"
+                    accessibilityState={{ checked: settings[item.key] }}
                   />
                 </View>
               ))}
@@ -233,7 +242,7 @@ export default function NotificationSettingsScreen() {
         {/* Session Reminder Timing */}
         {pushEnabled && settings.sessionReminders && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Session Reminder Timing</Text>
+            <Text style={styles.sectionTitle} accessibilityRole="header">Session Reminder Timing</Text>
             <Text style={styles.sectionSubtitle}>
               You'll receive reminders at these times before sessions
             </Text>
@@ -245,9 +254,11 @@ export default function NotificationSettingsScreen() {
                     styles.checkRow,
                     index < reminderOptions.length - 1 && styles.settingRowBorder,
                   ]}
+                  accessibilityRole="none"
+                  accessibilityLabel={`${option.label}, enabled`}
                 >
                   <Text style={styles.checkLabel}>{option.label}</Text>
-                  <View style={styles.checkCircle}>
+                  <View style={styles.checkCircle} accessibilityElementsHidden={true}>
                     <CheckIcon size={14} color={PsychiColors.white} />
                   </View>
                 </View>
@@ -259,7 +270,7 @@ export default function NotificationSettingsScreen() {
         {/* Supporter-specific: Availability Reminder Info */}
         {pushEnabled && isSupporter && settings.availabilityReminders && (
           <View style={styles.section}>
-            <View style={styles.infoCard}>
+            <View style={styles.infoCard} accessibilityRole="text" accessibilityLabel="Weekly reminder info: You'll receive a reminder every Sunday at 6:00 PM to set your availability for the upcoming week">
               <ClockIcon size={20} color={PsychiColors.azure} />
               <View style={styles.infoContent}>
                 <Text style={styles.infoTitle}>Weekly Reminder</Text>
@@ -275,7 +286,7 @@ export default function NotificationSettingsScreen() {
 
         {/* Info Section */}
         <View style={styles.section}>
-          <View style={styles.infoCard}>
+          <View style={styles.infoCard} accessibilityRole="text" accessibilityLabel="Info: You can change notification permissions at any time in your device settings">
             <InfoIcon size={20} color={PsychiColors.azure} />
             <Text style={styles.infoText}>
               You can change notification permissions at any time in your device settings.
@@ -286,7 +297,7 @@ export default function NotificationSettingsScreen() {
         {/* Notification Summary */}
         {pushEnabled && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>You'll be notified about:</Text>
+            <Text style={styles.sectionTitle} accessibilityRole="header">You'll be notified about:</Text>
             <View style={styles.summaryCard}>
               {settings.sessionReminders && (
                 <Text style={styles.summaryItem}>• Upcoming session reminders</Text>

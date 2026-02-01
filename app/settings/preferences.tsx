@@ -242,10 +242,13 @@ export default function PreferencesScreen() {
           style={styles.backButton}
           onPress={() => router.back()}
           activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+          accessibilityHint="Returns to the previous screen"
         >
           <ChevronLeftIcon size={24} color={PsychiColors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Preferences</Text>
+        <Text style={styles.headerTitle} accessibilityRole="header">Preferences</Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -261,7 +264,7 @@ export default function PreferencesScreen() {
               <GlobeIcon size={20} color={PsychiColors.royalBlue} />
             </View>
             <View style={styles.sectionInfo}>
-              <Text style={styles.sectionTitle}>Timezone</Text>
+              <Text style={styles.sectionTitle} accessibilityRole="header">Timezone</Text>
               <Text style={styles.sectionSubtitle}>For scheduling sessions</Text>
             </View>
           </View>
@@ -275,6 +278,10 @@ export default function PreferencesScreen() {
                 ]}
                 onPress={() => handleTimezoneChange(tz.id)}
                 activeOpacity={0.7}
+                accessibilityRole="radio"
+                accessibilityLabel={tz.label}
+                accessibilityState={{ selected: selectedTimezone === tz.id }}
+                accessibilityHint="Select this timezone for scheduling"
               >
                 {selectedTimezone === tz.id && (
                   <CheckIcon size={14} color={PsychiColors.royalBlue} />
@@ -297,11 +304,11 @@ export default function PreferencesScreen() {
               <VideoIcon size={20} color={PsychiColors.violet} />
             </View>
             <View style={styles.sectionInfo}>
-              <Text style={styles.sectionTitle}>Preferred Session Types</Text>
+              <Text style={styles.sectionTitle} accessibilityRole="header">Preferred Session Types</Text>
               <Text style={styles.sectionSubtitle}>Select all that work for you</Text>
             </View>
           </View>
-          <View style={styles.sessionTypesRow}>
+          <View style={styles.sessionTypesRow} accessibilityRole="group" accessibilityLabel="Session types">
             {sessionTypes.map((type) => {
               const IconComponent = type.icon;
               const isSelected = selectedSessionTypes.includes(type.id);
@@ -314,9 +321,13 @@ export default function PreferencesScreen() {
                   ]}
                   onPress={() => toggleSessionType(type.id)}
                   activeOpacity={0.7}
+                  accessibilityRole="checkbox"
+                  accessibilityLabel={`${type.label}, ${type.description}`}
+                  accessibilityState={{ checked: isSelected }}
+                  accessibilityHint={isSelected ? 'Tap to deselect' : 'Tap to select'}
                 >
                   {isSelected && (
-                    <View style={styles.sessionTypeCheck}>
+                    <View style={styles.sessionTypeCheck} accessibilityElementsHidden={true}>
                       <CheckIcon size={12} color={PsychiColors.white} />
                     </View>
                   )}
@@ -343,6 +354,9 @@ export default function PreferencesScreen() {
             style={styles.actionCard}
             onPress={handleRequestNewSupporter}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Change Supporter"
+            accessibilityHint="Request a new supporter match"
           >
             <View style={[styles.actionIcon, { backgroundColor: `${PsychiColors.coral}12` }]}>
               <UsersIcon size={20} color={PsychiColors.coral} />
@@ -363,6 +377,9 @@ export default function PreferencesScreen() {
             style={styles.actionCard}
             onPress={handleRetakeQuiz}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Retake Matching Quiz"
+            accessibilityHint="Update your preferences and get better matches"
           >
             <View style={[styles.actionIcon, { backgroundColor: `${PsychiColors.success}12` }]}>
               <RefreshIcon size={20} color={PsychiColors.success} />

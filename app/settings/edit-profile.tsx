@@ -54,10 +54,10 @@ export default function EditProfileScreen() {
         <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
           {/* Header */}
           <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.backButton} accessibilityRole="button" accessibilityLabel="Go back" accessibilityHint="Returns to the previous screen">
               <ChevronLeftIcon size={24} color={PsychiColors.azure} />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Edit Profile</Text>
+            <Text style={styles.headerTitle} accessibilityRole="header">Edit Profile</Text>
             <View style={styles.placeholder} />
           </View>
 
@@ -66,12 +66,14 @@ export default function EditProfileScreen() {
             <LinearGradient
               colors={[PsychiColors.azure, PsychiColors.deep]}
               style={styles.avatar}
+              accessibilityRole="image"
+              accessibilityLabel="Profile avatar"
             >
               <Text style={styles.avatarText}>
                 {firstName.charAt(0) || profile?.email?.charAt(0).toUpperCase() || 'U'}
               </Text>
             </LinearGradient>
-            <TouchableOpacity style={styles.changePhotoButton}>
+            <TouchableOpacity style={styles.changePhotoButton} accessibilityRole="button" accessibilityLabel="Change profile photo" accessibilityHint="Opens photo picker to update your avatar">
               <Text style={styles.changePhotoText}>Change Photo</Text>
             </TouchableOpacity>
           </View>
@@ -79,7 +81,7 @@ export default function EditProfileScreen() {
           {/* Form Fields */}
           <View style={styles.formSection}>
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>First Name *</Text>
+              <Text style={styles.inputLabel} nativeID="firstNameLabel">First Name *</Text>
               <TextInput
                 style={styles.input}
                 placeholder="Enter first name"
@@ -87,11 +89,13 @@ export default function EditProfileScreen() {
                 value={firstName}
                 onChangeText={setFirstName}
                 autoCapitalize="words"
+                accessibilityLabel="First name, required"
+                accessibilityLabelledBy="firstNameLabel"
               />
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Last Name *</Text>
+              <Text style={styles.inputLabel} nativeID="lastNameLabel">Last Name *</Text>
               <TextInput
                 style={styles.input}
                 placeholder="Enter last name"
@@ -99,11 +103,13 @@ export default function EditProfileScreen() {
                 value={lastName}
                 onChangeText={setLastName}
                 autoCapitalize="words"
+                accessibilityLabel="Last name, required"
+                accessibilityLabelledBy="lastNameLabel"
               />
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Email</Text>
+              <Text style={styles.inputLabel} nativeID="emailLabel">Email</Text>
               <TextInput
                 style={[styles.input, styles.inputDisabled]}
                 placeholder="Enter email"
@@ -111,12 +117,15 @@ export default function EditProfileScreen() {
                 value={email}
                 editable={false}
                 keyboardType="email-address"
+                accessibilityLabel="Email address, read-only"
+                accessibilityLabelledBy="emailLabel"
+                accessibilityState={{ disabled: true }}
               />
               <Text style={styles.inputHint}>Email cannot be changed</Text>
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Phone Number</Text>
+              <Text style={styles.inputLabel} nativeID="phoneLabel">Phone Number</Text>
               <TextInput
                 style={styles.input}
                 placeholder="Enter phone number (optional)"
@@ -124,11 +133,13 @@ export default function EditProfileScreen() {
                 value={phone}
                 onChangeText={setPhone}
                 keyboardType="phone-pad"
+                accessibilityLabel="Phone number, optional"
+                accessibilityLabelledBy="phoneLabel"
               />
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Bio</Text>
+              <Text style={styles.inputLabel} nativeID="bioLabel">Bio</Text>
               <TextInput
                 style={[styles.input, styles.inputMultiline]}
                 placeholder="Tell us about yourself (optional)"
@@ -138,6 +149,8 @@ export default function EditProfileScreen() {
                 multiline
                 numberOfLines={4}
                 textAlignVertical="top"
+                accessibilityLabel="Bio, optional"
+                accessibilityLabelledBy="bioLabel"
               />
             </View>
           </View>
@@ -149,6 +162,10 @@ export default function EditProfileScreen() {
               onPress={handleSave}
               disabled={isSaving}
               activeOpacity={0.9}
+              accessibilityRole="button"
+              accessibilityLabel={isSaving ? 'Saving changes' : 'Save changes'}
+              accessibilityHint="Saves your profile updates"
+              accessibilityState={{ disabled: isSaving }}
             >
               <LinearGradient
                 colors={[PsychiColors.azure, PsychiColors.deep]}

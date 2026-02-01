@@ -48,6 +48,8 @@ export default function Hero({ onTakeQuiz, onLearnMore, onSignIn, onSignUp, hasC
           source={logoImage}
           style={styles.headerLogo}
           resizeMode="contain"
+          accessibilityLabel="Psychi logo"
+          accessibilityRole="image"
         />
 
         {/* Auth Buttons */}
@@ -56,6 +58,9 @@ export default function Hero({ onTakeQuiz, onLearnMore, onSignIn, onSignUp, hasC
             style={styles.signInButton}
             onPress={onSignIn}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Sign In"
+            accessibilityHint="Navigate to sign in screen"
           >
             <Text style={styles.signInText}>Sign In</Text>
           </TouchableOpacity>
@@ -64,6 +69,9 @@ export default function Hero({ onTakeQuiz, onLearnMore, onSignIn, onSignUp, hasC
             style={styles.signUpButton}
             onPress={onSignUp}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Sign Up"
+            accessibilityHint="Navigate to create a new account"
           >
             <Text style={styles.signUpText}>Sign Up</Text>
           </TouchableOpacity>
@@ -73,7 +81,7 @@ export default function Hero({ onTakeQuiz, onLearnMore, onSignIn, onSignUp, hasC
       {/* Hero Content */}
       <View style={styles.content}>
         {/* Main Headline */}
-        <View style={styles.headlineContainer}>
+        <View style={styles.headlineContainer} accessibilityRole="header" accessibilityLabel="Mental support that's accessible for everyone">
           {/* Line 1: "Mental support" - italic */}
           <Text style={styles.headlineItalic}>Mental support</Text>
 
@@ -113,6 +121,9 @@ export default function Hero({ onTakeQuiz, onLearnMore, onSignIn, onSignUp, hasC
             style={styles.primaryButton}
             onPress={onTakeQuiz}
             activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel={hasCompletedOnboarding ? 'Get matched with supporter' : 'Take Matching Quiz'}
+            accessibilityHint={hasCompletedOnboarding ? 'Find a supporter based on your preferences' : 'Start the matching quiz to find your ideal supporter'}
           >
             <Text style={styles.primaryButtonText}>
               {hasCompletedOnboarding ? 'Get matched with supporter' : 'Take Matching Quiz'}
@@ -124,6 +135,9 @@ export default function Hero({ onTakeQuiz, onLearnMore, onSignIn, onSignUp, hasC
             style={styles.secondaryButton}
             onPress={onLearnMore}
             activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel="Learn How It Works"
+            accessibilityHint="Scroll down to learn more about the service"
           >
             <Text style={styles.secondaryButtonText}>Learn How It Works</Text>
           </TouchableOpacity>
