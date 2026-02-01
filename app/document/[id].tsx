@@ -17,23 +17,29 @@ import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme'
 import { ArrowLeftIcon, DownloadIcon } from '@/components/icons';
 import * as Sharing from 'expo-sharing';
 
+// Import PDF assets
+const handbookPdf = require('@/assets/documents/Supporter Handbook.pdf');
+const diversionPdf = require('@/assets/documents/Supporter Diversion Advice.pdf');
+const conductPdf = require('@/assets/documents/Supporter Code of Conduct.pdf');
+const clientDisclaimerPdf = require('@/assets/documents/Client Disclaimer.pdf');
+
 // Document metadata
-const documentInfo: Record<string, { title: string; asset: any }> = {
+const documentInfo: Record<string, { title: string; asset: number }> = {
   handbook: {
     title: 'Supporter Handbook',
-    asset: require('@/assets/documents/Supporter Handbook.pdf'),
+    asset: handbookPdf,
   },
   diversion: {
     title: 'Diversion Advice',
-    asset: require('@/assets/documents/Supporter Diversion Advice.pdf'),
+    asset: diversionPdf,
   },
   conduct: {
     title: 'Code of Conduct',
-    asset: require('@/assets/documents/Supporter Code of Conduct.pdf'),
+    asset: conductPdf,
   },
   'client-disclaimer': {
     title: 'Client Disclaimer',
-    asset: require('@/assets/documents/Client Disclaimer.pdf'),
+    asset: clientDisclaimerPdf,
   },
 };
 
@@ -60,26 +66,45 @@ export default function DocumentViewerScreen() {
     }
 
     try {
+      console.log('Loading document:', id, 'asset:', document.asset);
+
       // Load the asset
       const asset = Asset.fromModule(document.asset);
+      console.log('Asset created:', asset.name, asset.type);
+
       await asset.downloadAsync();
+      console.log('Asset downloaded, localUri:', asset.localUri);
 
       if (!asset.localUri) {
-        throw new Error('Failed to load document');
+        throw new Error('Failed to get local URI for document');
       }
 
       setLocalUri(asset.localUri);
+
+      // Check if file exists
+      const fileInfo = await FileSystem.getInfoAsync(asset.localUri);
+      console.log('File info:', fileInfo);
+
+      if (!fileInfo.exists) {
+        throw new Error('Document file does not exist at path');
+      }
 
       // Read file as base64 for WebView
       const base64 = await FileSystem.readAsStringAsync(asset.localUri, {
         encoding: 'base64',
       });
 
+      console.log('Base64 length:', base64.length);
+
+      if (!base64 || base64.length === 0) {
+        throw new Error('Failed to read document content');
+      }
+
       setPdfBase64(base64);
       setIsLoading(false);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error loading document:', err);
-      setError('Failed to load document');
+      setError(`Failed to load document: ${err.message || 'Unknown error'}`);
       setIsLoading(false);
     }
   };
@@ -102,23 +127,16 @@ export default function DocumentViewerScreen() {
   };
 
   // HTML template with PDF.js for rendering PDF
+  // Using jsdelivr CDN which is more reliable
   const htmlContent = pdfBase64
     ? `
     <!DOCTYPE html>
     <html>
     <head>
       <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0, user-scalable=yes">
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
       <style>
-        * {
-          margin: 0;
-          padding: 0;
-          box-sizing: border-box;
-        }
-        body {
-          background-color: #F5F5F0;
-          overflow-x: hidden;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background-color: #F5F5F0; overflow-x: hidden; }
         #pdf-container {
           display: flex;
           flex-direction: column;
@@ -133,23 +151,26 @@ export default function DocumentViewerScreen() {
           max-width: 100%;
           height: auto !important;
         }
-        .loading {
+        .loading, .error {
           display: flex;
           justify-content: center;
           align-items: center;
           height: 100vh;
           font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-          color: #666;
-        }
-        .error {
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          height: 100vh;
-          font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-          color: #ef4444;
           text-align: center;
           padding: 20px;
+        }
+        .loading { color: #666; }
+        .error { color: #ef4444; flex-direction: column; }
+        .retry-btn {
+          margin-top: 20px;
+          padding: 10px 20px;
+          background: #4A90E2;
+          color: white;
+          border: none;
+          border-radius: 8px;
+          font-size: 14px;
+          cursor: pointer;
         }
       </style>
     </head>
@@ -157,44 +178,52 @@ export default function DocumentViewerScreen() {
       <div id="pdf-container">
         <div class="loading" id="loading">Loading document...</div>
       </div>
+      <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
       <script>
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        (function() {
+          try {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
 
-        const pdfData = atob('${pdfBase64}');
-        const pdfArray = new Uint8Array(pdfData.length);
-        for (let i = 0; i < pdfData.length; i++) {
-          pdfArray[i] = pdfData.charCodeAt(i);
-        }
+            const pdfData = atob('${pdfBase64}');
+            const pdfArray = new Uint8Array(pdfData.length);
+            for (let i = 0; i < pdfData.length; i++) {
+              pdfArray[i] = pdfData.charCodeAt(i);
+            }
 
-        const container = document.getElementById('pdf-container');
-        const loadingEl = document.getElementById('loading');
+            const container = document.getElementById('pdf-container');
+            const loadingEl = document.getElementById('loading');
 
-        pdfjsLib.getDocument({ data: pdfArray }).promise.then(function(pdf) {
-          loadingEl.style.display = 'none';
+            pdfjsLib.getDocument({ data: pdfArray }).promise.then(function(pdf) {
+              loadingEl.style.display = 'none';
+              const scale = ${Platform.OS === 'ios' ? 2.0 : 1.5};
 
-          const scale = ${Platform.OS === 'ios' ? 2.0 : 1.5};
+              // Render pages sequentially to maintain order
+              let currentPage = 1;
+              function renderPage(pageNum) {
+                if (pageNum > pdf.numPages) return;
+                pdf.getPage(pageNum).then(function(page) {
+                  const viewport = page.getViewport({ scale: scale });
+                  const canvas = document.createElement('canvas');
+                  const context = canvas.getContext('2d');
+                  canvas.height = viewport.height;
+                  canvas.width = viewport.width;
+                  canvas.style.width = '100%';
+                  canvas.dataset.pageNum = pageNum;
+                  container.appendChild(canvas);
 
-          for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-            pdf.getPage(pageNum).then(function(page) {
-              const viewport = page.getViewport({ scale: scale });
-
-              const canvas = document.createElement('canvas');
-              const context = canvas.getContext('2d');
-              canvas.height = viewport.height;
-              canvas.width = viewport.width;
-              canvas.style.width = '100%';
-
-              container.appendChild(canvas);
-
-              page.render({
-                canvasContext: context,
-                viewport: viewport
-              });
+                  page.render({ canvasContext: context, viewport: viewport }).promise.then(function() {
+                    renderPage(pageNum + 1);
+                  });
+                });
+              }
+              renderPage(1);
+            }).catch(function(error) {
+              loadingEl.innerHTML = '<div class="error">Failed to load PDF<br/><small>' + error.message + '</small></div>';
             });
+          } catch (e) {
+            document.getElementById('loading').innerHTML = '<div class="error">Error: ' + e.message + '</div>';
           }
-        }).catch(function(error) {
-          loadingEl.innerHTML = '<div class="error">Failed to load PDF: ' + error.message + '</div>';
-        });
+        })();
       </script>
     </body>
     </html>
@@ -245,6 +274,11 @@ export default function DocumentViewerScreen() {
       ) : error ? (
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>{error}</Text>
+          {localUri && (
+            <TouchableOpacity style={styles.openExternalButton} onPress={handleShare}>
+              <Text style={styles.openExternalButtonText}>Open in External Viewer</Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity style={styles.goBackButton} onPress={() => router.back()}>
             <Text style={styles.goBackButtonText}>Go Back</Text>
           </TouchableOpacity>
@@ -260,6 +294,18 @@ export default function DocumentViewerScreen() {
           scalesPageToFit={true}
           bounces={true}
           showsVerticalScrollIndicator={true}
+          allowFileAccess={true}
+          allowUniversalAccessFromFileURLs={true}
+          mixedContentMode="always"
+          onError={(syntheticEvent) => {
+            const { nativeEvent } = syntheticEvent;
+            console.error('WebView error:', nativeEvent);
+            setError(`WebView error: ${nativeEvent.description}`);
+          }}
+          onHttpError={(syntheticEvent) => {
+            const { nativeEvent } = syntheticEvent;
+            console.error('WebView HTTP error:', nativeEvent);
+          }}
           renderLoading={() => (
             <View style={styles.webviewLoading}>
               <ActivityIndicator size="large" color={PsychiColors.azure} />
@@ -357,6 +403,18 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
   },
   goBackButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: PsychiColors.white,
+  },
+  openExternalButton: {
+    backgroundColor: PsychiColors.success,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: BorderRadius.md,
+    marginBottom: Spacing.md,
+  },
+  openExternalButtonText: {
     fontSize: 15,
     fontWeight: '600',
     color: PsychiColors.white,

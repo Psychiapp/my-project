@@ -118,11 +118,21 @@ export default function PayoutSettingsScreen() {
   };
 
   const handleSetupPayouts = async () => {
-    // Check for demo mode - payout setup requires real Stripe integration
-    if (isDemoMode || !stripeAvailable) {
+    // Check if Stripe is available
+    if (!stripeAvailable) {
       Alert.alert(
-        'Demo Mode',
-        'Payout setup is not available in demo mode. In the live app, you\'ll be guided through a secure process to verify your identity and link your bank account.',
+        'Setup Unavailable',
+        'Payout setup is temporarily unavailable. Please try again later or contact support at psychiapp@outlook.com.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    // Check for demo mode
+    if (isDemoMode) {
+      Alert.alert(
+        'Preview Only',
+        'This is a preview of the payout setup process. In the full version, you\'ll be guided through a secure process to verify your identity and link your bank account.',
         [{ text: 'OK' }]
       );
       return;

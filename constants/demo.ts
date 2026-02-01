@@ -1,6 +1,10 @@
 // Demo Mode Configuration
-// Set to true only for App Store review testing
-export const DEMO_MODE_ENABLED = true;
+// Enabled automatically in development, or when EXPO_PUBLIC_DEMO_MODE=true
+// For App Store review, set EXPO_PUBLIC_DEMO_MODE=true in your build configuration
+const APP_ENV = process.env.EXPO_PUBLIC_APP_ENV || 'development';
+const DEMO_MODE_OVERRIDE = process.env.EXPO_PUBLIC_DEMO_MODE === 'true';
+
+export const DEMO_MODE_ENABLED = APP_ENV === 'development' || DEMO_MODE_OVERRIDE;
 
 // Demo account credentials
 const DEMO_ACCOUNTS = {

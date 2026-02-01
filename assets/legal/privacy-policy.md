@@ -61,7 +61,7 @@ You have the right to:
 - **Export**: Download your data in a portable format
 - **Opt-out**: Disable analytics and optional notifications
 
-To exercise these rights, visit Settings > Privacy in the app or contact us at privacy@psychi.app.
+To exercise these rights, visit Settings > Privacy in the app or contact us at psychiapp@outlook.com.
 
 ## Third-Party Services
 
@@ -99,8 +99,8 @@ We may update this Privacy Policy periodically. We will notify you of material c
 
 For privacy-related questions or concerns:
 
-- **Email**: privacy@psychi.app
-- **In-App**: Settings > Help & Support > Privacy Inquiry
+- **Email**: psychiapp@outlook.com
+- **In-App**: Settings > Help & Support
 
 ## Emergency Situations
 

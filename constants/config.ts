@@ -78,13 +78,15 @@ export const StripeConfig = {
   publishableKey: process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || '',
 };
 
-// External URLs - UPDATE THESE when you deploy your website
+// External URLs
 export const ExternalUrls = {
-  // Legal documents - replace with your actual hosted URLs before App Store submission
-  termsOfService: 'https://psychi.app/terms-of-use.pdf',
-  privacyPolicy: 'https://psychi.app/privacy-policy.pdf',
-  confidentialityAgreement: 'https://psychi.app/confidentiality-agreement.pdf',
-  supporterGuidelines: 'https://psychi.app/supporter-guidelines',
+  // Legal documents
+  termsOfService: 'https://psychimobile.com/terms-of-service.html',
+  privacyPolicy: 'https://psychimobile.com/privacy-policy.html',
+  safetyPolicy: 'https://psychimobile.com/safety-policy.html',
+  refundPolicy: 'https://psychimobile.com/refund-policy.html',
+  confidentialityAgreement: 'https://psychimobile.com/privacy-policy.html', // Using privacy policy for now
+  supporterGuidelines: 'https://psychimobile.com/safety-policy.html', // Using safety policy for now
 
   // Contact
   supportEmail: 'psychiapp@outlook.com',

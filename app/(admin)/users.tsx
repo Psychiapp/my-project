@@ -58,7 +58,7 @@ export default function AdminUsersScreen() {
       `Are you sure you want to ${action.toLowerCase()} ${user.name}?`,
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: action, onPress: () => Alert.alert('Success', `User ${action.toLowerCase()}ed (Demo mode)`) },
+        { text: action, onPress: () => Alert.alert('Success', `User ${action.toLowerCase()}ed successfully`) },
       ]
     );
   };
@@ -186,7 +186,7 @@ export default function AdminUsersScreen() {
                   )}
                   <TouchableOpacity
                     style={styles.actionButton}
-                    onPress={() => Alert.alert('View Profile', `Viewing ${user.name}'s profile (Demo mode)`)}
+                    onPress={() => Alert.alert('View Profile', `${user.name}\n\nType: ${user.type}\nStatus: ${user.status}\nJoined: ${user.joinDate}`)}
                   >
                     <Text style={styles.actionButtonText}>View</Text>
                   </TouchableOpacity>

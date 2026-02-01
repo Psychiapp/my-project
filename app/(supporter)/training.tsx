@@ -688,6 +688,7 @@ When it applies: A client expresses intent to seriously harm themselves or someo
 What to do:
 1. Stay calm and supportive with the client
 2. Refer the client to the 988 Suicide & Crisis Lifeline or local emergency services, and contact Psychi support immediately at psychiapp@outlook.com
+3. If the threat is imminent, contact emergency services (911)
 
 Important: This is for imminent, serious threats — not general expressions of sadness or frustration. If you're unsure, contact Psychi support at psychiapp@outlook.com.
 

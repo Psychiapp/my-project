@@ -85,7 +85,7 @@ const clientSteps: TutorialStep[] = [
     title: 'Your Sessions',
     description: 'The Sessions tab shows all your upcoming and past sessions. You can join sessions, reschedule if needed, and view session history to track your progress.',
     icon: 'video',
-    tip: 'Sessions can be cancelled or rescheduled up to 24 hours before the start time.',
+    tip: 'Cancel 24+ hours before for full refund, 2-24 hours for 50% refund, or less than 2 hours with no refund.',
   },
   {
     title: 'Session Types',
