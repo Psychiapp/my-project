@@ -22,7 +22,8 @@
       "config": {
         "usesNonExemptEncryption": false
       },
-      "associatedDomains": ["applinks:psychi.app"]
+      "associatedDomains": ["applinks:psychi.app"],
+      "bitcode": false
     },
     "android": {
       "package": "com.psychi.app",
@@ -38,7 +39,12 @@
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.VIBRATE",
-        "android.permission.RECEIVE_BOOT_COMPLETED"
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.INTERNET",
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.WAKE_LOCK",
+        "android.permission.BLUETOOTH"
       ],
       "intentFilters": [
         {
@@ -99,6 +105,12 @@
       "eas": {
         "projectId": "c166cea1-1ef4-489a-a969-de882b55b685"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/c166cea1-1ef4-489a-a969-de882b55b685"
     }
   }
 }
