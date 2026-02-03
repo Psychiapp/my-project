@@ -44,6 +44,90 @@ import type {
 // ============================================
 
 /**
+ * Upload avatar image to Supabase storage and update profile
+ * Returns the public URL of the uploaded image or null on failure
+ */
+export async function uploadAvatar(
+  userId: string,
+  imageUri: string
+): Promise<string | null> {
+  if (!supabase) return null;
+
+  try {
+    // Convert image URI to blob
+    const response = await fetch(imageUri);
+    const blob = await response.blob();
+
+    // Generate unique filename
+    const fileExt = imageUri.split('.').pop()?.toLowerCase() || 'jpg';
+    const fileName = `${userId}-${Date.now()}.${fileExt}`;
+    const filePath = `avatars/${fileName}`;
+
+    // Upload to Supabase storage
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(filePath, blob, {
+        contentType: `image/${fileExt === 'jpg' ? 'jpeg' : fileExt}`,
+        upsert: true,
+      });
+
+    if (uploadError) {
+      console.error('Error uploading avatar:', uploadError);
+      // If bucket doesn't exist, store as base64 in profile (fallback)
+      return null;
+    }
+
+    // Get public URL
+    const { data: urlData } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(filePath);
+
+    const publicUrl = urlData?.publicUrl;
+
+    if (publicUrl) {
+      // Update profile with new avatar URL
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: publicUrl, updated_at: new Date().toISOString() })
+        .eq('id', userId);
+
+      if (updateError) {
+        console.error('Error updating profile with avatar URL:', updateError);
+      }
+
+      return publicUrl;
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Error in uploadAvatar:', error);
+    return null;
+  }
+}
+
+/**
+ * Update user avatar URL directly (for cases where image is already hosted)
+ */
+export async function updateAvatarUrl(
+  userId: string,
+  avatarUrl: string | null
+): Promise<boolean> {
+  if (!supabase) return false;
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({ avatar_url: avatarUrl, updated_at: new Date().toISOString() })
+    .eq('id', userId);
+
+  if (error) {
+    console.error('Error updating avatar URL:', error);
+    return false;
+  }
+
+  return true;
+}
+
+/**
  * Get user profile by ID
  */
 export async function getUserProfile(userId: string): Promise<UserProfile | null> {

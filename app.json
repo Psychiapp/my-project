@@ -14,8 +14,9 @@
       "bundleIdentifier": "com.psychi.app",
       "buildNumber": "1",
       "infoPlist": {
-        "NSCameraUsageDescription": "Psychi needs camera access for video calls with your supporter",
+        "NSCameraUsageDescription": "Psychi needs camera access for video calls and profile photos",
         "NSMicrophoneUsageDescription": "Psychi needs microphone access for voice and video calls",
+        "NSPhotoLibraryUsageDescription": "Psychi needs access to your photo library to set your profile picture",
         "NSFaceIDUsageDescription": "Use Face ID to quickly sign in to Psychi",
         "UIBackgroundModes": ["audio", "voip"]
       },

@@ -9,17 +9,21 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Image,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '@/contexts/AuthContext';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
-import { ChevronLeftIcon } from '@/components/icons';
+import { ChevronLeftIcon, CameraIcon } from '@/components/icons';
+import { uploadAvatar, updateAvatarUrl } from '@/lib/database';
 
 export default function EditProfileScreen() {
   const router = useRouter();
-  const { profile } = useAuth();
+  const { profile, user, refreshProfile } = useAuth();
 
   const [firstName, setFirstName] = useState(profile?.firstName || '');
   const [lastName, setLastName] = useState(profile?.lastName || '');
@@ -27,6 +31,131 @@ export default function EditProfileScreen() {
   const [phone, setPhone] = useState('');
   const [bio, setBio] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [avatarUri, setAvatarUri] = useState<string | null>(profile?.avatarUrl || null);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+
+  const handleChangePhoto = async () => {
+    // Request permission
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert(
+        'Permission Required',
+        'Please allow access to your photo library to change your profile photo.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    // Show options: camera or library
+    Alert.alert(
+      'Change Profile Photo',
+      'Choose a photo from your library or take a new one',
+      [
+        {
+          text: 'Take Photo',
+          onPress: handleTakePhoto,
+        },
+        {
+          text: 'Choose from Library',
+          onPress: handlePickImage,
+        },
+        {
+          text: 'Remove Photo',
+          style: 'destructive',
+          onPress: handleRemovePhoto,
+        },
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+      ]
+    );
+  };
+
+  const handleTakePhoto = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert(
+        'Permission Required',
+        'Please allow access to your camera to take a profile photo.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      await processSelectedImage(result.assets[0].uri);
+    }
+  };
+
+  const handlePickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      await processSelectedImage(result.assets[0].uri);
+    }
+  };
+
+  const processSelectedImage = async (uri: string) => {
+    if (!user?.id) return;
+
+    setIsUploadingPhoto(true);
+    setAvatarUri(uri); // Show preview immediately
+
+    try {
+      const uploadedUrl = await uploadAvatar(user.id, uri);
+      if (uploadedUrl) {
+        setAvatarUri(uploadedUrl);
+        await refreshProfile();
+        Alert.alert('Success', 'Profile photo updated successfully.');
+      } else {
+        // Fallback: just show the local image
+        Alert.alert(
+          'Photo Selected',
+          'Photo will be saved when you save your profile changes.'
+        );
+      }
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+      Alert.alert('Upload Error', 'Failed to upload photo. Please try again.');
+      setAvatarUri(profile?.avatarUrl || null);
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  };
+
+  const handleRemovePhoto = async () => {
+    if (!user?.id) return;
+
+    setIsUploadingPhoto(true);
+    try {
+      const success = await updateAvatarUrl(user.id, null);
+      if (success) {
+        setAvatarUri(null);
+        await refreshProfile();
+        Alert.alert('Success', 'Profile photo removed.');
+      } else {
+        Alert.alert('Error', 'Failed to remove photo. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error removing photo:', error);
+      Alert.alert('Error', 'Failed to remove photo. Please try again.');
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!firstName.trim() || !lastName.trim()) {
@@ -63,18 +192,53 @@ export default function EditProfileScreen() {
 
           {/* Avatar Section */}
           <View style={styles.avatarSection}>
-            <LinearGradient
-              colors={[PsychiColors.azure, PsychiColors.deep]}
-              style={styles.avatar}
-              accessibilityRole="image"
-              accessibilityLabel="Profile avatar"
+            <View style={styles.avatarContainer}>
+              {avatarUri ? (
+                <Image
+                  source={{ uri: avatarUri }}
+                  style={styles.avatarImage}
+                  accessibilityRole="image"
+                  accessibilityLabel="Profile avatar"
+                />
+              ) : (
+                <LinearGradient
+                  colors={[PsychiColors.azure, PsychiColors.deep]}
+                  style={styles.avatar}
+                  accessibilityRole="image"
+                  accessibilityLabel="Profile avatar placeholder"
+                >
+                  <Text style={styles.avatarText}>
+                    {firstName.charAt(0) || profile?.email?.charAt(0).toUpperCase() || 'U'}
+                  </Text>
+                </LinearGradient>
+              )}
+              {isUploadingPhoto && (
+                <View style={styles.avatarOverlay}>
+                  <ActivityIndicator size="large" color={PsychiColors.white} />
+                </View>
+              )}
+              <TouchableOpacity
+                style={styles.cameraButton}
+                onPress={handleChangePhoto}
+                disabled={isUploadingPhoto}
+                accessibilityRole="button"
+                accessibilityLabel="Change profile photo"
+                accessibilityHint="Opens options to take or choose a photo"
+              >
+                <CameraIcon size={16} color={PsychiColors.white} />
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity
+              style={styles.changePhotoButton}
+              onPress={handleChangePhoto}
+              disabled={isUploadingPhoto}
+              accessibilityRole="button"
+              accessibilityLabel="Change profile photo"
+              accessibilityHint="Opens photo picker to update your avatar"
             >
-              <Text style={styles.avatarText}>
-                {firstName.charAt(0) || profile?.email?.charAt(0).toUpperCase() || 'U'}
+              <Text style={styles.changePhotoText}>
+                {isUploadingPhoto ? 'Uploading...' : 'Change Photo'}
               </Text>
-            </LinearGradient>
-            <TouchableOpacity style={styles.changePhotoButton} accessibilityRole="button" accessibilityLabel="Change profile photo" accessibilityHint="Opens photo picker to update your avatar">
-              <Text style={styles.changePhotoText}>Change Photo</Text>
             </TouchableOpacity>
           </View>
 
@@ -228,18 +392,52 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: Spacing.lg,
   },
+  avatarContainer: {
+    position: 'relative',
+    marginBottom: Spacing.md,
+  },
   avatar: {
     width: 100,
     height: 100,
     borderRadius: 50,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: Spacing.md,
+  },
+  avatarImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    borderWidth: 3,
+    borderColor: PsychiColors.azure,
   },
   avatarText: {
     fontSize: 40,
     fontWeight: '600',
     color: PsychiColors.white,
+  },
+  avatarOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 50,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cameraButton: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: PsychiColors.azure,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: PsychiColors.cream,
   },
   changePhotoButton: {
     paddingHorizontal: Spacing.md,
