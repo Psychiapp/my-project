@@ -34,6 +34,7 @@ import {
   StarIcon,
   ExternalLinkIcon,
 } from '@/components/icons';
+import { useAuth } from '@/contexts/AuthContext';
 
 type Module = 'confidentiality' | 'mindfulness' | 'cbt' | 'validation' | 'crisis' | 'platform';
 
@@ -1428,14 +1429,6 @@ Validation opens the door to exploration. Agreement can sometimes shut it down b
           <Text style={{ fontSize: 14, color: PsychiColors.textSecondary, marginBottom: Spacing.md, lineHeight: 20 }}>
             Validated individuals are more open to feedback and alternative perspectives.
           </Text>
-          <Text style={{ fontSize: 14, fontWeight: '600', color: '#2A2A2A', marginBottom: Spacing.sm }}>Key Study:</Text>
-          <StudyCard study={{
-            title: 'The impact of validating and invalidating responses on emotional reactivity',
-            authors: 'Shenk, C. E., & Fruzzetti, A. E. (2011)',
-            journal: 'Journal of Social and Clinical Psychology',
-            finding: 'Validating responses significantly reduced negative emotional intensity compared to invalidating responses.',
-            url: 'https://pubmed.ncbi.nlm.nih.gov/21673876/',
-          }} />
         </View>
       ),
     },
@@ -2099,6 +2092,7 @@ Congratulations on completing this training! You are now equipped with the found
 };
 
 export default function TrainingScreen() {
+  const { isDemoMode } = useAuth();
   const [moduleProgress, setModuleProgress] = useState<ModuleProgress>({
     confidentiality: false,
     mindfulness: false,
@@ -2121,6 +2115,9 @@ export default function TrainingScreen() {
   const allComplete = completedCount === 6;
 
   const isModuleUnlocked = (moduleId: Module): boolean => {
+    // In demo mode, all modules are accessible
+    if (isDemoMode) return true;
+
     const moduleOrder: Module[] = ['confidentiality', 'mindfulness', 'cbt', 'validation', 'crisis', 'platform'];
     const index = moduleOrder.indexOf(moduleId);
     if (index === 0) return true;
