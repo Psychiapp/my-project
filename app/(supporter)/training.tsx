@@ -1920,35 +1920,6 @@ Remember: You cannot pour from an empty cup. Taking care of yourself is part of 
     },
     {
       id: 'platform-9',
-      title: 'Documentation and Follow-Up',
-      content: `Proper documentation supports continuity of care and protects everyone.
-
-What to Document:
-• Key themes discussed in the session
-• Techniques used and client response
-• Any safety concerns and actions taken
-• Goals for next session
-• Follow-up items
-
-How to Document:
-• Be factual and objective
-• Avoid judgmental language
-• Note client's own words when relevant
-• Document immediately after sessions when memory is fresh
-
-Confidentiality in Documentation:
-• Store notes securely
-• Follow Psychi's data protection protocols
-• Don't include unnecessary identifying details
-
-Follow-Up Between Sessions:
-• Review notes before the next session
-• Follow up on homework or goals
-• Check in about crisis situations as appropriate
-• Coordinate with Psychi team when needed`,
-    },
-    {
-      id: 'platform-10',
       title: 'Continuing Your Growth',
       content: `Becoming an excellent peer supporter is an ongoing journey.
 
