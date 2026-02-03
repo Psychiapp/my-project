@@ -1030,31 +1030,6 @@ Key Takeaway: Mindfulness is a powerful and practical skill that helps you live 
             url: 'https://www.amazon.com/Miracle-Mindfulness-Introduction-Practice-Meditation/dp/0807012394',
             type: 'book',
           }} />
-          <Text style={{ fontSize: 14, fontWeight: '600', color: '#2A2A2A', marginTop: Spacing.md, marginBottom: Spacing.sm }}>Apps & Digital Tools:</Text>
-          <ResourceCard resource={{
-            title: 'Insight Timer',
-            description: 'Free app with thousands of guided meditations',
-            url: 'https://insighttimer.com/',
-            type: 'app',
-          }} />
-          <ResourceCard resource={{
-            title: 'Headspace',
-            description: 'Structured courses for beginners',
-            url: 'https://www.headspace.com/',
-            type: 'app',
-          }} />
-          <ResourceCard resource={{
-            title: 'Calm',
-            description: 'Guided meditations, sleep stories, and breathing exercises',
-            url: 'https://www.calm.com/',
-            type: 'app',
-          }} />
-          <ResourceCard resource={{
-            title: 'UCLA Mindful App',
-            description: 'Free meditations from UCLA Mindful Awareness Research Center',
-            url: 'https://www.uclahealth.org/programs/marc/free-guided-meditations/guided-meditations',
-            type: 'app',
-          }} />
           <Text style={{ fontSize: 14, color: PsychiColors.textSecondary, marginTop: Spacing.md, lineHeight: 20, fontStyle: 'italic' }}>
             Reflection Prompt: Before moving on, take a moment to practice what you've learned. Close your eyes, take three deep breaths, and notice what you're experiencing right now—thoughts, feelings, sensations—without trying to change anything. This is mindfulness in action.
           </Text>
@@ -1281,25 +1256,6 @@ Remember: Homework should feel collaborative, not assigned. Let clients choose w
             description: 'Comprehensive CBT techniques',
             url: 'https://www.amazon.com/Feeling-Good-Handbook-David-Burns/dp/0452281326',
             type: 'book',
-          }} />
-          <Text style={{ fontSize: 14, fontWeight: '600', color: '#2A2A2A', marginTop: Spacing.md, marginBottom: Spacing.sm }}>Apps & Tools:</Text>
-          <ResourceCard resource={{
-            title: 'Woebot',
-            description: 'AI chatbot using CBT techniques',
-            url: 'https://woebothealth.com/',
-            type: 'app',
-          }} />
-          <ResourceCard resource={{
-            title: 'MoodKit',
-            description: 'CBT-based mood improvement app',
-            url: 'https://www.thriveport.com/products/moodkit/',
-            type: 'app',
-          }} />
-          <ResourceCard resource={{
-            title: 'Thought Diary',
-            description: 'Digital thought record tool',
-            url: 'https://apps.apple.com/us/app/thought-diary/id1536063818',
-            type: 'app',
           }} />
         </View>
       ),
