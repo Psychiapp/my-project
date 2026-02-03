@@ -941,41 +941,6 @@ Key Takeaway: Mindfulness is a powerful and practical skill that helps you live 
     },
     {
       id: 'mindfulness-6',
-      title: 'Educational Videos',
-      content: (
-        <View>
-          <Text style={{ fontSize: 14, color: PsychiColors.textSecondary, marginBottom: Spacing.md, lineHeight: 20 }}>
-            Watch these educational videos from leading experts to deepen your understanding of mindfulness principles and practices:
-          </Text>
-          <VideoCard video={{
-            title: 'All It Takes Is 10 Mindful Minutes',
-            speaker: 'Andy Puddicombe - TED Talk',
-            description: 'Co-founder of Headspace explains how just 10 minutes of daily mindfulness can transform mental well-being.',
-            url: 'https://www.youtube.com/watch?v=qzR62JJCMBQ',
-          }} />
-          <VideoCard video={{
-            title: 'How Mindfulness Changes the Emotional Life of Our Brains',
-            speaker: 'Dr. Richard Davidson - TEDx Talk',
-            description: 'Neuroscientist at University of Wisconsin-Madison covers the neuroscience of mindfulness and meditation.',
-            url: 'https://www.youtube.com/watch?v=7CBfCW67xT8',
-          }} />
-          <VideoCard video={{
-            title: 'Guided Body Scan Meditation',
-            speaker: 'UCLA Mindful Awareness Research Center',
-            description: 'A practical guided body scan meditation you can use with clients.',
-            url: 'https://www.youtube.com/watch?v=u4gZgnCy5ew',
-          }} />
-          <VideoCard video={{
-            title: 'How Meditation Can Reshape Our Brains',
-            speaker: 'Dr. Sara Lazar - TEDx Talk',
-            description: 'Harvard neuroscientist presents fMRI research showing structural brain changes from meditation.',
-            url: 'https://www.youtube.com/watch?v=m8rRzTtP7Tc',
-          }} />
-        </View>
-      ),
-    },
-    {
-      id: 'mindfulness-7',
       title: 'Research & Evidence Base',
       content: (
         <View>
@@ -1185,41 +1150,6 @@ Remember: Homework should feel collaborative, not assigned. Let clients choose w
     },
     {
       id: 'cbt-6',
-      title: 'Educational Videos',
-      content: (
-        <View>
-          <Text style={{ fontSize: 14, color: PsychiColors.textSecondary, marginBottom: Spacing.md, lineHeight: 20 }}>
-            Watch these videos to deepen your understanding of CBT principles:
-          </Text>
-          <VideoCard video={{
-            title: 'What is Cognitive Behavioral Therapy?',
-            speaker: 'Psych Hub',
-            description: 'Clear explanation of CBT basics, the cognitive model, and how treatment works.',
-            url: 'https://www.youtube.com/watch?v=0ViaCs0k2jM',
-          }} />
-          <VideoCard video={{
-            title: 'Cognitive Restructuring',
-            speaker: 'Therapist Aid',
-            description: 'Practical demonstration of how to challenge and reframe negative thoughts.',
-            url: 'https://www.youtube.com/watch?v=jPXw07kGZuE',
-          }} />
-          <VideoCard video={{
-            title: 'Aaron Beck: The Father of Cognitive Therapy',
-            speaker: 'Beck Institute',
-            description: 'Overview of Aaron Beck\'s contributions and the development of CBT.',
-            url: 'https://www.youtube.com/watch?v=GlZ9CgKfMCo',
-          }} />
-          <VideoCard video={{
-            title: 'Behavioral Activation for Depression',
-            speaker: 'Evidence-Based Mental Health',
-            description: 'Explains how scheduling positive activities can help combat depression.',
-            url: 'https://www.youtube.com/watch?v=F0MkpBIPhKo',
-          }} />
-        </View>
-      ),
-    },
-    {
-      id: 'cbt-7',
       title: 'Research & Resources',
       content: (
         <View>
@@ -1434,41 +1364,6 @@ Validation opens the door to exploration. Agreement can sometimes shut it down b
     },
     {
       id: 'validation-7',
-      title: 'Educational Videos',
-      content: (
-        <View>
-          <Text style={{ fontSize: 14, color: PsychiColors.textSecondary, marginBottom: Spacing.md, lineHeight: 20 }}>
-            Watch these videos to see validation in action:
-          </Text>
-          <VideoCard video={{
-            title: 'What is Validation?',
-            speaker: 'Kati Morton',
-            description: 'Explains validation basics and why it\'s essential in relationships and therapy.',
-            url: 'https://www.youtube.com/watch?v=l0MMM-kT8Yk',
-          }} />
-          <VideoCard video={{
-            title: 'The Six Levels of Validation',
-            speaker: 'DBT Self Help',
-            description: 'Detailed walkthrough of Marsha Linehan\'s validation framework.',
-            url: 'https://www.youtube.com/watch?v=bI1x2xv7s4g',
-          }} />
-          <VideoCard video={{
-            title: 'Validation vs. Agreement',
-            speaker: 'Therapy in a Nutshell',
-            description: 'Clarifies the difference between validating feelings and agreeing with perspectives.',
-            url: 'https://www.youtube.com/watch?v=ETQN1DY1tZo',
-          }} />
-          <VideoCard video={{
-            title: 'How to Validate Someone\'s Feelings',
-            speaker: 'The School of Life',
-            description: 'Practical guide to offering emotional support through validation.',
-            url: 'https://www.youtube.com/watch?v=_SHWFPEHmaw',
-          }} />
-        </View>
-      ),
-    },
-    {
-      id: 'validation-8',
       title: 'Resources & Practice',
       content: (
         <View>
