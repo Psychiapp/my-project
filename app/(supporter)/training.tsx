@@ -1544,8 +1544,7 @@ Step 6: Provide Crisis Resources
 • Crisis Text Line (text HOME to 741741)
 • 911 for immediate danger
 
-Step 7: Escalate to Psychi Safety Team
-Use the in-app report button to alert Psychi's safety team.
+Step 7: Alert Psychi Safety Team at psychiapp@outlook.com
 
 Step 8: Stay With Them
 Don't end the session abruptly. Stay until they're stabilized or help arrives.`,
