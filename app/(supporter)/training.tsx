@@ -69,7 +69,7 @@ interface ResourceLink {
   title: string;
   author?: string;
   description: string;
-  url: string;
+  url?: string;
   type: 'book' | 'app' | 'website';
 }
 
@@ -100,23 +100,35 @@ const VideoCard = ({ video }: { video: VideoLink }) => (
   </TouchableOpacity>
 );
 
-const ResourceCard = ({ resource }: { resource: ResourceLink }) => (
-  <TouchableOpacity
-    style={linkStyles.resourceCard}
-    onPress={() => Linking.openURL(resource.url)}
-    activeOpacity={0.7}
-  >
-    <View style={[linkStyles.resourceIconContainer, resource.type === 'app' && linkStyles.resourceIconApp]}>
-      <BookIcon size={20} color={resource.type === 'app' ? PsychiColors.coral : PsychiColors.azure} />
-    </View>
-    <View style={linkStyles.resourceContent}>
-      <Text style={linkStyles.resourceTitle}>{resource.title}</Text>
-      {resource.author && <Text style={linkStyles.resourceAuthor}>by {resource.author}</Text>}
-      <Text style={linkStyles.resourceDescription}>{resource.description}</Text>
-    </View>
-    <ExternalLinkIcon size={16} color={PsychiColors.textMuted} />
-  </TouchableOpacity>
-);
+const ResourceCard = ({ resource }: { resource: ResourceLink }) => {
+  const content = (
+    <>
+      <View style={[linkStyles.resourceIconContainer, resource.type === 'app' && linkStyles.resourceIconApp]}>
+        <BookIcon size={20} color={resource.type === 'app' ? PsychiColors.coral : PsychiColors.azure} />
+      </View>
+      <View style={linkStyles.resourceContent}>
+        <Text style={linkStyles.resourceTitle}>{resource.title}</Text>
+        {resource.author && <Text style={linkStyles.resourceAuthor}>by {resource.author}</Text>}
+        <Text style={linkStyles.resourceDescription}>{resource.description}</Text>
+      </View>
+      {resource.url && <ExternalLinkIcon size={16} color={PsychiColors.textMuted} />}
+    </>
+  );
+
+  if (resource.url) {
+    return (
+      <TouchableOpacity
+        style={linkStyles.resourceCard}
+        onPress={() => Linking.openURL(resource.url!)}
+        activeOpacity={0.7}
+      >
+        {content}
+      </TouchableOpacity>
+    );
+  }
+
+  return <View style={linkStyles.resourceCard}>{content}</View>;
+};
 
 const StudyCard = ({ study }: { study: StudyLink }) => (
   <TouchableOpacity
@@ -1013,21 +1025,18 @@ Key Takeaway: Mindfulness is a powerful and practical skill that helps you live 
             title: 'Full Catastrophe Living',
             author: 'Jon Kabat-Zinn',
             description: 'The definitive guide to MBSR from its creator',
-            url: 'https://www.amazon.com/Full-Catastrophe-Living-Revised-Illness/dp/0345536932',
             type: 'book',
           }} />
           <ResourceCard resource={{
             title: 'Wherever You Go, There You Are',
             author: 'Jon Kabat-Zinn',
             description: 'An accessible introduction to mindfulness in daily life',
-            url: 'https://www.amazon.com/Wherever-You-Go-There-Are/dp/1401307787',
             type: 'book',
           }} />
           <ResourceCard resource={{
             title: 'The Miracle of Mindfulness',
             author: 'Thich Nhat Hanh',
             description: 'A classic guide to mindfulness meditation',
-            url: 'https://www.amazon.com/Miracle-Mindfulness-Introduction-Practice-Meditation/dp/0807012394',
             type: 'book',
           }} />
           <Text style={{ fontSize: 14, color: PsychiColors.textSecondary, marginTop: Spacing.md, lineHeight: 20, fontStyle: 'italic' }}>
@@ -1233,21 +1242,18 @@ Remember: Homework should feel collaborative, not assigned. Let clients choose w
             title: 'Feeling Good',
             author: 'David Burns',
             description: 'Classic self-help book on CBT for depression',
-            url: 'https://www.amazon.com/Feeling-Good-New-Mood-Therapy/dp/0380810336',
             type: 'book',
           }} />
           <ResourceCard resource={{
             title: 'Mind Over Mood',
             author: 'Greenberger & Padesky',
             description: 'Practical CBT workbook',
-            url: 'https://www.amazon.com/Mind-Over-Mood-Second-Changing/dp/1462520421',
             type: 'book',
           }} />
           <ResourceCard resource={{
             title: 'The Feeling Good Handbook',
             author: 'David Burns',
             description: 'Comprehensive CBT techniques',
-            url: 'https://www.amazon.com/Feeling-Good-Handbook-David-Burns/dp/0452281326',
             type: 'book',
           }} />
         </View>
@@ -1478,21 +1484,18 @@ Validation opens the door to exploration. Agreement can sometimes shut it down b
             title: 'The High-Conflict Couple',
             author: 'Alan Fruzzetti',
             description: 'DBT approach to validation in relationships',
-            url: 'https://www.amazon.com/High-Conflict-Couple-Dialectical-Behavior-Therapy/dp/1572244500',
             type: 'book',
           }} />
           <ResourceCard resource={{
             title: 'DBT Skills Training Manual',
             author: 'Marsha Linehan',
             description: 'Comprehensive validation framework',
-            url: 'https://www.amazon.com/DBT-Skills-Training-Manual-Second/dp/1462516998',
             type: 'book',
           }} />
           <ResourceCard resource={{
             title: 'Nonviolent Communication',
             author: 'Marshall Rosenberg',
             description: 'Related approach to empathic communication',
-            url: 'https://www.amazon.com/Nonviolent-Communication-Language-Life-Changing-Relationships/dp/189200528X',
             type: 'book',
           }} />
           <Text style={{ fontSize: 14, fontWeight: '600', color: '#2A2A2A', marginTop: Spacing.md, marginBottom: Spacing.sm }}>Practice Exercise:</Text>
