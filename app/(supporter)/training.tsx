@@ -1824,10 +1824,7 @@ Step 4: Contact Psychi
 Contact Psychi at psychiapp@outlook.com. They can provide additional support and follow-up.
 
 Step 5: Stay With Them
-Don't end the session abruptly. Stay until they've connected with resources or the crisis has de-escalated.
-
-Step 6: Document
-After the session, document what happened according to Psychi's protocols.`,
+Don't end the session abruptly. Stay until they've connected with resources or the crisis has de-escalated.`,
     },
     {
       id: 'platform-6',
