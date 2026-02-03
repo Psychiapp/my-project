@@ -4,7 +4,7 @@
  * Content matches web version exactly
  */
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -2119,6 +2119,7 @@ export default function TrainingScreen() {
   const [showResults, setShowResults] = useState(false);
   const [quizScore, setQuizScore] = useState(0);
   const [showCertificate, setShowCertificate] = useState(false);
+  const scrollViewRef = useRef<ScrollView>(null);
 
   const completedCount = Object.values(moduleProgress).filter(Boolean).length;
   const allComplete = completedCount === 6;
@@ -2172,6 +2173,10 @@ export default function TrainingScreen() {
     setShowQuiz(true);
     setQuizAnswers({});
     setShowResults(false);
+    // Scroll to top when starting quiz
+    setTimeout(() => {
+      scrollViewRef.current?.scrollTo({ y: 0, animated: false });
+    }, 100);
   };
 
   const handleQuizAnswer = (questionId: string, answer: string) => {
@@ -2197,6 +2202,10 @@ export default function TrainingScreen() {
   const handleRetakeQuiz = () => {
     setQuizAnswers({});
     setShowResults(false);
+    // Scroll to top when retaking quiz
+    setTimeout(() => {
+      scrollViewRef.current?.scrollTo({ y: 0, animated: false });
+    }, 100);
   };
 
   const handleNextModule = () => {
@@ -2289,7 +2298,7 @@ export default function TrainingScreen() {
           <View style={styles.headerSpacer} />
         </View>
 
-        <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+        <ScrollView ref={scrollViewRef} style={styles.content} contentContainerStyle={styles.contentContainer}>
           {!showQuiz ? (
             // Module Content
             <View style={styles.moduleContent}>
