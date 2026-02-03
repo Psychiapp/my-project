@@ -2651,7 +2651,6 @@ const styles = StyleSheet.create({
   sectionCard: {
     backgroundColor: PsychiColors.white,
     borderRadius: BorderRadius.lg,
-    overflow: 'hidden',
     ...Shadows.soft,
   },
   sectionHeader: {
@@ -2690,7 +2689,8 @@ const styles = StyleSheet.create({
   },
   sectionContent: {
     padding: Spacing.md,
-    paddingTop: 0,
+    paddingTop: Spacing.sm,
+    paddingBottom: Spacing.lg,
     borderTopWidth: 1,
     borderTopColor: 'rgba(0,0,0,0.05)',
   },
