@@ -97,23 +97,26 @@ export default function SubscriptionScreen() {
     setSelectedPlan(plan);
   };
 
-  const handleSubscribe = () => {
-    if (!selectedPlan || !user?.id) return;
+  const handleSubscribeToPlan = (plan: PlanTier) => {
+    if (plan === currentPlan || !user?.id) return;
 
     Alert.alert(
       'Confirm Subscription',
-      `Subscribe to ${plans[selectedPlan].name} plan for ${plans[selectedPlan].price}?`,
+      `Subscribe to ${plans[plan].name} plan for ${plans[plan].price}?\n\nThis subscription automatically renews unless canceled at least 24 hours before the end of the current period.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Subscribe',
           onPress: async () => {
             setIsProcessing(true);
+            setSelectedPlan(plan);
             try {
-              const success = await updateClientSubscription(user.id, selectedPlan);
+              const success = await updateClientSubscription(user.id, plan);
               if (success) {
-                Alert.alert('Success', 'Subscription updated!');
-                setCurrentPlan(selectedPlan);
+                Alert.alert('Success', `You're now subscribed to the ${plans[plan].name} plan!`, [
+                  { text: 'OK' }
+                ]);
+                setCurrentPlan(plan);
                 setSelectedPlan(null);
               } else {
                 Alert.alert('Error', 'Failed to update subscription. Please try again.');
@@ -123,11 +126,17 @@ export default function SubscriptionScreen() {
               Alert.alert('Error', 'Something went wrong. Please try again.');
             } finally {
               setIsProcessing(false);
+              setSelectedPlan(null);
             }
           },
         },
       ]
     );
+  };
+
+  const handleSubscribe = () => {
+    if (!selectedPlan || !user?.id) return;
+    handleSubscribeToPlan(selectedPlan);
   };
 
   const handleCancelSubscription = () => {
@@ -230,18 +239,16 @@ export default function SubscriptionScreen() {
               const plan = plans[tier];
               const isSelected = selectedPlan === tier;
               const isCurrent = currentPlan === tier;
+              const isProcessingThis = isProcessing && selectedPlan === tier;
 
               return (
-                <TouchableOpacity
+                <View
                   key={tier}
                   style={[
                     styles.planCard,
                     isSelected && styles.planCardSelected,
                     isCurrent && styles.planCardCurrent,
                   ]}
-                  onPress={() => handleSelectPlan(tier)}
-                  activeOpacity={0.8}
-                  disabled={isCurrent}
                 >
                   <View style={styles.planHeader}>
                     <Text style={[styles.planName, { color: plan.color }]}>{plan.name}</Text>
@@ -259,12 +266,33 @@ export default function SubscriptionScreen() {
                   <Text style={styles.planPrice}>{plan.price}</Text>
                   <Text style={styles.planDescription}>{plan.description}</Text>
 
-                  {isSelected && !isCurrent && (
-                    <View style={styles.selectedIndicator}>
-                      <CheckIcon size={14} color={PsychiColors.white} />
+                  {/* Subscribe Button on each card */}
+                  {!isCurrent && (
+                    <TouchableOpacity
+                      style={[
+                        styles.planSubscribeButton,
+                        { backgroundColor: plan.color },
+                        isProcessingThis && styles.planSubscribeButtonDisabled,
+                      ]}
+                      onPress={() => handleSubscribeToPlan(tier)}
+                      activeOpacity={0.8}
+                      disabled={isProcessing}
+                    >
+                      {isProcessingThis ? (
+                        <ActivityIndicator size="small" color={PsychiColors.white} />
+                      ) : (
+                        <Text style={styles.planSubscribeButtonText}>Subscribe</Text>
+                      )}
+                    </TouchableOpacity>
+                  )}
+
+                  {isCurrent && (
+                    <View style={styles.currentPlanIndicator}>
+                      <CheckIcon size={14} color={PsychiColors.violet} />
+                      <Text style={styles.currentPlanIndicatorText}>Active Plan</Text>
                     </View>
                   )}
-                </TouchableOpacity>
+                </View>
               );
             })}
           </View>
@@ -583,6 +611,38 @@ const styles = StyleSheet.create({
     color: PsychiColors.white,
     fontSize: 14,
     fontWeight: '700',
+  },
+  planSubscribeButton: {
+    marginTop: Spacing.md,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: BorderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 40,
+  },
+  planSubscribeButtonDisabled: {
+    opacity: 0.7,
+  },
+  planSubscribeButtonText: {
+    color: PsychiColors.white,
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  currentPlanIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: Spacing.md,
+    paddingVertical: Spacing.sm,
+    backgroundColor: 'rgba(123, 104, 176, 0.1)',
+    borderRadius: BorderRadius.md,
+    gap: Spacing.xs,
+  },
+  currentPlanIndicatorText: {
+    color: PsychiColors.violet,
+    fontSize: 14,
+    fontWeight: '600',
   },
   subscribeSection: {
     paddingHorizontal: Spacing.lg,
