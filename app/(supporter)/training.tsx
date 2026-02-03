@@ -1820,8 +1820,8 @@ Step 3: Provide Crisis Resources
 "I want to make sure you have support right now. Have you heard of the 988 Suicide & Crisis Lifeline?"
 Provide: 988 (call or text) and Crisis Text Line (text HOME to 741741)
 
-Step 4: Escalate to Psychi
-Use the in-app report/flag feature to alert Psychi's safety team. They can provide additional support and follow-up.
+Step 4: Contact Psychi
+Contact Psychi at psychiapp@outlook.com. They can provide additional support and follow-up.
 
 Step 5: Stay With Them
 Don't end the session abruptly. Stay until they've connected with resources or the crisis has de-escalated.

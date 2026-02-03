@@ -101,11 +101,10 @@ SAFETY AND REPORTING
 Emergency Protocol:
 If you or someone else is in immediate danger:
 1. Call 911 or local emergency services
-2. Use the in-app emergency button
-3. Contact the 988 Suicide & Crisis Lifeline
+2. Contact the 988 Suicide & Crisis Lifeline
 
 Reporting Concerns:
-- Use the in-app report feature to flag inappropriate behavior
+- Contact Psychi at psychiapp@outlook.com to report inappropriate behavior
 - Reports are reviewed within 24 hours
 - False reports may result in account suspension
 

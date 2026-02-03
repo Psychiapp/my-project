@@ -50,7 +50,7 @@ As a Supporter on the Psychi platform, you agree to the following obligations:
 
 Notwithstanding the foregoing, Confidential Information may be disclosed in the following circumstances:
 
-4.1 Imminent Harm: If you have reasonable belief that a Client poses an imminent risk of serious harm to themselves or others, you must immediately report this to Psychi through the platform's emergency reporting feature.
+4.1 Imminent Harm: If you have reasonable belief that a Client poses an imminent risk of serious harm to themselves or others, you must immediately report this to Psychi at psychiapp@outlook.com.
 
 4.2 Legal Requirements: If disclosure is required by law, court order, or governmental authority, provided that you notify Psychi immediately upon becoming aware of such requirement (unless prohibited by law from doing so).
 
