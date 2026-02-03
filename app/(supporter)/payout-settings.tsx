@@ -81,7 +81,17 @@ export default function PayoutSettingsScreen() {
   }, [params.success, params.refresh]);
 
   const loadProfile = async () => {
-    if (!user?.id || !supabase) return;
+    if (!user?.id || !supabase) {
+      setIsLoading(false);
+      return;
+    }
+
+    // Handle demo mode - don't query database with invalid UUID
+    if (isDemoMode) {
+      setFullName('Demo Supporter');
+      setIsLoading(false);
+      return;
+    }
 
     try {
       const { data, error } = await supabase
