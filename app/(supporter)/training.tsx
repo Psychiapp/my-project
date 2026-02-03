@@ -1673,7 +1673,7 @@ You're not asking them to give up everything forever—just creating a safety bu
             Supporting someone in crisis is emotionally demanding. Take care of yourself:
           </Text>
           <Text style={{ fontSize: 14, color: PsychiColors.textSecondary, lineHeight: 22 }}>
-            {'\u2022'} Debrief with a supervisor or peer{'\n'}
+            {'\u2022'} Debrief with a peer{'\n'}
             {'\u2022'} Take breaks between difficult sessions{'\n'}
             {'\u2022'} Practice your own grounding and self-care{'\n'}
             {'\u2022'} Recognize signs of vicarious trauma{'\n'}
@@ -1907,11 +1907,11 @@ Daily Practices:
 After Difficult Sessions:
 • Take a break before the next session
 • Use grounding techniques
-• Debrief with a supervisor or peer
+• Debrief with a peer
 • Don't isolate—talk about your experiences
 
 Ongoing Support:
-• Regular supervision or peer consultation
+• Regular peer consultation
 • Professional therapy if needed
 • Continuing education to build skills
 • Community with other supporters
@@ -1924,7 +1924,6 @@ Remember: You cannot pour from an empty cup. Taking care of yourself is part of 
       content: `Becoming an excellent peer supporter is an ongoing journey.
 
 Ways to Grow:
-• Seek feedback from supervisors and clients
 • Reflect on sessions—what went well, what could improve?
 • Continue learning through reading, courses, and training
 • Practice the techniques you teach
