@@ -1784,7 +1784,6 @@ When a Client Becomes Tearful and Silent:
 • Allow comfortable silence—don't rush to fill it
 • Maintain warm, open presence
 • Gently say: "I'm here with you. Take your time."
-• Offer tissue if in person; acknowledge the tears if virtual
 • Resume when they're ready, following their lead
 
 When a Client Expresses Strong Emotion:
