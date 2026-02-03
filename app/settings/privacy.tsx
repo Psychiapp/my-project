@@ -21,7 +21,6 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   ShieldIcon,
-  DownloadIcon,
   TrashIcon,
 } from '@/components/icons';
 import { ExternalUrls } from '@/constants/config';
@@ -96,20 +95,6 @@ export default function PrivacySecurityScreen() {
               ]
             );
           },
-        },
-      ]
-    );
-  };
-
-  const handleExportData = () => {
-    Alert.alert(
-      'Export Your Data',
-      'We will prepare your data export and email it to you within 24 hours.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Request Export',
-          onPress: () => Alert.alert('Request Received', 'You will receive an email when your data is ready.'),
         },
       ]
     );
@@ -201,18 +186,10 @@ export default function PrivacySecurityScreen() {
           </View>
         </View>
 
-        {/* Data Management */}
+        {/* Account Management */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle} accessibilityRole="header">Your Data</Text>
+          <Text style={styles.sectionTitle} accessibilityRole="header">Account</Text>
           <View style={styles.settingsCard}>
-            <TouchableOpacity style={[styles.settingRow, styles.settingRowBorder]} onPress={handleExportData} accessibilityRole="button" accessibilityLabel="Export Your Data" accessibilityHint="Download a copy of your information">
-              <DownloadIcon size={20} color={PsychiColors.azure} />
-              <View style={styles.settingInfo}>
-                <Text style={styles.settingTitle}>Export Your Data</Text>
-                <Text style={styles.settingDescription}>Download a copy of your information</Text>
-              </View>
-              <ChevronRightIcon size={20} color={PsychiColors.textMuted} />
-            </TouchableOpacity>
             <TouchableOpacity style={styles.settingRow} onPress={handleDeleteAccount} accessibilityRole="button" accessibilityLabel="Delete Account, destructive action" accessibilityHint="Permanently delete your account and data">
               <TrashIcon size={20} color={PsychiColors.error} />
               <View style={styles.settingInfo}>
