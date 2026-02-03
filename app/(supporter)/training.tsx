@@ -2352,7 +2352,11 @@ export default function TrainingScreen() {
                   </TouchableOpacity>
                   {expandedSections[section.id] && (
                     <View style={styles.sectionContent}>
-                      <Text style={styles.sectionText}>{section.content}</Text>
+                      {typeof section.content === 'string' ? (
+                        <Text style={styles.sectionText}>{section.content}</Text>
+                      ) : (
+                        section.content
+                      )}
                     </View>
                   )}
                 </View>
