@@ -196,7 +196,8 @@ export default function OnboardingModal({
         timezone,
       };
       await onComplete(preferences);
-      onClose();
+      // Note: Don't call onClose() here - the parent component handles navigation
+      // and closing the modal after onComplete succeeds
     } catch (error) {
       console.error('Error saving preferences:', error);
     } finally {

@@ -336,7 +336,9 @@ export default function BookSessionScreen() {
           visible={showOnboardingModal}
           onClose={() => {
             setShowOnboardingModal(false);
-            router.back();
+            // Use replace instead of back() to avoid navigation errors
+            // when there's no previous screen in the stack
+            router.replace('/(client)');
           }}
           onComplete={handleOnboardingComplete}
         />
