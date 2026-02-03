@@ -13,10 +13,14 @@ import {
   ScrollView,
   Alert,
   Linking,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import ViewShot from 'react-native-view-shot';
+import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system';
 import { PsychiColors, Spacing, BorderRadius, Shadows, Typography } from '@/constants/theme';
 import {
   ChevronLeftIcon,
@@ -1969,7 +1973,9 @@ export default function TrainingScreen() {
   const [showResults, setShowResults] = useState(false);
   const [quizScore, setQuizScore] = useState(0);
   const [showCertificate, setShowCertificate] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
+  const certificateRef = useRef<ViewShot>(null);
 
   const completedCount = Object.values(moduleProgress).filter(Boolean).length;
   const allComplete = completedCount === 6;
@@ -1982,6 +1988,39 @@ export default function TrainingScreen() {
     const index = moduleOrder.indexOf(moduleId);
     if (index === 0) return true;
     return moduleProgress[moduleOrder[index - 1]];
+  };
+
+  const handleDownloadCertificate = async () => {
+    if (!certificateRef.current) return;
+
+    try {
+      setIsDownloading(true);
+
+      // Capture the certificate as an image
+      const uri = await certificateRef.current.capture?.();
+      if (!uri) {
+        Alert.alert('Error', 'Could not capture certificate');
+        return;
+      }
+
+      // Check if sharing is available
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (isAvailable) {
+        // Share the certificate image
+        await Sharing.shareAsync(uri, {
+          mimeType: 'image/png',
+          dialogTitle: 'Download Your Certificate',
+          UTI: 'public.png',
+        });
+      } else {
+        Alert.alert('Sharing not available', 'Sharing is not available on this device');
+      }
+    } catch (error) {
+      console.error('Error downloading certificate:', error);
+      Alert.alert('Error', 'Could not download certificate. Please try again.');
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   const toggleSection = (sectionId: string) => {
@@ -2090,36 +2129,51 @@ export default function TrainingScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.certificateContainer}>
-          <LinearGradient
-            colors={[PsychiColors.azure, PsychiColors.deep] as const}
-            style={styles.certificateCard}
+          <ViewShot
+            ref={certificateRef}
+            options={{ format: 'png', quality: 1 }}
           >
-            <View style={styles.certificateIconContainer}>
-              <CertificateIcon size={64} color={PsychiColors.white} />
-            </View>
-            <Text style={styles.certificateTitle}>Congratulations!</Text>
-            <Text style={styles.certificateSubtitle}>
-              You have completed all training modules
+            <LinearGradient
+              colors={[PsychiColors.azure, PsychiColors.deep] as const}
+              style={styles.certificateCard}
+            >
+              <View style={styles.certificateIconContainer}>
+                <CertificateIcon size={64} color={PsychiColors.white} />
+              </View>
+              <Text style={styles.certificateTitle}>Congratulations!</Text>
+              <Text style={styles.certificateSubtitle}>
+                You have completed all training modules
+              </Text>
+              <View style={styles.certificateBadge}>
+                <Text style={styles.certificateBadgeText}>Certified Psychi Supporter</Text>
+              </View>
+              <View style={styles.certificateModules}>
+                <Text style={styles.certificateModulesTitle}>Proficiency Demonstrated In:</Text>
+                <Text style={styles.certificateModuleItem}>• Mindfulness Techniques</Text>
+                <Text style={styles.certificateModuleItem}>• Cognitive Behavioral Therapy (CBT)</Text>
+                <Text style={styles.certificateModuleItem}>• Validating Language Skills</Text>
+                <Text style={styles.certificateModuleItem}>• Crisis Recognition & Response</Text>
+                <Text style={styles.certificateModuleItem}>• Supporting Clients on Psychi</Text>
+              </View>
+              <Text style={styles.certificateDate}>
+                Completed on {new Date().toLocaleDateString('en-US', {
+                  month: 'long',
+                  day: 'numeric',
+                  year: 'numeric',
+                })}
+              </Text>
+            </LinearGradient>
+          </ViewShot>
+          <TouchableOpacity
+            style={styles.downloadButton}
+            onPress={handleDownloadCertificate}
+            disabled={isDownloading}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.downloadButtonText}>
+              {isDownloading ? 'Preparing...' : 'Download Certificate'}
             </Text>
-            <View style={styles.certificateBadge}>
-              <Text style={styles.certificateBadgeText}>Certified Psychi Supporter</Text>
-            </View>
-            <View style={styles.certificateModules}>
-              <Text style={styles.certificateModulesTitle}>Proficiency Demonstrated In:</Text>
-              <Text style={styles.certificateModuleItem}>• Mindfulness Techniques</Text>
-              <Text style={styles.certificateModuleItem}>• Cognitive Behavioral Therapy (CBT)</Text>
-              <Text style={styles.certificateModuleItem}>• Validating Language Skills</Text>
-              <Text style={styles.certificateModuleItem}>• Crisis Recognition & Response</Text>
-              <Text style={styles.certificateModuleItem}>• Supporting Clients on Psychi</Text>
-            </View>
-            <Text style={styles.certificateDate}>
-              Completed on {new Date().toLocaleDateString('en-US', {
-                month: 'long',
-                day: 'numeric',
-                year: 'numeric',
-              })}
-            </Text>
-          </LinearGradient>
+          </TouchableOpacity>
           <TouchableOpacity
             style={styles.certificateButton}
             onPress={() => router.back()}
@@ -2911,6 +2965,18 @@ const styles = StyleSheet.create({
   certificateDate: {
     fontSize: 13,
     color: 'rgba(255,255,255,0.7)',
+  },
+  downloadButton: {
+    backgroundColor: PsychiColors.royalBlue,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    alignItems: 'center',
+    marginBottom: Spacing.sm,
+  },
+  downloadButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: PsychiColors.white,
   },
   certificateButton: {
     backgroundColor: PsychiColors.white,
