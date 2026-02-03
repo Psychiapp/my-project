@@ -99,7 +99,8 @@ export default function WelcomeScreen() {
     if (isAuthenticated) {
       goToDashboard();
     } else {
-      router.push('/(auth)/sign-up');
+      // Go directly to client sign up - no need to ask about becoming a supporter
+      router.push('/(auth)/sign-up?role=client');
     }
   };
 
