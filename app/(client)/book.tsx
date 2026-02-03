@@ -650,16 +650,11 @@ export default function BookSessionScreen() {
               accessibilityHint="Confirms your booking and proceeds to payment"
               accessibilityState={{ disabled: isBooking }}
             >
-              <LinearGradient
-                colors={[PsychiColors.azure, PsychiColors.deep] as const}
-                style={styles.confirmButtonGradient}
-              >
-                {isBooking ? (
-                  <ActivityIndicator color={PsychiColors.white} />
-                ) : (
-                  <Text style={styles.confirmButtonText}>Confirm & Pay</Text>
-                )}
-              </LinearGradient>
+              {isBooking ? (
+                <ActivityIndicator color={PsychiColors.white} />
+              ) : (
+                <Text style={styles.confirmButtonText}>Confirm & Pay</Text>
+              )}
             </TouchableOpacity>
           </View>
         )}
@@ -992,17 +987,15 @@ const styles = StyleSheet.create({
     color: PsychiColors.deep,
   },
   confirmButton: {
-    borderRadius: BorderRadius.lg,
-    overflow: 'hidden',
-  },
-  confirmButtonDisabled: {
-    opacity: 0.7,
-  },
-  confirmButtonGradient: {
+    backgroundColor: PsychiColors.royalBlue,
+    borderRadius: BorderRadius.full,
     paddingVertical: Spacing.md,
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 52,
+  },
+  confirmButtonDisabled: {
+    opacity: 0.7,
   },
   confirmButtonText: {
     fontSize: 17,

@@ -10,7 +10,6 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
 import {
@@ -317,14 +316,9 @@ export default function SessionsScreen() {
               accessibilityLabel={session.type === 'chat' ? 'Open Chat' : 'Join Call'}
               accessibilityHint={`Start your ${session.type} session with ${session.supporterName}`}
             >
-              <LinearGradient
-                colors={[PsychiColors.azure, PsychiColors.deep]}
-                style={styles.joinButtonGradient}
-              >
-                <Text style={styles.joinButtonText}>
-                  {session.type === 'chat' ? 'Open Chat' : 'Join Call'}
-                </Text>
-              </LinearGradient>
+              <Text style={styles.joinButtonText}>
+                {session.type === 'chat' ? 'Open Chat' : 'Join Call'}
+              </Text>
             </TouchableOpacity>
           </View>
         </>
@@ -413,12 +407,7 @@ export default function SessionsScreen() {
                 accessibilityLabel="Find Support"
                 accessibilityHint="Navigate to book a session with a supporter"
               >
-                <LinearGradient
-                  colors={[PsychiColors.azure, PsychiColors.deep]}
-                  style={styles.emptyButtonGradient}
-                >
-                  <Text style={styles.emptyButtonText}>Find Support</Text>
-                </LinearGradient>
+                <Text style={styles.emptyButtonText}>Find Support</Text>
               </TouchableOpacity>
             </View>
           )
@@ -815,10 +804,8 @@ const styles = StyleSheet.create({
   },
   joinButton: {
     flex: 2,
-    borderRadius: BorderRadius.md,
-    overflow: 'hidden',
-  },
-  joinButtonGradient: {
+    backgroundColor: PsychiColors.royalBlue,
+    borderRadius: BorderRadius.full,
     paddingVertical: Spacing.sm,
     alignItems: 'center',
   },
@@ -853,10 +840,8 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.lg,
   },
   emptyButton: {
-    borderRadius: BorderRadius.md,
-    overflow: 'hidden',
-  },
-  emptyButtonGradient: {
+    backgroundColor: PsychiColors.royalBlue,
+    borderRadius: BorderRadius.full,
     paddingVertical: Spacing.sm,
     paddingHorizontal: Spacing.lg,
   },

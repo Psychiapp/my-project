@@ -13,7 +13,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
 import {
   PermissionStatus,
@@ -195,12 +194,7 @@ export default function PermissionsScreen() {
               onPress={handleRequestAll}
               activeOpacity={0.8}
             >
-              <LinearGradient
-                colors={[PsychiColors.azure, PsychiColors.deep]}
-                style={styles.enableAllButtonGradient}
-              >
-                <Text style={styles.enableAllButtonText}>Enable All</Text>
-              </LinearGradient>
+              <Text style={styles.enableAllButtonText}>Enable All</Text>
             </TouchableOpacity>
           )}
 
@@ -212,16 +206,9 @@ export default function PermissionsScreen() {
             onPress={handleContinue}
             activeOpacity={0.8}
           >
-            {allRequiredGranted ? (
-              <LinearGradient
-                colors={[PsychiColors.azure, PsychiColors.deep]}
-                style={styles.continueButtonGradient}
-              >
-                <Text style={styles.continueButtonTextPrimary}>Continue</Text>
-              </LinearGradient>
-            ) : (
-              <Text style={styles.continueButtonText}>Skip for Now</Text>
-            )}
+            <Text style={allRequiredGranted ? styles.continueButtonTextPrimary : styles.continueButtonText}>
+              {allRequiredGranted ? 'Continue' : 'Skip for Now'}
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -370,10 +357,8 @@ const styles = StyleSheet.create({
     color: PsychiColors.textSecondary,
   },
   enableAllButton: {
-    borderRadius: BorderRadius.lg,
-    overflow: 'hidden',
-  },
-  enableAllButtonGradient: {
+    backgroundColor: PsychiColors.royalBlue,
+    borderRadius: BorderRadius.full,
     paddingVertical: Spacing.md,
     alignItems: 'center',
   },
@@ -384,18 +369,12 @@ const styles = StyleSheet.create({
   },
   continueButton: {
     paddingVertical: Spacing.md,
-    borderRadius: BorderRadius.lg,
+    borderRadius: BorderRadius.full,
     backgroundColor: 'transparent',
     alignItems: 'center',
   },
   continueButtonPrimary: {
-    overflow: 'hidden',
-  },
-  continueButtonGradient: {
-    width: '100%',
-    paddingVertical: Spacing.md,
-    alignItems: 'center',
-    borderRadius: BorderRadius.lg,
+    backgroundColor: PsychiColors.royalBlue,
   },
   continueButtonText: {
     fontSize: 16,

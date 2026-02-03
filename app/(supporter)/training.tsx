@@ -2363,20 +2363,11 @@ export default function TrainingScreen() {
                 activeOpacity={0.8}
                 disabled={!allSectionsViewed(currentModule)}
               >
-                <LinearGradient
-                  colors={
-                    allSectionsViewed(currentModule)
-                      ? [PsychiColors.azure, PsychiColors.deep] as const
-                      : ['#ccc', '#aaa'] as const
-                  }
-                  style={styles.quizButtonGradient}
-                >
-                  <Text style={styles.quizButtonText}>
-                    {allSectionsViewed(currentModule)
-                      ? 'Take Quiz'
-                      : `Complete all ${totalSections} sections to unlock quiz`}
-                  </Text>
-                </LinearGradient>
+                <Text style={styles.quizButtonText}>
+                  {allSectionsViewed(currentModule)
+                    ? 'Take Quiz'
+                    : `Complete all ${totalSections} sections to unlock quiz`}
+                </Text>
               </TouchableOpacity>
             </View>
           ) : showResults ? (
@@ -2409,14 +2400,9 @@ export default function TrainingScreen() {
                   onPress={handleNextModule}
                   activeOpacity={0.8}
                 >
-                  <LinearGradient
-                    colors={[PsychiColors.azure, PsychiColors.deep] as const}
-                    style={styles.nextButtonGradient}
-                  >
-                    <Text style={styles.nextButtonText}>
-                      {currentModule === 'platform' ? 'Get Certificate' : 'Next Module'}
-                    </Text>
-                  </LinearGradient>
+                  <Text style={styles.nextButtonText}>
+                    {currentModule === 'platform' ? 'Get Certificate' : 'Next Module'}
+                  </Text>
                 </TouchableOpacity>
               ) : (
                 <TouchableOpacity
@@ -2476,16 +2462,7 @@ export default function TrainingScreen() {
                 disabled={Object.keys(quizAnswers).length < 6}
                 activeOpacity={0.8}
               >
-                <LinearGradient
-                  colors={
-                    Object.keys(quizAnswers).length >= 6
-                      ? [PsychiColors.azure, PsychiColors.deep] as const
-                      : ['#ccc', '#aaa'] as const
-                  }
-                  style={styles.submitButtonGradient}
-                >
-                  <Text style={styles.submitButtonText}>Submit Answers</Text>
-                </LinearGradient>
+                <Text style={styles.submitButtonText}>Submit Answers</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -2827,16 +2804,14 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   quizButton: {
-    borderRadius: BorderRadius.lg,
-    overflow: 'hidden',
+    backgroundColor: PsychiColors.royalBlue,
+    borderRadius: BorderRadius.full,
+    paddingVertical: Spacing.md,
+    alignItems: 'center',
     marginTop: Spacing.md,
   },
   quizButtonDisabled: {
-    opacity: 0.7,
-  },
-  quizButtonGradient: {
-    paddingVertical: Spacing.md,
-    alignItems: 'center',
+    backgroundColor: '#ccc',
   },
   quizButtonText: {
     fontSize: 16,
@@ -2925,15 +2900,13 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   submitButton: {
-    borderRadius: BorderRadius.lg,
-    overflow: 'hidden',
-  },
-  submitButtonDisabled: {
-    opacity: 0.6,
-  },
-  submitButtonGradient: {
+    backgroundColor: PsychiColors.royalBlue,
+    borderRadius: BorderRadius.full,
     paddingVertical: Spacing.md,
     alignItems: 'center',
+  },
+  submitButtonDisabled: {
+    backgroundColor: '#ccc',
   },
   submitButtonText: {
     fontSize: 16,
@@ -2981,10 +2954,8 @@ const styles = StyleSheet.create({
   },
   nextButton: {
     width: '100%',
-    borderRadius: BorderRadius.lg,
-    overflow: 'hidden',
-  },
-  nextButtonGradient: {
+    backgroundColor: PsychiColors.royalBlue,
+    borderRadius: BorderRadius.full,
     paddingVertical: Spacing.md,
     alignItems: 'center',
   },

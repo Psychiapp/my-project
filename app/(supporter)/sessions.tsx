@@ -13,7 +13,6 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
 import {
@@ -353,14 +352,9 @@ export default function SupporterSessionsScreen() {
             activeOpacity={0.8}
             onPress={() => router.push(`/session/${session.id}?type=${session.type}`)}
           >
-            <LinearGradient
-              colors={[PsychiColors.azure, PsychiColors.deep]}
-              style={styles.joinButtonGradient}
-            >
-              <Text style={styles.joinButtonText}>
-                {session.type === 'chat' ? 'Chat' : 'Join'}
-              </Text>
-            </LinearGradient>
+            <Text style={styles.joinButtonText}>
+              {session.type === 'chat' ? 'Chat' : 'Join'}
+            </Text>
           </TouchableOpacity>
         </View>
       )}
@@ -841,10 +835,8 @@ const styles = StyleSheet.create({
   },
   joinButton: {
     flex: 1,
-    borderRadius: BorderRadius.md,
-    overflow: 'hidden',
-  },
-  joinButtonGradient: {
+    backgroundColor: PsychiColors.royalBlue,
+    borderRadius: BorderRadius.full,
     paddingVertical: Spacing.sm,
     alignItems: 'center',
   },

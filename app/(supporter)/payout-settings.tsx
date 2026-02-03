@@ -15,7 +15,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
 import { PsychiColors, Spacing, BorderRadius, Shadows, Typography } from '@/constants/theme';
 import { BankIcon, DocumentIcon, ChevronRightIcon } from '@/components/icons';
 import { ChevronLeftIcon, CheckIcon, LockIcon, AlertIcon, ClockIcon } from '@/components/icons';
@@ -363,18 +362,13 @@ export default function PayoutSettingsScreen() {
                 disabled={isSettingUp}
                 activeOpacity={0.8}
               >
-                <LinearGradient
-                  colors={[PsychiColors.azure, PsychiColors.deep] as const}
-                  style={styles.linkButtonGradient}
-                >
-                  {isSettingUp ? (
-                    <ActivityIndicator color={PsychiColors.white} />
-                  ) : (
-                    <Text style={styles.linkButtonText}>
-                      {stripeConnectId ? 'Complete Setup' : 'Set Up Payouts'}
-                    </Text>
-                  )}
-                </LinearGradient>
+                {isSettingUp ? (
+                  <ActivityIndicator color={PsychiColors.white} />
+                ) : (
+                  <Text style={styles.linkButtonText}>
+                    {stripeConnectId ? 'Complete Setup' : 'Set Up Payouts'}
+                  </Text>
+                )}
               </TouchableOpacity>
             </View>
           )}
@@ -698,18 +692,16 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   linkButton: {
-    borderRadius: BorderRadius.lg,
-    overflow: 'hidden',
-    marginTop: Spacing.sm,
-  },
-  linkButtonDisabled: {
-    opacity: 0.7,
-  },
-  linkButtonGradient: {
+    backgroundColor: PsychiColors.royalBlue,
+    borderRadius: BorderRadius.full,
     paddingVertical: Spacing.md,
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 48,
+    marginTop: Spacing.sm,
+  },
+  linkButtonDisabled: {
+    opacity: 0.7,
   },
   linkButtonText: {
     fontSize: 16,

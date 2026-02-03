@@ -10,7 +10,6 @@ import {
   TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
 import { ChatIcon, PhoneIcon, VideoIcon, LockIcon, CheckIcon, CalendarIcon, ClockIcon, CloseIcon } from '@/components/icons';
 import { createPaymentIntent, confirmPayment } from '@/lib/stripe';
@@ -158,12 +157,7 @@ export default function CheckoutModal({
         onPress={() => setStep('payment')}
         activeOpacity={0.8}
       >
-        <LinearGradient
-          colors={[PsychiColors.azure, PsychiColors.deep]}
-          style={styles.primaryButtonGradient}
-        >
-          <Text style={styles.primaryButtonText}>Continue to Payment</Text>
-        </LinearGradient>
+        <Text style={styles.primaryButtonText}>Continue to Payment</Text>
       </TouchableOpacity>
     </View>
   );
@@ -233,12 +227,7 @@ export default function CheckoutModal({
         onPress={handlePayment}
         activeOpacity={0.8}
       >
-        <LinearGradient
-          colors={[PsychiColors.azure, PsychiColors.deep]}
-          style={styles.primaryButtonGradient}
-        >
-          <Text style={styles.primaryButtonText}>Pay {formatAmount(amount)}</Text>
-        </LinearGradient>
+        <Text style={styles.primaryButtonText}>Pay {formatAmount(amount)}</Text>
       </TouchableOpacity>
 
       <TouchableOpacity
@@ -410,13 +399,11 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     width: '100%',
-    borderRadius: BorderRadius.lg,
-    overflow: 'hidden',
-    marginBottom: Spacing.sm,
-  },
-  primaryButtonGradient: {
+    backgroundColor: PsychiColors.royalBlue,
+    borderRadius: BorderRadius.full,
     paddingVertical: Spacing.md,
     alignItems: 'center',
+    marginBottom: Spacing.sm,
   },
   primaryButtonText: {
     fontSize: 17,

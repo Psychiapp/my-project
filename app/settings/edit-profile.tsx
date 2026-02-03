@@ -331,14 +331,9 @@ export default function EditProfileScreen() {
               accessibilityHint="Saves your profile updates"
               accessibilityState={{ disabled: isSaving }}
             >
-              <LinearGradient
-                colors={[PsychiColors.azure, PsychiColors.deep]}
-                style={styles.saveButtonGradient}
-              >
-                <Text style={styles.saveButtonText}>
-                  {isSaving ? 'Saving...' : 'Save Changes'}
-                </Text>
-              </LinearGradient>
+              <Text style={styles.saveButtonText}>
+                {isSaving ? 'Saving...' : 'Save Changes'}
+              </Text>
             </TouchableOpacity>
           </View>
 
@@ -498,10 +493,8 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.lg,
   },
   saveButton: {
-    borderRadius: BorderRadius.lg,
-    overflow: 'hidden',
-  },
-  saveButtonGradient: {
+    backgroundColor: PsychiColors.royalBlue,
+    borderRadius: BorderRadius.full,
     paddingVertical: Spacing.md,
     alignItems: 'center',
   },
