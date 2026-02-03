@@ -1228,13 +1228,6 @@ Remember: Homework should feel collaborative, not assigned. Let clients choose w
             finding: 'CBT is the gold standard treatment for anxiety disorders.',
             url: 'https://pubmed.ncbi.nlm.nih.gov/18363421/',
           }} />
-          <StudyCard study={{
-            title: 'Long-term Effects of CBT',
-            authors: 'Hollon, S. D., et al. (2005)',
-            journal: 'Archives of General Psychiatry',
-            finding: 'CBT has enduring effects that prevent relapse after treatment ends.',
-            url: 'https://pubmed.ncbi.nlm.nih.gov/15809403/',
-          }} />
           <Text style={{ fontSize: 14, fontWeight: '600', color: '#2A2A2A', marginTop: Spacing.md, marginBottom: Spacing.sm }}>Recommended Books:</Text>
           <ResourceCard resource={{
             title: 'Feeling Good',
