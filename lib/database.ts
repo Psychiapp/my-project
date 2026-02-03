@@ -2286,6 +2286,40 @@ export async function saveClientPreferences(
 }
 
 /**
+ * Get client preferences from database
+ * Tries client_preferences table first, falls back to profiles.preferences
+ */
+export async function getClientPreferences(
+  clientId: string
+): Promise<ClientPreferences | null> {
+  if (!supabase) return null;
+
+  // First try the client_preferences table
+  const { data: prefData, error: prefError } = await supabase
+    .from('client_preferences')
+    .select('preferences')
+    .eq('client_id', clientId)
+    .maybeSingle();
+
+  if (!prefError && prefData?.preferences) {
+    return prefData.preferences as ClientPreferences;
+  }
+
+  // Fallback to profiles.preferences JSONB field
+  const { data: profileData, error: profileError } = await supabase
+    .from('profiles')
+    .select('preferences')
+    .eq('id', clientId)
+    .maybeSingle();
+
+  if (!profileError && profileData?.preferences) {
+    return profileData.preferences as ClientPreferences;
+  }
+
+  return null;
+}
+
+/**
  * Assign a supporter to a client (create the match)
  */
 export async function assignSupporterToClient(

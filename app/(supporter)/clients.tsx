@@ -14,10 +14,73 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PsychiColors, Spacing, BorderRadius, Shadows, Typography } from '@/constants/theme';
-import { UsersIcon, ProfileIcon, CalendarIcon, StarIcon, CloseIcon, ArrowLeftIcon, ChevronRightIcon, DotIcon } from '@/components/icons';
+import { UsersIcon, ProfileIcon, CalendarIcon, StarIcon, CloseIcon, ArrowLeftIcon, ChevronRightIcon, DotIcon, ChatIcon, PhoneIcon, VideoIcon } from '@/components/icons';
 import { useAuth } from '@/contexts/AuthContext';
-import { getSupporterClients } from '@/lib/database';
+import { getSupporterClients, getClientPreferences, ClientPreferences } from '@/lib/database';
 import type { ClientAssignment, ClientAssignmentStatus } from '@/types/database';
+
+// Display labels for quiz answers
+const topicLabels: Record<string, string> = {
+  anxiety: 'Anxiety',
+  stress: 'Stress',
+  depression: 'Depression',
+  relationships: 'Relationships',
+  loneliness: 'Loneliness',
+  work_career: 'Work/Career',
+  academic: 'Academic Pressure',
+  self_esteem: 'Self-Esteem',
+  family: 'Family Issues',
+  grief: 'Grief/Loss',
+  transitions: 'Life Transitions',
+  identity: 'Identity/LGBTQ+',
+};
+
+const communicationLabels: Record<string, { label: string; description: string }> = {
+  direct: { label: 'Direct & Practical', description: 'Prefers straightforward advice and actionable steps' },
+  empathetic: { label: 'Empathetic & Supportive', description: 'Wants to feel heard and validated first' },
+  balanced: { label: 'Balanced Approach', description: 'Mix of emotional support and practical guidance' },
+  exploratory: { label: 'Exploratory & Reflective', description: 'Likes questions to understand themselves' },
+};
+
+const personalityLabels: Record<string, string> = {
+  warm: 'Warm & Nurturing',
+  motivating: 'Motivating & Energetic',
+  calm: 'Calm & Grounded',
+  analytical: 'Analytical & Thoughtful',
+};
+
+const goalLabels: Record<string, string> = {
+  relief: 'Immediate Relief',
+  coping: 'Build Coping Skills',
+  understanding: 'Self-Understanding',
+  accountability: 'Accountability',
+  connection: 'Human Connection',
+  growth: 'Personal Growth',
+};
+
+const urgencyLabels: Record<string, { label: string; description: string; color: string }> = {
+  soon: { label: 'Soon', description: 'Within the next few days', color: '#E4C4F0' },
+  moderate: { label: 'Moderate', description: 'Within the next week or two', color: '#87CEEB' },
+  exploring: { label: 'Just Exploring', description: 'Taking time to find the right fit', color: '#B0E0E6' },
+};
+
+const timeLabels: Record<string, string> = {
+  early_morning: 'Early Morning (6-9 AM)',
+  morning: 'Morning (9 AM-12 PM)',
+  afternoon: 'Afternoon (12-5 PM)',
+  evening: 'Evening (5-9 PM)',
+  night: 'Night (9 PM-12 AM)',
+  weekends: 'Weekends Only',
+};
+
+const schedulingLabels: Record<string, string> = {
+  flexible: 'Flexible',
+  structured: 'Structured',
+  as_needed: 'As Needed',
+};
+
+const moodLabels = ['Very Low', 'Low', 'Okay', 'Good', 'Great'];
+const moodColors = ['#E57373', '#FFB74D', '#FFF176', '#AED581', '#81C784'];
 
 export default function ClientsScreen() {
   const { user } = useAuth();
@@ -26,12 +89,32 @@ export default function ClientsScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | ClientAssignmentStatus>('all');
   const [selectedClient, setSelectedClient] = useState<ClientAssignment | null>(null);
+  const [clientPreferences, setClientPreferences] = useState<ClientPreferences | null>(null);
+  const [isLoadingPreferences, setIsLoadingPreferences] = useState(false);
 
   useEffect(() => {
     if (user?.id) {
       loadClients();
     }
   }, [user?.id]);
+
+  // Fetch client preferences when modal opens
+  useEffect(() => {
+    if (selectedClient?.client_id) {
+      setIsLoadingPreferences(true);
+      setClientPreferences(null);
+      getClientPreferences(selectedClient.client_id)
+        .then((prefs) => {
+          setClientPreferences(prefs);
+        })
+        .catch((error) => {
+          console.error('Error fetching client preferences:', error);
+        })
+        .finally(() => {
+          setIsLoadingPreferences(false);
+        });
+    }
+  }, [selectedClient?.client_id]);
 
   const loadClients = async () => {
     if (!user?.id) return;
@@ -263,7 +346,7 @@ export default function ClientsScreen() {
             </TouchableOpacity>
 
             {selectedClient && (
-              <>
+              <ScrollView showsVerticalScrollIndicator={false} style={styles.modalScroll}>
                 <View style={styles.modalHeader}>
                   {selectedClient.client_avatar ? (
                     <Image
@@ -313,6 +396,155 @@ export default function ClientsScreen() {
                   </View>
                 )}
 
+                {/* Quiz Responses Section */}
+                <View style={styles.preferencesSection}>
+                  <Text style={styles.preferencesSectionTitle}>Quiz Responses</Text>
+
+                  {isLoadingPreferences ? (
+                    <View style={styles.preferencesLoading}>
+                      <ActivityIndicator size="small" color={PsychiColors.azure} />
+                      <Text style={styles.preferencesLoadingText}>Loading preferences...</Text>
+                    </View>
+                  ) : clientPreferences ? (
+                    <>
+                      {/* Current Mood */}
+                      <View style={styles.preferenceItem}>
+                        <Text style={styles.preferenceLabel}>Current Mood</Text>
+                        <View style={styles.moodContainer}>
+                          {[1, 2, 3, 4, 5].map((level) => (
+                            <View
+                              key={level}
+                              style={[
+                                styles.moodDot,
+                                {
+                                  backgroundColor: clientPreferences.mood >= level
+                                    ? moodColors[level - 1]
+                                    : 'rgba(0,0,0,0.1)',
+                                },
+                              ]}
+                            />
+                          ))}
+                          <Text style={styles.moodText}>
+                            {moodLabels[clientPreferences.mood - 1] || 'Unknown'}
+                          </Text>
+                        </View>
+                      </View>
+
+                      {/* Support Topics */}
+                      {clientPreferences.topics?.length > 0 && (
+                        <View style={styles.preferenceItem}>
+                          <Text style={styles.preferenceLabel}>Support Topics</Text>
+                          <View style={styles.tagsContainer}>
+                            {clientPreferences.topics.map((topic) => (
+                              <View key={topic} style={styles.tag}>
+                                <Text style={styles.tagText}>
+                                  {topicLabels[topic] || topic}
+                                </Text>
+                              </View>
+                            ))}
+                          </View>
+                        </View>
+                      )}
+
+                      {/* Communication Style */}
+                      {clientPreferences.communication_style && (
+                        <View style={styles.preferenceItem}>
+                          <Text style={styles.preferenceLabel}>Communication Style</Text>
+                          <View style={styles.preferenceCard}>
+                            <Text style={styles.preferenceCardTitle}>
+                              {communicationLabels[clientPreferences.communication_style]?.label || clientPreferences.communication_style}
+                            </Text>
+                            <Text style={styles.preferenceCardDescription}>
+                              {communicationLabels[clientPreferences.communication_style]?.description}
+                            </Text>
+                          </View>
+                        </View>
+                      )}
+
+                      {/* Session Preferences */}
+                      {(clientPreferences.preferred_session_types?.length > 0 || clientPreferences.scheduling_preference) && (
+                        <View style={styles.preferenceItem}>
+                          <Text style={styles.preferenceLabel}>Session Preferences</Text>
+                          {clientPreferences.preferred_session_types?.length > 0 && (
+                            <View style={styles.sessionTypesRow}>
+                              {clientPreferences.preferred_session_types.map((type) => (
+                                <View key={type} style={styles.sessionTypeChip}>
+                                  {type === 'chat' && <ChatIcon size={14} color={PsychiColors.azure} />}
+                                  {type === 'phone' && <PhoneIcon size={14} color={PsychiColors.azure} />}
+                                  {type === 'video' && <VideoIcon size={14} color={PsychiColors.azure} />}
+                                  <Text style={styles.sessionTypeText}>
+                                    {type.charAt(0).toUpperCase() + type.slice(1)}
+                                  </Text>
+                                </View>
+                              ))}
+                            </View>
+                          )}
+                          {clientPreferences.scheduling_preference && (
+                            <Text style={styles.preferenceSubtext}>
+                              Scheduling: {schedulingLabels[clientPreferences.scheduling_preference] || clientPreferences.scheduling_preference}
+                            </Text>
+                          )}
+                          {clientPreferences.preferred_times?.length > 0 && (
+                            <Text style={styles.preferenceSubtext}>
+                              Times: {clientPreferences.preferred_times.map((t) => timeLabels[t]?.split(' ')[0] || t).join(', ')}
+                            </Text>
+                          )}
+                        </View>
+                      )}
+
+                      {/* Personality Preference */}
+                      {clientPreferences.personality_preference && (
+                        <View style={styles.preferenceItem}>
+                          <Text style={styles.preferenceLabel}>Looking For</Text>
+                          <Text style={styles.preferenceValue}>
+                            {personalityLabels[clientPreferences.personality_preference] || clientPreferences.personality_preference}
+                          </Text>
+                        </View>
+                      )}
+
+                      {/* Goals */}
+                      {clientPreferences.goals?.length > 0 && (
+                        <View style={styles.preferenceItem}>
+                          <Text style={styles.preferenceLabel}>Goals</Text>
+                          <View style={styles.tagsContainer}>
+                            {clientPreferences.goals.map((goal) => (
+                              <View key={goal} style={[styles.tag, styles.goalTag]}>
+                                <Text style={styles.tagText}>
+                                  {goalLabels[goal] || goal}
+                                </Text>
+                              </View>
+                            ))}
+                          </View>
+                        </View>
+                      )}
+
+                      {/* Urgency */}
+                      {clientPreferences.urgency && (
+                        <View style={styles.preferenceItem}>
+                          <Text style={styles.preferenceLabel}>Urgency</Text>
+                          <View style={[
+                            styles.urgencyBadge,
+                            { backgroundColor: urgencyLabels[clientPreferences.urgency]?.color || '#B0E0E6' }
+                          ]}>
+                            <Text style={styles.urgencyLabel}>
+                              {urgencyLabels[clientPreferences.urgency]?.label || clientPreferences.urgency}
+                            </Text>
+                            <Text style={styles.urgencyDescription}>
+                              {urgencyLabels[clientPreferences.urgency]?.description}
+                            </Text>
+                          </View>
+                        </View>
+                      )}
+                    </>
+                  ) : (
+                    <View style={styles.noPreferences}>
+                      <Text style={styles.noPreferencesText}>
+                        No quiz responses available for this client
+                      </Text>
+                    </View>
+                  )}
+                </View>
+
                 <TouchableOpacity
                   style={styles.modalButton}
                   onPress={() => setSelectedClient(null)}
@@ -324,7 +556,7 @@ export default function ClientsScreen() {
                     <Text style={styles.modalButtonText}>Close</Text>
                   </LinearGradient>
                 </TouchableOpacity>
-              </>
+              </ScrollView>
             )}
           </View>
         </View>
@@ -564,8 +796,12 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.xl,
     padding: Spacing.lg,
     width: '100%',
-    maxWidth: 340,
+    maxWidth: 380,
+    maxHeight: '85%',
     ...Shadows.medium,
+  },
+  modalScroll: {
+    flexGrow: 0,
   },
   modalClose: {
     position: 'absolute',
@@ -670,5 +906,140 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: PsychiColors.white,
+  },
+  // Preferences styles
+  preferencesSection: {
+    marginBottom: Spacing.lg,
+    paddingTop: Spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(74, 144, 226, 0.15)',
+  },
+  preferencesSectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: PsychiColors.midnight,
+    marginBottom: Spacing.md,
+    textAlign: 'center',
+  },
+  preferencesLoading: {
+    alignItems: 'center',
+    paddingVertical: Spacing.lg,
+  },
+  preferencesLoadingText: {
+    marginTop: Spacing.sm,
+    fontSize: 13,
+    color: PsychiColors.textMuted,
+  },
+  preferenceItem: {
+    marginBottom: Spacing.md,
+  },
+  preferenceLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: PsychiColors.azure,
+    marginBottom: Spacing.xs,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  preferenceValue: {
+    fontSize: 15,
+    color: PsychiColors.midnight,
+    fontWeight: '500',
+  },
+  preferenceSubtext: {
+    fontSize: 13,
+    color: PsychiColors.textSecondary,
+    marginTop: 4,
+  },
+  preferenceCard: {
+    backgroundColor: 'rgba(74, 144, 226, 0.08)',
+    borderRadius: BorderRadius.md,
+    padding: Spacing.sm,
+  },
+  preferenceCardTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: PsychiColors.midnight,
+  },
+  preferenceCardDescription: {
+    fontSize: 12,
+    color: PsychiColors.textMuted,
+    marginTop: 2,
+  },
+  moodContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+  },
+  moodDot: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+  },
+  moodText: {
+    fontSize: 14,
+    color: PsychiColors.textSecondary,
+    marginLeft: Spacing.sm,
+  },
+  tagsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.xs,
+  },
+  tag: {
+    backgroundColor: 'rgba(135, 206, 235, 0.25)',
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.full,
+  },
+  goalTag: {
+    backgroundColor: 'rgba(74, 144, 226, 0.15)',
+  },
+  tagText: {
+    fontSize: 12,
+    color: PsychiColors.midnight,
+    fontWeight: '500',
+  },
+  sessionTypesRow: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    marginBottom: Spacing.xs,
+  },
+  sessionTypeChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(74, 144, 226, 0.1)',
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.md,
+  },
+  sessionTypeText: {
+    fontSize: 12,
+    color: PsychiColors.azure,
+    fontWeight: '500',
+  },
+  urgencyBadge: {
+    borderRadius: BorderRadius.md,
+    padding: Spacing.sm,
+  },
+  urgencyLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: PsychiColors.midnight,
+  },
+  urgencyDescription: {
+    fontSize: 12,
+    color: PsychiColors.textSecondary,
+    marginTop: 2,
+  },
+  noPreferences: {
+    alignItems: 'center',
+    paddingVertical: Spacing.md,
+  },
+  noPreferencesText: {
+    fontSize: 13,
+    color: PsychiColors.textMuted,
+    textAlign: 'center',
   },
 });
