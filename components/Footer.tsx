@@ -44,10 +44,10 @@ const footerLinks = {
   legal: {
     title: 'Legal',
     links: [
-      { label: 'Terms of Service', action: `url:${ExternalUrls.termsOfService}` },
-      { label: 'Privacy Policy', action: `url:${ExternalUrls.privacyPolicy}` },
-      { label: 'Safety Policy', action: `url:${ExternalUrls.safetyPolicy}` },
-      { label: 'Refund Policy', action: `url:${ExternalUrls.refundPolicy}` },
+      { label: 'Terms of Service', action: 'route:/legal/terms-of-service' },
+      { label: 'Privacy Policy', action: 'route:/legal/privacy-policy' },
+      { label: 'Code of Conduct', action: 'route:/legal/code-of-conduct' },
+      { label: 'Safety Resources', action: 'route:/legal/diversion-advice' },
     ],
   },
 };
@@ -84,6 +84,10 @@ export default function Footer({ onNavigate, onScrollToSection }: FooterProps) {
         await WebBrowser.openBrowserAsync(value, {
           presentationStyle: WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET,
         });
+        break;
+      case 'route':
+        // Navigate to in-app route
+        router.push(value as any);
         break;
       default:
         router.push('/(auth)/sign-up');

@@ -24,6 +24,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PsychiColors, Gradients, Spacing, BorderRadius, Shadows, Typography } from '@/constants/theme';
 import { HeartIcon, UsersIcon, ChevronRightIcon, AlertIcon, CheckIcon, CloseIcon } from '@/components/icons';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -213,10 +214,23 @@ export default function AuthModal({
     setError(null);
 
     try {
-      // TODO: Implement password reset
-      setSuccess('Password reset link sent to your email');
+      if (!supabase) {
+        // Demo mode - just show success
+        setSuccess('Password reset link sent to your email');
+        return;
+      }
+
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: 'psychi://reset-password',
+      });
+
+      if (error) throw error;
+
+      // Always show success for security (don't reveal if email exists)
+      setSuccess('If an account exists, a password reset link has been sent to your email');
     } catch (err: any) {
-      setError(err.message || 'Failed to send reset email');
+      // Don't reveal if email exists or not for security
+      setSuccess('If an account exists, a password reset link has been sent to your email');
     } finally {
       setLoading(false);
     }

@@ -25,8 +25,20 @@ export default class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    // Log error to your error reporting service
+    // Log error to console in development
     console.error('ErrorBoundary caught an error:', error, errorInfo);
+
+    // Report to Sentry in production
+    try {
+      const Sentry = require('@sentry/react-native');
+      Sentry.captureException(error, {
+        extra: {
+          componentStack: errorInfo.componentStack,
+        },
+      });
+    } catch (e) {
+      // Sentry not available
+    }
   }
 
   handleRetry = () => {

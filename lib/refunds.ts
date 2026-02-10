@@ -1,5 +1,5 @@
 import { Alert } from 'react-native';
-import { StripeConfig, Config } from '@/constants/config';
+import { StripeConfig, Config, SupabaseConfig } from '@/constants/config';
 
 export interface RefundRequest {
   sessionId: string;
@@ -95,19 +95,37 @@ export async function processRefund(request: RefundRequest): Promise<RefundResul
     };
   }
 
-  try {
-    // TODO: Implement actual refund via Supabase Edge Function
-    // This would call your backend API to process the refund:
-    // const response = await fetch(`${SupabaseConfig.url}/functions/v1/process-refund`, {
-    //   method: 'POST',
-    //   headers: { 'Authorization': `Bearer ${SupabaseConfig.anonKey}` },
-    //   body: JSON.stringify(request),
-    // });
-
-    // For now, return error until refund endpoint is implemented
+  // Check if Supabase is configured
+  if (!SupabaseConfig.url || !SupabaseConfig.anonKey) {
+    console.warn('Supabase not configured - refund cannot be processed');
     return {
       success: false,
-      error: 'Refund processing not yet implemented. Please contact support.',
+      error: 'Backend not configured. Please contact support.',
+    };
+  }
+
+  try {
+    const response = await fetch(`${SupabaseConfig.url}/functions/v1/process-refund`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SupabaseConfig.anonKey}`,
+      },
+      body: JSON.stringify(request),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return {
+        success: false,
+        error: data.error || 'Failed to process refund',
+      };
+    }
+
+    return {
+      success: true,
+      refundId: data.refundId,
     };
   } catch (error: any) {
     console.error('Refund error:', error);

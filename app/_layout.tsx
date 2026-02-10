@@ -9,11 +9,28 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { NetworkProvider } from '@/contexts/NetworkContext';
 import { PsychiColors, Colors } from '@/constants/theme';
-import { StripeConfig } from '@/constants/config';
+import { StripeConfig, SentryConfig } from '@/constants/config';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import OfflineBanner from '@/components/OfflineBanner';
 import DemoModeBanner from '@/components/DemoModeBanner';
 import { setupDeepLinkListener, setupNotificationResponseListener } from '@/lib/deep-linking';
+
+// Initialize Sentry for error tracking (production only)
+try {
+  const Sentry = require('@sentry/react-native');
+  if (SentryConfig.dsn && SentryConfig.enabled) {
+    Sentry.init({
+      dsn: SentryConfig.dsn,
+      environment: SentryConfig.environment,
+      enableAutoSessionTracking: true,
+      tracesSampleRate: 0.2, // 20% of transactions for performance monitoring
+      debug: false,
+    });
+    console.log('Sentry initialized for', SentryConfig.environment);
+  }
+} catch (e) {
+  console.log('Sentry not available (running in Expo Go)');
+}
 
 // Conditionally import Stripe to avoid crash in Expo Go
 let StripeProvider: any = ({ children }: { children: ReactNode }) => children;

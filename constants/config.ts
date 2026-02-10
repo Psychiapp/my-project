@@ -78,6 +78,13 @@ export const StripeConfig = {
   publishableKey: process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || '',
 };
 
+// Sentry config
+export const SentryConfig = {
+  dsn: process.env.EXPO_PUBLIC_SENTRY_DSN || '',
+  environment: __DEV__ ? 'development' : 'production',
+  enabled: !__DEV__, // Only enable in production builds
+};
+
 // External URLs
 export const ExternalUrls = {
   // Legal documents

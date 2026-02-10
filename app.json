@@ -18,12 +18,17 @@
         "NSMicrophoneUsageDescription": "Psychi needs microphone access for voice and video calls",
         "NSPhotoLibraryUsageDescription": "Psychi needs access to your photo library to set your profile picture",
         "NSFaceIDUsageDescription": "Use Face ID to quickly sign in to Psychi",
-        "UIBackgroundModes": ["audio", "voip"]
+        "UIBackgroundModes": [
+          "audio",
+          "voip"
+        ]
       },
       "config": {
         "usesNonExemptEncryption": false
       },
-      "associatedDomains": ["applinks:psychi.app"],
+      "associatedDomains": [
+        "applinks:psychi.app"
+      ],
       "bitcode": false
     },
     "android": {
@@ -58,7 +63,10 @@
               "pathPrefix": "/"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
@@ -95,6 +103,13 @@
         {
           "merchantIdentifier": "merchant.com.psychi.app",
           "enableGooglePay": true
+        }
+      ],
+      [
+        "@sentry/react-native/expo",
+        {
+          "organization": "psychi-app",
+          "project": "psychi-mobile"
         }
       ]
     ],

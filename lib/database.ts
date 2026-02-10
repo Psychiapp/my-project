@@ -591,6 +591,53 @@ export async function updateAcceptingClients(
   return true;
 }
 
+/**
+ * Save supporter's weekly availability schedule
+ * @param supporterId - The supporter's user ID
+ * @param schedule - Record of day names to arrays of time strings (e.g., { Monday: ['09:00', '10:00', '11:00'] })
+ */
+export async function saveSupporterSchedule(
+  supporterId: string,
+  schedule: Record<string, string[]>
+): Promise<boolean> {
+  if (!supabase) return false;
+
+  // First check if the row exists
+  const { data: existing } = await supabase
+    .from('supporter_details')
+    .select('id')
+    .eq('supporter_id', supporterId)
+    .single();
+
+  if (existing) {
+    // Row exists, update it
+    const { error } = await supabase
+      .from('supporter_details')
+      .update({ availability: schedule })
+      .eq('supporter_id', supporterId);
+
+    if (error) {
+      console.error('Error updating supporter schedule:', error);
+      return false;
+    }
+  } else {
+    // Row doesn't exist, insert it
+    const { error } = await supabase
+      .from('supporter_details')
+      .insert({
+        supporter_id: supporterId,
+        availability: schedule,
+      });
+
+    if (error) {
+      console.error('Error inserting supporter schedule:', error);
+      return false;
+    }
+  }
+
+  return true;
+}
+
 // ============================================
 // SESSION QUERIES
 // ============================================

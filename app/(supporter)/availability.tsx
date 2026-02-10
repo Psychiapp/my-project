@@ -15,7 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { PsychiColors, Spacing, BorderRadius, Shadows, Typography } from '@/constants/theme';
 import { CloseIcon, PlusIcon, ClockIcon, InfoIcon, CheckIcon, PlayIcon, PauseIcon } from '@/components/icons';
 import { useAuth } from '@/contexts/AuthContext';
-import { getSupporterAvailability, updateAcceptingClients } from '@/lib/database';
+import { getSupporterAvailability, updateAcceptingClients, saveSupporterSchedule } from '@/lib/database';
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -229,7 +229,9 @@ export default function AvailabilityScreen() {
     return `${displayHour}:${minutes} ${ampm}`;
   };
 
-  const handleSave = () => {
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = async () => {
     // Validate at least one day with one slot
     const hasAvailability = Object.values(availability).some(
       (day) => day.enabled && day.slots.length > 0
@@ -244,8 +246,53 @@ export default function AvailabilityScreen() {
       return;
     }
 
-    // TODO: Save to database
-    Alert.alert('Saved', 'Your availability has been updated.', [{ text: 'OK' }]);
+    if (!user?.id) {
+      Alert.alert('Error', 'You must be logged in to save availability.');
+      return;
+    }
+
+    // In demo mode, just show success
+    if (isDemoMode) {
+      Alert.alert('Saved', 'Your availability has been updated.', [{ text: 'OK' }]);
+      return;
+    }
+
+    setIsSaving(true);
+
+    // Convert UI format to database format
+    // Database expects: { Monday: ['09:00', '09:30', '10:00', ...], ... }
+    // UI uses: { Monday: { enabled: true, slots: [{ start: '09:00', end: '17:00' }] } }
+    const schedule: Record<string, string[]> = {};
+
+    for (const [day, dayData] of Object.entries(availability)) {
+      if (dayData.enabled && dayData.slots.length > 0) {
+        const timeSlots: string[] = [];
+        for (const slot of dayData.slots) {
+          // Generate 30-minute intervals between start and end
+          let currentTime = slot.start;
+          while (currentTime < slot.end) {
+            timeSlots.push(currentTime);
+            // Add 30 minutes
+            const [hours, minutes] = currentTime.split(':').map(Number);
+            const totalMinutes = hours * 60 + minutes + 30;
+            const newHours = Math.floor(totalMinutes / 60);
+            const newMinutes = totalMinutes % 60;
+            currentTime = `${newHours.toString().padStart(2, '0')}:${newMinutes.toString().padStart(2, '0')}`;
+          }
+        }
+        schedule[day.toLowerCase()] = timeSlots;
+      }
+    }
+
+    const success = await saveSupporterSchedule(user.id, schedule);
+
+    setIsSaving(false);
+
+    if (success) {
+      Alert.alert('Saved', 'Your availability has been updated.', [{ text: 'OK' }]);
+    } else {
+      Alert.alert('Error', 'Failed to save availability. Please try again.', [{ text: 'OK' }]);
+    }
   };
 
   return (
@@ -359,12 +406,21 @@ export default function AvailabilityScreen() {
 
         {/* Save Button */}
         <View style={styles.saveContainer}>
-          <TouchableOpacity style={styles.saveButton} activeOpacity={0.8} onPress={handleSave}>
+          <TouchableOpacity
+            style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
+            activeOpacity={0.8}
+            onPress={handleSave}
+            disabled={isSaving}
+          >
             <LinearGradient
               colors={[PsychiColors.royalBlue, '#5A8BD4']}
               style={styles.saveGradient}
             >
-              <Text style={styles.saveText}>Save Changes</Text>
+              {isSaving ? (
+                <ActivityIndicator size="small" color={PsychiColors.white} />
+              ) : (
+                <Text style={styles.saveText}>Save Changes</Text>
+              )}
             </LinearGradient>
           </TouchableOpacity>
         </View>
@@ -579,6 +635,9 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.xl,
     overflow: 'hidden',
     ...Shadows.button,
+  },
+  saveButtonDisabled: {
+    opacity: 0.7,
   },
   saveGradient: {
     paddingVertical: Spacing.md,

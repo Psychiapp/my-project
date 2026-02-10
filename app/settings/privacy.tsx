@@ -125,12 +125,12 @@ export default function PrivacySecurityScreen() {
     {
       icon: DocumentIcon,
       title: 'Privacy Policy',
-      url: ExternalUrls.privacyPolicy,
+      route: '/legal/privacy-policy',
     },
     {
       icon: ClipboardIcon,
       title: 'Terms of Service',
-      url: ExternalUrls.termsOfService,
+      route: '/legal/terms-of-service',
     },
   ];
 
@@ -212,10 +212,10 @@ export default function PrivacySecurityScreen() {
                   styles.settingRow,
                   index < legalLinks.length - 1 && styles.settingRowBorder,
                 ]}
-                onPress={() => openLink(item.url)}
+                onPress={() => router.push(item.route as any)}
                 accessibilityRole="link"
                 accessibilityLabel={item.title}
-                accessibilityHint="Opens in browser"
+                accessibilityHint="Opens legal document"
               >
                 <item.icon size={20} color={PsychiColors.azure} />
                 <View style={styles.settingInfo}>
