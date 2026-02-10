@@ -3,7 +3,7 @@
  * Handles video and voice calls using Daily.co React Native SDK
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -14,12 +14,20 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
+  AppState,
+  AppStateStatus,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import NetInfo, { NetInfoState } from '@react-native-community/netinfo';
 import { PsychiColors, Spacing, BorderRadius } from '@/constants/theme';
-import { LockIcon, MicIcon, MicOffIcon, VideoIcon, VideoOffIcon, VolumeHighIcon, VolumeLowIcon, PhoneIcon } from '@/components/icons';
+import { LockIcon, MicIcon, MicOffIcon, VideoIcon, VideoOffIcon, VolumeHighIcon, VolumeLowIcon, PhoneIcon, WifiOffIcon } from '@/components/icons';
 import EmergencyButton from './EmergencyButton';
+
+// Constants for timeouts and warnings
+const CONNECTION_TIMEOUT_MS = 30000; // 30 seconds to connect
+const SESSION_WARNING_MINUTES = 55; // Warn at 55 minutes (5 min before expiry)
+const SESSION_MAX_MINUTES = 60; // Max session duration
 
 // Conditionally import Daily.co to avoid crash in Expo Go
 let Daily: any = null;
@@ -86,6 +94,17 @@ export default function VideoCall({
   const [isConnecting, setIsConnecting] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // New state for disconnect/timeout handling
+  const [isNetworkConnected, setIsNetworkConnected] = useState(true);
+  const [isReconnecting, setIsReconnecting] = useState(false);
+  const [hasRemoteParticipantJoined, setHasRemoteParticipantJoined] = useState(false);
+  const [showTimeWarning, setShowTimeWarning] = useState(false);
+
+  // Refs for tracking
+  const connectionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const hasShownTimeWarningRef = useRef(false);
+  const appStateRef = useRef(AppState.currentState);
+
   // Initialize Daily.co call
   useEffect(() => {
     const initCall = async () => {
@@ -98,6 +117,12 @@ export default function VideoCall({
         // Event handlers
         call.on('joined-meeting', () => {
           setIsConnecting(false);
+          setIsReconnecting(false);
+          // Clear connection timeout
+          if (connectionTimeoutRef.current) {
+            clearTimeout(connectionTimeoutRef.current);
+            connectionTimeoutRef.current = null;
+          }
           setParticipants(call.participants());
         });
 
@@ -105,16 +130,45 @@ export default function VideoCall({
           onEndCall();
         });
 
-        call.on('participant-joined', () => {
-          setParticipants({ ...call.participants() });
+        call.on('participant-joined', (event: any) => {
+          const updatedParticipants = call.participants();
+          setParticipants({ ...updatedParticipants });
+
+          // Track if remote participant has joined
+          const remoteParticipant = Object.values(updatedParticipants).find((p: any) => !p.local);
+          if (remoteParticipant) {
+            setHasRemoteParticipantJoined(true);
+          }
         });
 
         call.on('participant-updated', () => {
           setParticipants({ ...call.participants() });
         });
 
-        call.on('participant-left', () => {
-          setParticipants({ ...call.participants() });
+        call.on('participant-left', (event: any) => {
+          const updatedParticipants = call.participants();
+          setParticipants({ ...updatedParticipants });
+
+          // Check if the remote participant left (not us)
+          const remoteParticipant = Object.values(updatedParticipants).find((p: any) => !p.local);
+          if (hasRemoteParticipantJoined && !remoteParticipant) {
+            // Remote participant has left - show alert
+            Alert.alert(
+              'Participant Left',
+              `${otherParticipant.name} has left the call.`,
+              [
+                { text: 'Stay', style: 'cancel' },
+                {
+                  text: 'End Call',
+                  style: 'destructive',
+                  onPress: () => {
+                    call.leave();
+                    onEndCall();
+                  }
+                },
+              ]
+            );
+          }
         });
 
         call.on('error', (event) => {
@@ -125,6 +179,16 @@ export default function VideoCall({
         });
 
         setCallObject(call);
+
+        // Set connection timeout
+        connectionTimeoutRef.current = setTimeout(() => {
+          if (isConnecting) {
+            setError('Connection timed out. Please check your internet connection and try again.');
+            onError?.('Connection timed out');
+            call.leave();
+            call.destroy();
+          }
+        }, CONNECTION_TIMEOUT_MS);
 
         // Join the room
         await call.join({
@@ -141,6 +205,10 @@ export default function VideoCall({
     initCall();
 
     return () => {
+      // Clear connection timeout on cleanup
+      if (connectionTimeoutRef.current) {
+        clearTimeout(connectionTimeoutRef.current);
+      }
       if (callObject) {
         callObject.leave();
         callObject.destroy();
@@ -148,16 +216,98 @@ export default function VideoCall({
     };
   }, [roomUrl, participantName, isVideoEnabled]);
 
-  // Call duration timer
+  // Call duration timer with session warnings
   useEffect(() => {
     if (isConnecting) return;
 
     const interval = setInterval(() => {
-      setCallDuration((prev) => prev + 1);
+      setCallDuration((prev) => {
+        const newDuration = prev + 1;
+
+        // Check for session time warning (5 minutes before expiry)
+        const durationMinutes = newDuration / 60;
+        if (durationMinutes >= SESSION_WARNING_MINUTES && !hasShownTimeWarningRef.current) {
+          hasShownTimeWarningRef.current = true;
+          setShowTimeWarning(true);
+          Alert.alert(
+            'Session Ending Soon',
+            `Your session will end in ${SESSION_MAX_MINUTES - Math.floor(durationMinutes)} minutes. Please wrap up your conversation.`,
+            [{ text: 'OK', onPress: () => setShowTimeWarning(false) }]
+          );
+        }
+
+        // Auto-end at max duration
+        if (durationMinutes >= SESSION_MAX_MINUTES) {
+          Alert.alert(
+            'Session Ended',
+            'Your session has reached the maximum duration.',
+            [{
+              text: 'OK',
+              onPress: () => {
+                if (callObject) {
+                  callObject.leave();
+                }
+                onEndCall();
+              }
+            }]
+          );
+        }
+
+        return newDuration;
+      });
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [isConnecting]);
+  }, [isConnecting, callObject, onEndCall]);
+
+  // Network status monitoring
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener((state: NetInfoState) => {
+      const wasConnected = isNetworkConnected;
+      const nowConnected = state.isConnected ?? false;
+
+      setIsNetworkConnected(nowConnected);
+
+      // Network disconnected during call
+      if (wasConnected && !nowConnected && !isConnecting) {
+        setIsReconnecting(true);
+        Alert.alert(
+          'Connection Lost',
+          'Your internet connection was lost. Attempting to reconnect...',
+          [{ text: 'OK' }]
+        );
+      }
+
+      // Network reconnected
+      if (!wasConnected && nowConnected && isReconnecting) {
+        setIsReconnecting(false);
+        Alert.alert(
+          'Reconnected',
+          'Your connection has been restored.',
+          [{ text: 'OK' }]
+        );
+      }
+    });
+
+    return () => unsubscribe();
+  }, [isNetworkConnected, isConnecting, isReconnecting]);
+
+  // App state monitoring (handle app going to background)
+  useEffect(() => {
+    const handleAppStateChange = (nextAppState: AppStateStatus) => {
+      if (
+        appStateRef.current.match(/active/) &&
+        nextAppState.match(/inactive|background/)
+      ) {
+        // App going to background - could pause or show notification
+        console.log('App going to background during call');
+      }
+      appStateRef.current = nextAppState;
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    return () => subscription?.remove();
+  }, []);
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -230,8 +380,59 @@ export default function VideoCall({
     </TouchableOpacity>
   );
 
+  // Retry connection handler
+  const handleRetry = useCallback(() => {
+    setError(null);
+    setIsConnecting(true);
+    setIsReconnecting(false);
+
+    // Re-initialize the call
+    const retryCall = async () => {
+      try {
+        const call = Daily.createCallObject({
+          videoSource: isVideoEnabled,
+          audioSource: true,
+        });
+
+        call.on('joined-meeting', () => {
+          setIsConnecting(false);
+          if (connectionTimeoutRef.current) {
+            clearTimeout(connectionTimeoutRef.current);
+          }
+          setParticipants(call.participants());
+        });
+
+        call.on('left-meeting', () => onEndCall());
+        call.on('participant-joined', () => setParticipants({ ...call.participants() }));
+        call.on('participant-updated', () => setParticipants({ ...call.participants() }));
+        call.on('participant-left', () => setParticipants({ ...call.participants() }));
+        call.on('error', (event) => {
+          const errorMsg = (event as any)?.errorMsg || 'Connection error';
+          setError(errorMsg);
+        });
+
+        setCallObject(call);
+
+        connectionTimeoutRef.current = setTimeout(() => {
+          if (isConnecting) {
+            setError('Connection timed out. Please check your internet and try again.');
+            call.leave();
+            call.destroy();
+          }
+        }, CONNECTION_TIMEOUT_MS);
+
+        await call.join({ url: roomUrl, userName: participantName });
+      } catch (err) {
+        setError('Failed to connect. Please try again.');
+      }
+    };
+
+    retryCall();
+  }, [roomUrl, participantName, isVideoEnabled, onEndCall]);
+
   // Error state
   if (error) {
+    const isTimeout = error.toLowerCase().includes('timeout');
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.errorContainer}>
@@ -240,9 +441,16 @@ export default function VideoCall({
           </View>
           <Text style={styles.errorTitle}>Connection Error</Text>
           <Text style={styles.errorMessage}>{error}</Text>
-          <TouchableOpacity style={styles.errorButton} onPress={onEndCall}>
-            <Text style={styles.errorButtonText}>Go Back</Text>
-          </TouchableOpacity>
+          <View style={styles.errorButtonRow}>
+            {isTimeout && (
+              <TouchableOpacity style={styles.retryButton} onPress={handleRetry}>
+                <Text style={styles.retryButtonText}>Try Again</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity style={styles.errorButton} onPress={onEndCall}>
+              <Text style={styles.errorButtonText}>Go Back</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </SafeAreaView>
     );
@@ -343,6 +551,29 @@ export default function VideoCall({
               {isVideoEnabled ? 'Video call starting...' : 'Voice call starting...'}
             </Text>
           </View>
+        </View>
+      )}
+
+      {/* Reconnecting Overlay */}
+      {isReconnecting && !isConnecting && (
+        <View style={styles.reconnectingOverlay}>
+          <View style={styles.reconnectingCard}>
+            <WifiOffIcon size={40} color={PsychiColors.warning} />
+            <Text style={styles.reconnectingTitle}>Connection Lost</Text>
+            <Text style={styles.reconnectingSubtitle}>
+              Attempting to reconnect...
+            </Text>
+            <ActivityIndicator size="small" color={PsychiColors.azure} style={{ marginTop: Spacing.md }} />
+          </View>
+        </View>
+      )}
+
+      {/* Time Warning Banner */}
+      {showTimeWarning && (
+        <View style={styles.timeWarningBanner}>
+          <Text style={styles.timeWarningText}>
+            ⏱ Session ending in {SESSION_MAX_MINUTES - Math.floor(callDuration / 60)} min
+          </Text>
         </View>
       )}
 
@@ -552,6 +783,48 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: PsychiColors.textSoft,
   },
+  reconnectingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    zIndex: 100,
+  },
+  reconnectingCard: {
+    backgroundColor: PsychiColors.sapphire,
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.xl,
+    alignItems: 'center',
+    width: width * 0.8,
+  },
+  reconnectingTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: PsychiColors.warning,
+    marginTop: Spacing.md,
+    marginBottom: Spacing.xs,
+  },
+  reconnectingSubtitle: {
+    fontSize: 14,
+    color: PsychiColors.textSoft,
+  },
+  timeWarningBanner: {
+    position: 'absolute',
+    top: 120,
+    left: Spacing.lg,
+    right: Spacing.lg,
+    backgroundColor: 'rgba(245, 158, 11, 0.9)',
+    borderRadius: BorderRadius.md,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    alignItems: 'center',
+    zIndex: 50,
+  },
+  timeWarningText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: PsychiColors.white,
+  },
   controlsContainer: {
     position: 'absolute',
     bottom: 0,
@@ -635,6 +908,21 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.6)',
     textAlign: 'center',
     marginBottom: Spacing.lg,
+  },
+  errorButtonRow: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+  },
+  retryButton: {
+    backgroundColor: PsychiColors.success,
+    paddingHorizontal: Spacing.xl,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.full,
+  },
+  retryButtonText: {
+    color: PsychiColors.white,
+    fontSize: 16,
+    fontWeight: '600',
   },
   errorButton: {
     backgroundColor: PsychiColors.azure,

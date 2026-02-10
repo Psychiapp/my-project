@@ -1,6 +1,6 @@
-import { useEffect, ReactNode, useState } from 'react';
+import { useEffect, ReactNode } from 'react';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack, router, useSegments, useRootNavigationState } from 'expo-router';
+import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Platform } from 'react-native';
 import 'react-native-reanimated';
@@ -53,21 +53,6 @@ const PsychiDarkTheme = {
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
-  const segments = useSegments();
-  const navigationState = useRootNavigationState();
-  const [hasRedirected, setHasRedirected] = useState(false);
-
-  // Always start at the welcome/home page on app launch
-  useEffect(() => {
-    if (!navigationState?.key || hasRedirected) return;
-
-    // Only redirect if we're not already on the welcome page
-    const isOnWelcome = segments[0] === '(auth)';
-    if (!isOnWelcome) {
-      router.replace('/(auth)/welcome');
-    }
-    setHasRedirected(true);
-  }, [navigationState?.key, hasRedirected, segments]);
 
   // Set up deep linking and notification listeners
   useEffect(() => {
@@ -91,7 +76,8 @@ export default function RootLayout() {
             <ThemeProvider value={colorScheme === 'dark' ? PsychiDarkTheme : PsychiLightTheme}>
               <DemoModeBanner />
               <OfflineBanner />
-              <Stack screenOptions={{ headerShown: false }}>
+              <Stack screenOptions={{ headerShown: false }} initialRouteName="index">
+                <Stack.Screen name="index" options={{ headerShown: false }} />
                 <Stack.Screen name="(auth)" options={{ headerShown: false }} />
                 <Stack.Screen name="(client)" options={{ headerShown: false }} />
                 <Stack.Screen name="(supporter)" options={{ headerShown: false }} />

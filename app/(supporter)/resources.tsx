@@ -31,6 +31,7 @@ const pdfResources: PDFResource[] = [
     filename: 'Supporter Handbook.pdf',
     category: 'handbook',
     Icon: BookIcon,
+    route: '/legal/supporter-handbook',
   },
   {
     id: 'diversion',
@@ -39,6 +40,7 @@ const pdfResources: PDFResource[] = [
     filename: 'Supporter Diversion Advice.pdf',
     category: 'crisis',
     Icon: AlertTriangleIcon,
+    route: '/legal/diversion-advice',
   },
   {
     id: 'conduct',
@@ -47,6 +49,7 @@ const pdfResources: PDFResource[] = [
     filename: 'Supporter Code of Conduct.pdf',
     category: 'conduct',
     Icon: ShieldIcon,
+    route: '/legal/code-of-conduct',
   },
   {
     id: 'confidentiality',

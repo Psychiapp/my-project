@@ -1,6 +1,6 @@
 import { Redirect } from 'expo-router';
 
+// This is the entry point - always redirect to welcome
 export default function Index() {
-  // Always show the welcome/home screen first
   return <Redirect href="/(auth)/welcome" />;
 }

@@ -40,7 +40,7 @@ interface DayAvailability {
 }
 
 export default function AvailabilityScreen() {
-  const { user } = useAuth();
+  const { user, isDemoMode } = useAuth();
 
   const [availability, setAvailability] = useState<Record<string, DayAvailability>>({
     Monday: { enabled: true, slots: [{ start: '09:00', end: '17:00' }] },
@@ -71,6 +71,12 @@ export default function AvailabilityScreen() {
         return;
       }
 
+      // In demo mode, just use default state (no database)
+      if (isDemoMode) {
+        setIsLoadingToggle(false);
+        return;
+      }
+
       const availabilityData = await getSupporterAvailability(user.id);
       if (availabilityData) {
         setAcceptingClients(availabilityData.acceptingClients);
@@ -79,13 +85,19 @@ export default function AvailabilityScreen() {
     };
 
     fetchAcceptingStatus();
-  }, [user?.id]);
+  }, [user?.id, isDemoMode]);
 
   // Handle accepting clients toggle change
   const handleAcceptingClientsToggle = async (value: boolean) => {
     if (!user?.id || isUpdatingToggle) return;
 
     setAcceptingClients(value);
+
+    // In demo mode, just update local state (no database)
+    if (isDemoMode) {
+      return;
+    }
+
     setIsUpdatingToggle(true);
 
     const success = await updateAcceptingClients(user.id, value);

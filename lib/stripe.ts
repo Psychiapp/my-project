@@ -1,19 +1,31 @@
-import { Alert, Linking } from 'react-native';
+import { Alert, Linking, Platform } from 'react-native';
 import { StripeConfig, Config, SupabaseConfig } from '@/constants/config';
 import type { StripeConnectStatus } from '@/types/database';
 
-// Conditionally import Stripe to avoid crash in Expo Go
+// Conditionally import Stripe to avoid crash in Expo Go and on web
 let initPaymentSheet: any = null;
 let presentPaymentSheet: any = null;
 export let stripeAvailable = false;
 
-try {
-  const stripe = require('@stripe/stripe-react-native');
+// Only attempt to load Stripe native module on native platforms (not web)
+// Using a function wrapper to hide require from Metro's static analysis
+const loadStripeNative = () => {
+  if (Platform.OS === 'web') return null;
+  try {
+    // Dynamic require to prevent Metro from bundling for web
+    const moduleName = '@stripe/stripe-react-native';
+    return require(moduleName);
+  } catch (e) {
+    console.log('Stripe native module not available (running in Expo Go)');
+    return null;
+  }
+};
+
+const stripe = loadStripeNative();
+if (stripe) {
   initPaymentSheet = stripe.initPaymentSheet;
   presentPaymentSheet = stripe.presentPaymentSheet;
   stripeAvailable = true;
-} catch (e) {
-  console.log('Stripe native module not available (running in Expo Go)');
 }
 
 // Stripe integration with payment sheet support

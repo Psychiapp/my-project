@@ -438,8 +438,10 @@ export default function W9FormScreen() {
                   State <Text style={styles.required}>*</Text>
                 </Text>
                 <TouchableOpacity
-                  style={styles.pickerButton}
+                  style={styles.statePickerButton}
                   onPress={() => setShowStatePicker(!showStatePicker)}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
                   <Text style={[
                     styles.pickerButtonText,
@@ -718,6 +720,16 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.sm,
     borderWidth: 1,
     borderColor: 'rgba(0,0,0,0.08)',
+  },
+  statePickerButton: {
+    backgroundColor: 'rgba(0,0,0,0.03)',
+    borderRadius: BorderRadius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.08)',
+    minHeight: 44,
+    justifyContent: 'center',
   },
   pickerButtonText: {
     fontSize: 16,

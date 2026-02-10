@@ -20,7 +20,6 @@ import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import ViewShot from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
-import * as FileSystem from 'expo-file-system';
 import { PsychiColors, Spacing, BorderRadius, Shadows, Typography } from '@/constants/theme';
 import {
   ChevronLeftIcon,

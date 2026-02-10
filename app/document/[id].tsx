@@ -12,7 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 import { WebView } from 'react-native-webview';
 import { Asset } from 'expo-asset';
-import * as FileSystem from 'expo-file-system';
+import { File } from 'expo-file-system/next';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
 import { ArrowLeftIcon, DownloadIcon } from '@/components/icons';
 import * as Sharing from 'expo-sharing';
@@ -81,18 +81,14 @@ export default function DocumentViewerScreen() {
 
       setLocalUri(asset.localUri);
 
-      // Check if file exists
-      const fileInfo = await FileSystem.getInfoAsync(asset.localUri);
-      console.log('File info:', fileInfo);
+      // Read file as base64 using new File API
+      const file = new File(asset.localUri);
 
-      if (!fileInfo.exists) {
+      if (!file.exists) {
         throw new Error('Document file does not exist at path');
       }
 
-      // Read file as base64 for WebView
-      const base64 = await FileSystem.readAsStringAsync(asset.localUri, {
-        encoding: 'base64',
-      });
+      const base64 = await file.base64();
 
       console.log('Base64 length:', base64.length);
 
