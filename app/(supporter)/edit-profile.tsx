@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,11 +10,15 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
 import { ChevronLeftIcon } from '@/components/icons';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
+import { getSupporterDetail } from '@/lib/database';
 
 const SPECIALTIES = [
   'Anxiety',
@@ -35,19 +39,64 @@ const AVAILABILITY_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 export default function SupporterEditProfileScreen() {
   const router = useRouter();
+  const { user, profile } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
-  // Profile fields
-  const [displayName, setDisplayName] = useState('Sarah M.');
-  const [bio, setBio] = useState(
-    'Certified peer support specialist with 5+ years of experience helping individuals navigate anxiety, depression, and life transitions. I believe in a compassionate, non-judgmental approach.'
-  );
-  const [selectedSpecialties, setSelectedSpecialties] = useState<string[]>([
-    'Anxiety',
-    'Depression',
-    'Life Transitions',
-  ]);
-  const [availableDays, setAvailableDays] = useState<string[]>(['Mon', 'Wed', 'Fri']);
+  // Profile fields - start empty, load from database
+  const [displayName, setDisplayName] = useState('');
+  const [bio, setBio] = useState('');
+  const [selectedSpecialties, setSelectedSpecialties] = useState<string[]>([]);
+  const [availableDays, setAvailableDays] = useState<string[]>([]);
+
+  // Load supporter profile on mount
+  useEffect(() => {
+    const loadProfile = async () => {
+      if (!user?.id) {
+        setIsLoadingProfile(false);
+        return;
+      }
+
+      try {
+        // Get supporter details from database
+        const details = await getSupporterDetail(user.id);
+
+        if (details) {
+          setDisplayName(details.full_name || '');
+          setBio(details.bio || '');
+          setSelectedSpecialties(details.specialties || []);
+          setAvatarUrl(details.avatar_url || null);
+
+          // Convert availability object to day abbreviations
+          if (details.availability) {
+            const days: string[] = [];
+            const dayMap: Record<string, string> = {
+              'monday': 'Mon', 'tuesday': 'Tue', 'wednesday': 'Wed',
+              'thursday': 'Thu', 'friday': 'Fri', 'saturday': 'Sat', 'sunday': 'Sun'
+            };
+            Object.keys(details.availability).forEach(day => {
+              const abbrev = dayMap[day.toLowerCase()];
+              if (abbrev && details.availability[day]?.length > 0) {
+                days.push(abbrev);
+              }
+            });
+            setAvailableDays(days);
+          }
+        } else if (profile) {
+          // Fall back to basic profile info
+          setDisplayName(`${profile.firstName} ${profile.lastName}`.trim());
+          setAvatarUrl(profile.avatarUrl || null);
+        }
+      } catch (error) {
+        console.error('Error loading profile:', error);
+      } finally {
+        setIsLoadingProfile(false);
+      }
+    };
+
+    loadProfile();
+  }, [user?.id, profile]);
 
   const toggleSpecialty = (specialty: string) => {
     setSelectedSpecialties((prev) =>
@@ -81,21 +130,69 @@ export default function SupporterEditProfileScreen() {
       return;
     }
 
+    if (!user?.id) {
+      Alert.alert('Error', 'Not logged in');
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Convert day abbreviations back to availability object
+      const dayMap: Record<string, string> = {
+        'Mon': 'monday', 'Tue': 'tuesday', 'Wed': 'wednesday',
+        'Thu': 'thursday', 'Fri': 'friday', 'Sat': 'saturday', 'Sun': 'sunday'
+      };
+      const availability: Record<string, string[]> = {};
+      availableDays.forEach(abbrev => {
+        const fullDay = dayMap[abbrev];
+        if (fullDay) {
+          availability[fullDay] = ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00'];
+        }
+      });
+
+      if (supabase) {
+        // Update profiles table
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({ full_name: displayName })
+          .eq('id', user.id);
+
+        if (profileError) throw profileError;
+
+        // Update supporter_details table
+        const { error: detailsError } = await supabase
+          .from('supporter_details')
+          .upsert({
+            supporter_id: user.id,
+            bio,
+            specialties: selectedSpecialties,
+            availability,
+          });
+
+        if (detailsError) throw detailsError;
+      }
 
       Alert.alert('Success', 'Your profile has been updated', [
         { text: 'OK', onPress: () => router.back() },
       ]);
     } catch (error) {
+      console.error('Error saving profile:', error);
       Alert.alert('Error', 'Failed to update profile. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
+
+  if (isLoadingProfile) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={PsychiColors.azure} />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -124,10 +221,18 @@ export default function SupporterEditProfileScreen() {
           {/* Profile Photo */}
           <View style={styles.section}>
             <View style={styles.photoSection}>
-              <Image
-                source={{ uri: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200' }}
-                style={styles.avatar}
-              />
+              {avatarUrl ? (
+                <Image
+                  source={{ uri: avatarUrl }}
+                  style={styles.avatar}
+                />
+              ) : (
+                <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                  <Text style={styles.avatarInitial}>
+                    {displayName ? displayName.charAt(0).toUpperCase() : '?'}
+                  </Text>
+                </View>
+              )}
               <TouchableOpacity style={styles.changePhotoButton}>
                 <Text style={styles.changePhotoText}>Change Photo</Text>
               </TouchableOpacity>
@@ -235,6 +340,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: PsychiColors.cream,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   scrollView: {
     flex: 1,
   },
@@ -298,6 +408,16 @@ const styles = StyleSheet.create({
     height: 100,
     borderRadius: 50,
     marginBottom: Spacing.md,
+  },
+  avatarPlaceholder: {
+    backgroundColor: PsychiColors.azure,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarInitial: {
+    fontSize: 40,
+    fontWeight: '600',
+    color: PsychiColors.white,
   },
   changePhotoButton: {
     paddingVertical: Spacing.sm,
