@@ -55,6 +55,8 @@ interface VideoCallProps {
   isVideoEnabled?: boolean;
   onEndCall: () => void;
   onError?: (error: string) => void;
+  onConnectionIssue?: (reason: 'timeout' | 'disconnect' | 'network') => void; // Callback when connection fails
+  sessionId?: string;
 }
 
 export default function VideoCall({
@@ -64,6 +66,8 @@ export default function VideoCall({
   isVideoEnabled = true,
   onEndCall,
   onError,
+  onConnectionIssue,
+  sessionId,
 }: VideoCallProps) {
   // Check if Daily.co is available (not in Expo Go)
   if (!Daily) {
@@ -154,15 +158,15 @@ export default function VideoCall({
           if (hasRemoteParticipantJoined && !remoteParticipant) {
             // Remote participant has left - show alert
             Alert.alert(
-              'Participant Left',
-              `${otherParticipant.name} has left the call.`,
+              'Connection Issue',
+              `${otherParticipant.name} has disconnected from the call. They may be experiencing connection issues.`,
               [
-                { text: 'Stay', style: 'cancel' },
+                { text: 'Wait', style: 'cancel' },
                 {
-                  text: 'End Call',
-                  style: 'destructive',
+                  text: 'End & Contact',
                   onPress: () => {
                     call.leave();
+                    onConnectionIssue?.('disconnect');
                     onEndCall();
                   }
                 },
@@ -274,7 +278,19 @@ export default function VideoCall({
         Alert.alert(
           'Connection Lost',
           'Your internet connection was lost. Attempting to reconnect...',
-          [{ text: 'OK' }]
+          [
+            { text: 'Wait', style: 'cancel' },
+            {
+              text: 'End & Contact',
+              onPress: () => {
+                if (callObject) {
+                  callObject.leave();
+                }
+                onConnectionIssue?.('network');
+                onEndCall();
+              }
+            },
+          ]
         );
       }
 
@@ -439,18 +455,30 @@ export default function VideoCall({
           <View style={styles.errorIcon}>
             <Text style={styles.errorIconText}>!</Text>
           </View>
-          <Text style={styles.errorTitle}>Connection Error</Text>
+          <Text style={styles.errorTitle}>
+            {isTimeout ? 'Connection Timed Out' : 'Connection Error'}
+          </Text>
           <Text style={styles.errorMessage}>{error}</Text>
+
           <View style={styles.errorButtonRow}>
             {isTimeout && (
               <TouchableOpacity style={styles.retryButton} onPress={handleRetry}>
                 <Text style={styles.retryButtonText}>Try Again</Text>
               </TouchableOpacity>
             )}
-            <TouchableOpacity style={styles.errorButton} onPress={onEndCall}>
-              <Text style={styles.errorButtonText}>Go Back</Text>
+            <TouchableOpacity
+              style={styles.contactButton}
+              onPress={() => {
+                onConnectionIssue?.('timeout');
+                onEndCall();
+              }}
+            >
+              <Text style={styles.contactButtonText}>Contact & Reschedule</Text>
             </TouchableOpacity>
           </View>
+          <TouchableOpacity style={styles.backLink} onPress={onEndCall}>
+            <Text style={styles.backLinkText}>Go Back</Text>
+          </TouchableOpacity>
         </View>
       </SafeAreaView>
     );
@@ -912,6 +940,26 @@ const styles = StyleSheet.create({
   errorButtonRow: {
     flexDirection: 'row',
     gap: Spacing.md,
+    marginBottom: Spacing.md,
+  },
+  contactButton: {
+    backgroundColor: PsychiColors.azure,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.full,
+  },
+  contactButtonText: {
+    color: PsychiColors.white,
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  backLink: {
+    paddingVertical: Spacing.sm,
+  },
+  backLinkText: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.6)',
+    textDecorationLine: 'underline',
   },
   retryButton: {
     backgroundColor: PsychiColors.success,

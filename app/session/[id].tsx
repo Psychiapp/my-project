@@ -13,6 +13,7 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import ChatSession from '@/components/session/ChatSession';
 import VideoCall from '@/components/session/VideoCall';
+import PostCallContact from '@/components/session/PostCallContact';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
 import { createSession as createDailySession, SessionConfig } from '@/lib/daily';
 import { getSession } from '@/lib/database';
@@ -50,6 +51,8 @@ export default function SessionScreen() {
   const [checkingPermissions, setCheckingPermissions] = useState(false);
   const [isLoadingSession, setIsLoadingSession] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [showPostCallContact, setShowPostCallContact] = useState(false); // 10-min contact window
+  const [connectionIssueReason, setConnectionIssueReason] = useState<'timeout' | 'disconnect' | 'network' | null>(null);
 
   // Get current user name from auth context
   const currentUserName = profile?.firstName
@@ -168,6 +171,18 @@ export default function SessionScreen() {
     setSessionEnded(true);
   };
 
+  // Handle connection issue - show post-call contact window
+  const handleConnectionIssue = (reason: 'timeout' | 'disconnect' | 'network') => {
+    setConnectionIssueReason(reason);
+    setShowPostCallContact(true);
+  };
+
+  // Close post-call contact and go back
+  const handleClosePostCallContact = () => {
+    setShowPostCallContact(false);
+    router.replace('/(client)');
+  };
+
   const handleBackToDashboard = () => {
     router.replace('/(client)');
   };
@@ -209,6 +224,21 @@ export default function SessionScreen() {
           </TouchableOpacity>
         </View>
       </SafeAreaView>
+    );
+  }
+
+  // Post-call contact view (10-minute window after connection issue)
+  if (showPostCallContact && sessionData) {
+    return (
+      <PostCallContact
+        sessionId={sessionData.id}
+        currentUserId={currentUserId}
+        currentUserName={currentUserName}
+        otherParticipant={sessionData.participant}
+        issueReason={connectionIssueReason || 'disconnect'}
+        callType={sessionData.type === 'video' ? 'video' : 'phone'}
+        onClose={handleClosePostCallContact}
+      />
     );
   }
 
@@ -324,6 +354,8 @@ export default function SessionScreen() {
             otherParticipant={sessionData.participant}
             isVideoEnabled={sessionData.type === 'video'}
             onEndCall={handleEndSession}
+            onConnectionIssue={handleConnectionIssue}
+            sessionId={sessionData.id}
           />
         );
       default:
