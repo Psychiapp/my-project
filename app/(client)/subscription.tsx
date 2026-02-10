@@ -16,6 +16,7 @@ import { ChevronLeftIcon, CheckIcon, MinusCircleIcon } from '@/components/icons'
 import { Config } from '@/constants/config';
 import { useAuth } from '@/contexts/AuthContext';
 import { getClientProfile, updateClientSubscription, cancelClientSubscription } from '@/lib/database';
+import { processSubscriptionPaymentSheet, stripeAvailable } from '@/lib/stripe';
 
 type PlanTier = 'basic' | 'standard' | 'premium';
 
@@ -111,6 +112,26 @@ export default function SubscriptionScreen() {
             setIsProcessing(true);
             setSelectedPlan(plan);
             try {
+              // Process payment first (if Stripe is available)
+              if (stripeAvailable) {
+                const paymentSuccess = await processSubscriptionPaymentSheet(plan);
+
+                if (!paymentSuccess) {
+                  // Payment failed or was cancelled
+                  setIsProcessing(false);
+                  setSelectedPlan(null);
+                  return;
+                }
+              } else {
+                // In development/Expo Go, show notice but allow for testing
+                Alert.alert(
+                  'Development Mode',
+                  'Payment processing is not available in Expo Go. Subscription will be activated for testing purposes.',
+                  [{ text: 'Continue' }]
+                );
+              }
+
+              // Payment succeeded - update subscription in database
               const success = await updateClientSubscription(user.id, plan);
               if (success) {
                 Alert.alert('Success', `You're now subscribed to the ${plans[plan].name} plan!`, [
@@ -119,7 +140,12 @@ export default function SubscriptionScreen() {
                 setCurrentPlan(plan);
                 setSelectedPlan(null);
               } else {
-                Alert.alert('Error', 'Failed to update subscription. Please try again.');
+                // Payment succeeded but database update failed
+                Alert.alert(
+                  'Error',
+                  'Your payment was processed but we couldn\'t activate your subscription. Please contact support.',
+                  [{ text: 'OK' }]
+                );
               }
             } catch (error) {
               console.error('Subscription error:', error);

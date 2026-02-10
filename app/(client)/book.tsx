@@ -27,6 +27,7 @@ import {
   scheduleAllSessionReminders,
 } from '@/lib/notifications';
 import { createSession, getSupporterDetail, getSupporterAvailability, saveClientPreferences } from '@/lib/database';
+import { processSessionPayment, stripeAvailable } from '@/lib/stripe';
 import OnboardingModal from '@/components/OnboardingModal';
 
 type SessionType = 'chat' | 'phone' | 'video';
@@ -234,7 +235,36 @@ export default function BookSessionScreen() {
       const scheduledTime = new Date(selectedDate);
       scheduledTime.setHours(hours, minutes, 0, 0);
 
-      // Create the session in the database
+      // Format date for payment metadata
+      const dateStr = selectedDate.toLocaleDateString('en-US', {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
+      });
+
+      // Process payment first (if Stripe is available)
+      if (stripeAvailable) {
+        const paymentSuccess = await processSessionPayment(
+          selectedType,
+          supporter.id,
+          scheduledTime.toISOString()
+        );
+
+        if (!paymentSuccess) {
+          // Payment failed or was cancelled - don't create session
+          setIsBooking(false);
+          return;
+        }
+      } else {
+        // In development/Expo Go, show notice but allow booking for testing
+        Alert.alert(
+          'Development Mode',
+          'Payment processing is not available in Expo Go. Session will be created without payment for testing purposes.',
+          [{ text: 'Continue' }]
+        );
+      }
+
+      // Payment succeeded (or dev mode) - now create the session
       const session = await createSession(
         user.id,
         supporter.id,
@@ -244,17 +274,17 @@ export default function BookSessionScreen() {
       );
 
       if (!session) {
-        throw new Error('Failed to create session');
+        // Payment succeeded but session creation failed - needs manual refund
+        Alert.alert(
+          'Booking Error',
+          'Your payment was processed but we couldn\'t create your session. Please contact support for a refund.',
+          [{ text: 'OK' }]
+        );
+        setIsBooking(false);
+        return;
       }
 
       const sessionId = session.id;
-
-      // Format date and time for notifications
-      const dateStr = selectedDate.toLocaleDateString('en-US', {
-        weekday: 'long',
-        month: 'long',
-        day: 'numeric',
-      });
       const sessionTypeName = sessionTypes.find((t) => t.id === selectedType)?.name || selectedType;
 
       // Send notification to supporter about new booking
