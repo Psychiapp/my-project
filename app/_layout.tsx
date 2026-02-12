@@ -68,7 +68,7 @@ const PsychiDarkTheme = {
   },
 };
 
-export default function RootLayout() {
+export default Sentry.wrap(function RootLayout() {
   const colorScheme = useColorScheme();
   const rootNavigationState = useRootNavigationState();
   const [hasNavigatedToWelcome, setHasNavigatedToWelcome] = useState(false);
@@ -122,4 +122,4 @@ export default function RootLayout() {
       </NetworkProvider>
     </ErrorBoundary>
   );
-}
+});

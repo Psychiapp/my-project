@@ -108,8 +108,9 @@
       [
         "@sentry/react-native/expo",
         {
-          "organization": "psychi-app",
-          "project": "psychi-mobile"
+          "url": "https://sentry.io/",
+          "project": "react-native",
+          "organization": "psychi-fr"
         }
       ]
     ],
