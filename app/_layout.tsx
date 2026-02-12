@@ -15,15 +15,16 @@ import OfflineBanner from '@/components/OfflineBanner';
 import DemoModeBanner from '@/components/DemoModeBanner';
 import { setupDeepLinkListener, setupNotificationResponseListener } from '@/lib/deep-linking';
 
-// Initialize Sentry for error tracking (production only)
+// Conditionally import Sentry to avoid crash in Expo Go
+let Sentry: any = null;
 try {
-  const Sentry = require('@sentry/react-native');
+  Sentry = require('@sentry/react-native');
   if (SentryConfig.dsn && SentryConfig.enabled) {
     Sentry.init({
       dsn: SentryConfig.dsn,
       environment: SentryConfig.environment,
       enableAutoSessionTracking: true,
-      tracesSampleRate: 0.2, // 20% of transactions for performance monitoring
+      tracesSampleRate: 0.2,
       debug: false,
     });
     console.log('Sentry initialized for', SentryConfig.environment);
@@ -68,7 +69,7 @@ const PsychiDarkTheme = {
   },
 };
 
-export default Sentry.wrap(function RootLayout() {
+function RootLayout() {
   const colorScheme = useColorScheme();
   const rootNavigationState = useRootNavigationState();
   const [hasNavigatedToWelcome, setHasNavigatedToWelcome] = useState(false);
@@ -122,4 +123,7 @@ export default Sentry.wrap(function RootLayout() {
       </NetworkProvider>
     </ErrorBoundary>
   );
-});
+}
+
+// Wrap with Sentry if available (production builds), otherwise export directly
+export default Sentry ? Sentry.wrap(RootLayout) : RootLayout;
