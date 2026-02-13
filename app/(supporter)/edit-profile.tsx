@@ -14,11 +14,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
 import { ChevronLeftIcon } from '@/components/icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
-import { getSupporterDetail } from '@/lib/database';
+import { getSupporterDetail, uploadAvatar } from '@/lib/database';
 
 const SPECIALTIES = [
   'Anxiety',
@@ -39,10 +40,11 @@ const AVAILABILITY_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 export default function SupporterEditProfileScreen() {
   const router = useRouter();
-  const { user, profile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 
   // Profile fields - start empty, load from database
   const [displayName, setDisplayName] = useState('');
@@ -97,6 +99,82 @@ export default function SupporterEditProfileScreen() {
 
     loadProfile();
   }, [user?.id, profile]);
+
+  const handleChangePhoto = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert(
+        'Permission Required',
+        'Please allow access to your photo library to change your profile photo.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    Alert.alert(
+      'Change Profile Photo',
+      'Choose a photo from your library or take a new one',
+      [
+        { text: 'Take Photo', onPress: handleTakePhoto },
+        { text: 'Choose from Library', onPress: handlePickImage },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
+  };
+
+  const handleTakePhoto = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Required', 'Please allow camera access.', [{ text: 'OK' }]);
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      await processSelectedImage(result.assets[0].uri);
+    }
+  };
+
+  const handlePickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      await processSelectedImage(result.assets[0].uri);
+    }
+  };
+
+  const processSelectedImage = async (uri: string) => {
+    if (!user?.id) return;
+
+    setIsUploadingPhoto(true);
+    setAvatarUrl(uri); // Show preview immediately
+
+    try {
+      const uploadedUrl = await uploadAvatar(user.id, uri);
+      if (uploadedUrl) {
+        setAvatarUrl(uploadedUrl);
+        await refreshProfile();
+        Alert.alert('Success', 'Profile photo updated successfully.');
+      }
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+      Alert.alert('Upload Error', 'Failed to upload photo. Please try again.');
+      setAvatarUrl(profile?.avatarUrl || null);
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  };
 
   const toggleSpecialty = (specialty: string) => {
     setSelectedSpecialties((prev) =>
@@ -233,8 +311,14 @@ export default function SupporterEditProfileScreen() {
                   </Text>
                 </View>
               )}
-              <TouchableOpacity style={styles.changePhotoButton}>
-                <Text style={styles.changePhotoText}>Change Photo</Text>
+              <TouchableOpacity
+                style={styles.changePhotoButton}
+                onPress={handleChangePhoto}
+                disabled={isUploadingPhoto}
+              >
+                <Text style={styles.changePhotoText}>
+                  {isUploadingPhoto ? 'Uploading...' : 'Change Photo'}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>

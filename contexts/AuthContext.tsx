@@ -25,17 +25,26 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Transform database profile to app profile format
-function transformDbProfile(dbProfile: DbUserProfile): UserProfile {
-  const nameParts = (dbProfile.full_name || '').split(' ');
+function transformDbProfile(dbProfile: DbUserProfile & { first_name?: string; last_name?: string }): UserProfile {
+  // Prefer separate name fields, fallback to splitting full_name
+  let firstName = dbProfile.first_name;
+  let lastName = dbProfile.last_name;
+
+  if (!firstName || !lastName) {
+    const nameParts = (dbProfile.full_name || '').trim().split(' ').filter(Boolean);
+    firstName = firstName || nameParts[0] || '';
+    lastName = lastName || nameParts.slice(1).join(' ') || '';
+  }
+
   return {
     id: dbProfile.id,
     email: dbProfile.email,
-    firstName: nameParts[0] || '',
-    lastName: nameParts.slice(1).join(' ') || '',
+    firstName: firstName.trim(),
+    lastName: lastName.trim(),
     role: dbProfile.role,
     avatarUrl: dbProfile.avatar_url || undefined,
     createdAt: dbProfile.created_at,
-    onboardingCompleted: true, // TODO: Add this field to database
+    onboardingCompleted: Boolean(firstName && lastName),
   };
 }
 

@@ -10,6 +10,8 @@ import { router } from 'expo-router';
 // - psychi://reset-password - Password reset flow
 // - psychi://messages - Open messages tab
 // - psychi://home - Go to home screen
+// - psychi://payout-settings - Stripe Connect onboarding return
+// - psychi://edit-profile - Profile editing
 
 type DeepLinkPath =
   | { type: 'session'; sessionId: string }
@@ -18,6 +20,8 @@ type DeepLinkPath =
   | { type: 'reset-password' }
   | { type: 'messages' }
   | { type: 'home' }
+  | { type: 'payout-settings'; success?: boolean; refresh?: boolean }
+  | { type: 'edit-profile' }
   | { type: 'unknown' };
 
 /**
@@ -28,6 +32,7 @@ export function parseDeepLink(url: string): DeepLinkPath {
     const parsed = Linking.parse(url);
     const path = parsed.path || '';
     const pathParts = path.split('/').filter(Boolean);
+    const queryParams = parsed.queryParams || {};
 
     if (pathParts[0] === 'session' && pathParts[1]) {
       return { type: 'session', sessionId: pathParts[1] };
@@ -47,6 +52,18 @@ export function parseDeepLink(url: string): DeepLinkPath {
 
     if (pathParts[0] === 'messages') {
       return { type: 'messages' };
+    }
+
+    if (pathParts[0] === 'payout-settings') {
+      return {
+        type: 'payout-settings',
+        success: queryParams.success === 'true',
+        refresh: queryParams.refresh === 'true',
+      };
+    }
+
+    if (pathParts[0] === 'edit-profile') {
+      return { type: 'edit-profile' };
     }
 
     if (pathParts[0] === 'home' || path === '' || path === '/') {
@@ -79,6 +96,21 @@ export function handleDeepLink(parsedLink: DeepLinkPath): void {
       break;
     case 'messages':
       router.push('/(client)/messages' as any);
+      break;
+    case 'payout-settings': {
+      // Build query string for payout settings
+      const params = new URLSearchParams();
+      if (parsedLink.success) params.set('success', 'true');
+      if (parsedLink.refresh) params.set('refresh', 'true');
+      const queryString = params.toString();
+      const path = queryString
+        ? `/(supporter)/payout-settings?${queryString}`
+        : '/(supporter)/payout-settings';
+      router.push(path as any);
+      break;
+    }
+    case 'edit-profile':
+      router.push('/(supporter)/edit-profile' as any);
       break;
     case 'home':
       router.replace('/(client)/' as any);

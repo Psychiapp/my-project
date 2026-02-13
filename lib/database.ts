@@ -44,6 +44,177 @@ import type {
 // ============================================
 
 /**
+ * Profile completion status for clients
+ * Required: first_name, last_name, email
+ */
+export interface ClientProfileCompletion {
+  isComplete: boolean;
+  missingFields: string[];
+  firstName: string | null;
+  lastName: string | null;
+  email: string | null;
+}
+
+/**
+ * Profile completion status for supporters
+ * Required: first_name, last_name, bio, avatar_url, specialties, availability, email
+ */
+export interface SupporterProfileCompletion {
+  isComplete: boolean;
+  missingFields: string[];
+  firstName: string | null;
+  lastName: string | null;
+  email: string | null;
+  bio: string | null;
+  avatarUrl: string | null;
+  specialties: string[] | null;
+  hasAvailability: boolean;
+}
+
+/**
+ * Check if a client's profile is complete
+ * Required fields: first name, last name, email
+ */
+export async function checkClientProfileCompletion(
+  userId: string
+): Promise<ClientProfileCompletion> {
+  if (!supabase) {
+    return {
+      isComplete: false,
+      missingFields: ['Database not configured'],
+      firstName: null,
+      lastName: null,
+      email: null,
+    };
+  }
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('full_name, first_name, last_name, email')
+    .eq('id', userId)
+    .single();
+
+  if (error || !data) {
+    return {
+      isComplete: false,
+      missingFields: ['Profile not found'],
+      firstName: null,
+      lastName: null,
+      email: null,
+    };
+  }
+
+  // Parse name - prefer separate fields, fallback to full_name
+  let firstName = data.first_name;
+  let lastName = data.last_name;
+
+  if (!firstName || !lastName) {
+    const nameParts = (data.full_name || '').trim().split(' ');
+    firstName = firstName || nameParts[0] || null;
+    lastName = lastName || nameParts.slice(1).join(' ') || null;
+  }
+
+  const missingFields: string[] = [];
+  if (!firstName?.trim()) missingFields.push('First Name');
+  if (!lastName?.trim()) missingFields.push('Last Name');
+  if (!data.email?.trim()) missingFields.push('Email');
+
+  return {
+    isComplete: missingFields.length === 0,
+    missingFields,
+    firstName: firstName?.trim() || null,
+    lastName: lastName?.trim() || null,
+    email: data.email || null,
+  };
+}
+
+/**
+ * Check if a supporter's profile is complete
+ * Required fields: first name, last name, bio, profile photo, specialties, availability, email
+ */
+export async function checkSupporterProfileCompletion(
+  userId: string
+): Promise<SupporterProfileCompletion> {
+  if (!supabase) {
+    return {
+      isComplete: false,
+      missingFields: ['Database not configured'],
+      firstName: null,
+      lastName: null,
+      email: null,
+      bio: null,
+      avatarUrl: null,
+      specialties: null,
+      hasAvailability: false,
+    };
+  }
+
+  // Fetch profile data
+  const { data: profileData, error: profileError } = await supabase
+    .from('profiles')
+    .select('full_name, first_name, last_name, email, avatar_url')
+    .eq('id', userId)
+    .single();
+
+  // Fetch supporter details
+  const { data: detailsData } = await supabase
+    .from('supporter_details')
+    .select('bio, specialties, availability')
+    .eq('supporter_id', userId)
+    .single();
+
+  if (profileError || !profileData) {
+    return {
+      isComplete: false,
+      missingFields: ['Profile not found'],
+      firstName: null,
+      lastName: null,
+      email: null,
+      bio: null,
+      avatarUrl: null,
+      specialties: null,
+      hasAvailability: false,
+    };
+  }
+
+  // Parse name
+  let firstName = profileData.first_name;
+  let lastName = profileData.last_name;
+
+  if (!firstName || !lastName) {
+    const nameParts = (profileData.full_name || '').trim().split(' ');
+    firstName = firstName || nameParts[0] || null;
+    lastName = lastName || nameParts.slice(1).join(' ') || null;
+  }
+
+  const bio = detailsData?.bio || null;
+  const specialties = detailsData?.specialties || null;
+  const availability = detailsData?.availability || null;
+  const hasAvailability = availability && Object.keys(availability).length > 0;
+
+  const missingFields: string[] = [];
+  if (!firstName?.trim()) missingFields.push('First Name');
+  if (!lastName?.trim()) missingFields.push('Last Name');
+  if (!profileData.email?.trim()) missingFields.push('Email');
+  if (!bio?.trim()) missingFields.push('Bio');
+  if (!profileData.avatar_url) missingFields.push('Profile Photo');
+  if (!specialties || specialties.length === 0) missingFields.push('Specialties');
+  if (!hasAvailability) missingFields.push('Availability');
+
+  return {
+    isComplete: missingFields.length === 0,
+    missingFields,
+    firstName: firstName?.trim() || null,
+    lastName: lastName?.trim() || null,
+    email: profileData.email || null,
+    bio: bio?.trim() || null,
+    avatarUrl: profileData.avatar_url || null,
+    specialties,
+    hasAvailability,
+  };
+}
+
+/**
  * Upload avatar image to Supabase storage and update profile
  * Returns the public URL of the uploaded image or null on failure
  */
@@ -306,6 +477,7 @@ export async function updateUserProfile(
  * Only returns supporters who:
  * - Have completed onboarding (W9, bank info, training)
  * - Are accepting new clients
+ * - Have verified documents (transcript + ID approved by admin)
  */
 export async function getAvailableSupporters(): Promise<SupporterListing[]> {
   if (!supabase) return [];
@@ -324,12 +496,14 @@ export async function getAvailableSupporters(): Promise<SupporterListing[]> {
         total_sessions,
         is_available,
         accepting_clients,
-        training_complete
+        training_complete,
+        verification_status
       )
     `)
     .eq('role', 'supporter')
     .eq('onboarding_complete', true) // Must complete W9, bank, and training
-    .eq('supporter_details.accepting_clients', true);
+    .eq('supporter_details.accepting_clients', true)
+    .eq('supporter_details.verification_status', 'approved'); // Must have verified documents
 
   if (error) {
     console.error('Error fetching supporters:', error);
@@ -351,13 +525,14 @@ export async function getAvailableSupporters(): Promise<SupporterListing[]> {
       accepting_clients: details.accepting_clients || false,
       training_complete: details.training_complete || false,
       onboarding_complete: supporter.onboarding_complete || false,
+      verification_status: details.verification_status || 'not_submitted',
     };
   });
 }
 
 /**
  * Search supporters by name or specialty
- * Only returns supporters who have completed onboarding
+ * Only returns supporters who have completed onboarding and verification
  */
 export async function searchSupporters(
   query: string,
@@ -379,12 +554,14 @@ export async function searchSupporters(
         total_sessions,
         is_available,
         accepting_clients,
-        training_complete
+        training_complete,
+        verification_status
       )
     `)
     .eq('role', 'supporter')
     .eq('onboarding_complete', true) // Must complete W9, bank, and training
-    .eq('supporter_details.accepting_clients', true);
+    .eq('supporter_details.accepting_clients', true)
+    .eq('supporter_details.verification_status', 'approved'); // Must have verified documents
 
   // Add name search if query provided
   if (query) {
@@ -413,6 +590,7 @@ export async function searchSupporters(
       accepting_clients: details.accepting_clients || false,
       training_complete: details.training_complete || false,
       onboarding_complete: supporter.onboarding_complete || false,
+      verification_status: details.verification_status || 'not_submitted',
     };
   });
 
@@ -457,7 +635,8 @@ export async function getSupporterDetail(supporterId: string): Promise<Supporter
       accepting_clients,
       training_complete,
       availability,
-      session_types
+      session_types,
+      verification_status
     `)
     .eq('supporter_id', supporterId)
     .single();
@@ -476,6 +655,7 @@ export async function getSupporterDetail(supporterId: string): Promise<Supporter
     training_complete?: boolean;
     availability?: { [key: string]: string[] };
     session_types?: SessionType[];
+    verification_status?: 'not_submitted' | 'pending_review' | 'approved' | 'rejected';
   } | null;
 
   // Fetch reviews/feedback separately
@@ -496,6 +676,7 @@ export async function getSupporterDetail(supporterId: string): Promise<Supporter
     accepting_clients: details?.accepting_clients || false,
     training_complete: details?.training_complete || false,
     onboarding_complete: details?.training_complete || false, // Use training_complete as proxy
+    verification_status: details?.verification_status || 'not_submitted',
     availability: details?.availability || {} as { [key: string]: string[] },
     session_types: details?.session_types || ['chat', 'phone', 'video'] as SessionType[],
     reviews,
@@ -2142,7 +2323,8 @@ export async function matchSupportersToClient(
         accepting_clients,
         training_complete,
         availability,
-        session_types
+        session_types,
+        verification_status
       )
     `)
     .eq('role', 'supporter')
@@ -2249,6 +2431,7 @@ export async function matchSupportersToClient(
       accepting_clients: details.accepting_clients || false,
       training_complete: details.training_complete || false,
       onboarding_complete: supporter.onboarding_complete || false,
+      verification_status: details.verification_status || 'approved', // Only matched supporters are verified
       compatibilityScore: Math.round(score),
       matchReasons: matchReasons.length > 0 ? matchReasons.slice(0, 3) : ['Available to support you'],
     });
@@ -2596,6 +2779,7 @@ export async function requestSupporterReassignment(
         accepting_clients: true,
         training_complete: true,
         onboarding_complete: true,
+        verification_status: 'approved',
         compatibilityScore: 85,
         matchReasons: ['Based on your updated preferences'],
       },
@@ -3106,4 +3290,189 @@ export function getTimeUntilDeadline(responseDeadline: string): {
   }
 
   return { hours, minutes, isExpired: false, formatted };
+}
+
+// ============================================
+// VERIFICATION DOCUMENTS
+// ============================================
+
+/**
+ * Get verification status for a supporter
+ */
+export async function getVerificationStatus(supporterId: string): Promise<{
+  status: 'not_submitted' | 'pending_review' | 'approved' | 'rejected';
+  transcriptUrl: string | null;
+  idDocumentUrl: string | null;
+  submittedAt: string | null;
+  reviewedAt: string | null;
+  rejectionReason: string | null;
+} | null> {
+  if (!supabase) return null;
+
+  const { data, error } = await supabase
+    .from('supporter_details')
+    .select('verification_status, transcript_url, id_document_url, verification_submitted_at, verification_reviewed_at, verification_rejection_reason')
+    .eq('supporter_id', supporterId)
+    .single();
+
+  if (error) {
+    // Row might not exist yet
+    if (error.code !== 'PGRST116') {
+      console.error('Error fetching verification status:', error);
+    }
+    return {
+      status: 'not_submitted',
+      transcriptUrl: null,
+      idDocumentUrl: null,
+      submittedAt: null,
+      reviewedAt: null,
+      rejectionReason: null,
+    };
+  }
+
+  return {
+    status: data?.verification_status || 'not_submitted',
+    transcriptUrl: data?.transcript_url || null,
+    idDocumentUrl: data?.id_document_url || null,
+    submittedAt: data?.verification_submitted_at || null,
+    reviewedAt: data?.verification_reviewed_at || null,
+    rejectionReason: data?.verification_rejection_reason || null,
+  };
+}
+
+/**
+ * Submit verification documents (transcript and ID)
+ */
+export async function submitVerificationDocuments(
+  supporterId: string,
+  transcriptUrl: string,
+  idDocumentUrl: string
+): Promise<boolean> {
+  if (!supabase) return false;
+
+  // First check if supporter_details row exists
+  const { data: existingRow, error: checkError } = await supabase
+    .from('supporter_details')
+    .select('supporter_id')
+    .eq('supporter_id', supporterId)
+    .single();
+
+  if (checkError && checkError.code !== 'PGRST116') {
+    console.error('Error checking supporter_details:', checkError);
+    return false;
+  }
+
+  const verificationData = {
+    transcript_url: transcriptUrl,
+    id_document_url: idDocumentUrl,
+    verification_status: 'pending_review',
+    verification_submitted_at: new Date().toISOString(),
+    verification_rejection_reason: null, // Clear any previous rejection
+  };
+
+  if (existingRow) {
+    const { error } = await supabase
+      .from('supporter_details')
+      .update(verificationData)
+      .eq('supporter_id', supporterId);
+
+    if (error) {
+      console.error('Error updating verification documents:', error);
+      return false;
+    }
+  } else {
+    const { error } = await supabase
+      .from('supporter_details')
+      .insert({
+        supporter_id: supporterId,
+        ...verificationData,
+      });
+
+    if (error) {
+      console.error('Error inserting verification documents:', error);
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/**
+ * Admin: Update verification status (approve/reject)
+ */
+export async function updateVerificationStatus(
+  supporterId: string,
+  status: 'approved' | 'rejected',
+  rejectionReason?: string
+): Promise<boolean> {
+  if (!supabase) return false;
+
+  const updateData: Record<string, any> = {
+    verification_status: status,
+    verification_reviewed_at: new Date().toISOString(),
+  };
+
+  if (status === 'rejected' && rejectionReason) {
+    updateData.verification_rejection_reason = rejectionReason;
+  } else {
+    updateData.verification_rejection_reason = null;
+  }
+
+  // If approved, also set is_verified to true
+  if (status === 'approved') {
+    // Update supporter_details
+    const { error: detailsError } = await supabase
+      .from('supporter_details')
+      .update(updateData)
+      .eq('supporter_id', supporterId);
+
+    if (detailsError) {
+      console.error('Error updating verification status:', detailsError);
+      return false;
+    }
+
+    // Also update profiles.is_verified
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .update({ is_verified: true })
+      .eq('id', supporterId);
+
+    if (profileError) {
+      console.error('Error updating profile verification:', profileError);
+      // Continue anyway, main update succeeded
+    }
+
+    return true;
+  } else {
+    const { error } = await supabase
+      .from('supporter_details')
+      .update(updateData)
+      .eq('supporter_id', supporterId);
+
+    if (error) {
+      console.error('Error updating verification status:', error);
+      return false;
+    }
+
+    return true;
+  }
+}
+
+/**
+ * Get count of supporters pending verification review
+ */
+export async function getVerificationPendingCount(): Promise<number> {
+  if (!supabase) return 0;
+
+  const { count, error } = await supabase
+    .from('supporter_details')
+    .select('*', { count: 'exact', head: true })
+    .eq('verification_status', 'pending_review');
+
+  if (error) {
+    console.error('Error counting pending verifications:', error);
+    return 0;
+  }
+
+  return count || 0;
 }

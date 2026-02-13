@@ -22,6 +22,7 @@ import {
   LogoutIcon,
   ChevronRightIcon,
   DocumentIcon,
+  CheckIcon,
 } from '@/components/icons';
 import { getSupporterDetail, getSupporterSessionCount } from '@/lib/database';
 
@@ -106,6 +107,12 @@ export default function SupporterProfileScreen() {
       title: 'Edit Profile',
       subtitle: 'Update bio, photo, and specialties',
       onPress: () => router.push('/(supporter)/edit-profile'),
+    },
+    {
+      icon: CheckIcon,
+      title: 'Verification',
+      subtitle: 'Upload transcript and ID',
+      onPress: () => router.push('/(supporter)/verification'),
     },
     {
       icon: BookIcon,

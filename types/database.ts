@@ -47,6 +47,9 @@ export interface ClientProfile extends UserProfile {
 // Stripe Connect account status
 export type StripeConnectStatus = 'pending' | 'pending_verification' | 'active' | 'restricted' | 'disabled';
 
+// Supporter verification status
+export type VerificationStatus = 'not_submitted' | 'pending_review' | 'approved' | 'rejected';
+
 // W9 form data structure
 export interface W9FormData {
   legal_name: string;
@@ -97,6 +100,13 @@ export interface SupporterProfile extends UserProfile {
   w9_data: W9FormData | null;
   onboarding_complete: boolean; // True when W9, bank, and training are all done
   onboarding_completed_at: string | null;
+  // Verification documents
+  transcript_url: string | null;
+  id_document_url: string | null;
+  verification_status: VerificationStatus;
+  verification_submitted_at: string | null;
+  verification_reviewed_at: string | null;
+  verification_rejection_reason: string | null;
 }
 
 // Payout schedule type
@@ -115,6 +125,7 @@ export interface SupporterListing {
   accepting_clients: boolean;
   training_complete: boolean;
   onboarding_complete: boolean; // Required for client assignment
+  verification_status: VerificationStatus; // Required for client matching
 }
 
 // Supporter detail (full profile for profile page)
@@ -379,6 +390,13 @@ export interface SupporterApplication {
   w9_completed?: boolean;
   w9_completed_at?: string | null;
   w9_data?: W9FormData | null;
+  // Verification documents
+  transcript_url?: string | null;
+  id_document_url?: string | null;
+  verification_status?: VerificationStatus;
+  verification_submitted_at?: string | null;
+  verification_reviewed_at?: string | null;
+  verification_rejection_reason?: string | null;
 }
 
 // Admin user listing (for user management)

@@ -283,7 +283,7 @@ export default function W9FormScreen() {
         <ScrollView
           style={styles.content}
           contentContainerStyle={styles.contentContainer}
-          keyboardShouldPersistTaps="handled"
+          keyboardShouldPersistTaps="always"
         >
           {/* Status Banner */}
           {isCompleted && (
@@ -709,6 +709,7 @@ const styles = StyleSheet.create({
     color: PsychiColors.midnight,
     borderWidth: 1,
     borderColor: 'rgba(0,0,0,0.08)',
+    minHeight: 48,
   },
   inputRow: {
     flexDirection: 'row',

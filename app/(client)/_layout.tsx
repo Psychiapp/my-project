@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Tabs, router } from 'expo-router';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import {
   PsychiColors,
   Shadows,
@@ -10,6 +10,8 @@ import {
 } from '@/constants/theme';
 import { HomeIcon, ChatIcon, ProfileIcon } from '@/components/icons';
 import { hasRequestedPermissions } from '@/lib/permissions';
+import { useAuth } from '@/contexts/AuthContext';
+import { checkClientProfileCompletion } from '@/lib/database';
 
 // Premium tab bar icon with subtle active indicator
 function TabIcon({ name, focused }: { name: string; focused: boolean }) {
@@ -39,8 +41,11 @@ function TabIcon({ name, focused }: { name: string; focused: boolean }) {
 }
 
 export default function ClientLayout() {
+  const { user, isDemoMode } = useAuth();
   const [isCheckingPermissions, setIsCheckingPermissions] = useState(true);
+  const [isCheckingProfile, setIsCheckingProfile] = useState(true);
 
+  // Check permissions on first launch
   useEffect(() => {
     const checkFirstLaunch = async () => {
       const hasRequested = await hasRequestedPermissions();
@@ -53,8 +58,42 @@ export default function ClientLayout() {
     checkFirstLaunch();
   }, []);
 
-  if (isCheckingPermissions) {
-    return null;
+  // Check profile completion
+  useEffect(() => {
+    const checkProfileCompletion = async () => {
+      if (!user?.id) {
+        setIsCheckingProfile(false);
+        return;
+      }
+
+      // Skip profile check in demo mode
+      if (isDemoMode) {
+        setIsCheckingProfile(false);
+        return;
+      }
+
+      const completion = await checkClientProfileCompletion(user.id);
+
+      if (!completion.isComplete) {
+        // Redirect to profile setup with missing fields info
+        const missingFieldsParam = encodeURIComponent(completion.missingFields.join(','));
+        router.replace(`/profile-setup?role=client&missing=${missingFieldsParam}` as any);
+      }
+
+      setIsCheckingProfile(false);
+    };
+
+    if (!isCheckingPermissions) {
+      checkProfileCompletion();
+    }
+  }, [user?.id, isDemoMode, isCheckingPermissions]);
+
+  if (isCheckingPermissions || isCheckingProfile) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={PsychiColors.royalBlue} />
+      </View>
+    );
   }
 
   return (
@@ -112,6 +151,12 @@ export default function ClientLayout() {
 }
 
 const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: PsychiColors.cream,
+  },
   tabBar: {
     backgroundColor: PsychiColors.cloud,
     borderTopWidth: 0,

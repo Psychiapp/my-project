@@ -20,6 +20,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
 import { ChevronLeftIcon, CameraIcon } from '@/components/icons';
 import { uploadAvatar, updateAvatarUrl } from '@/lib/database';
+import { supabase } from '@/lib/supabase';
 
 export default function EditProfileScreen() {
   const router = useRouter();
@@ -163,15 +164,44 @@ export default function EditProfileScreen() {
       return;
     }
 
+    if (!user?.id) {
+      Alert.alert('Error', 'Not logged in');
+      return;
+    }
+
     setIsSaving(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      setIsSaving(false);
+    try {
+      if (supabase) {
+        // Update profiles table with full_name and optional fields
+        const fullName = `${firstName.trim()} ${lastName.trim()}`;
+        const { error } = await supabase
+          .from('profiles')
+          .update({
+            full_name: fullName,
+            first_name: firstName.trim(),
+            last_name: lastName.trim(),
+            phone: phone.trim() || null,
+            bio: bio.trim() || null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', user.id);
+
+        if (error) throw error;
+
+        // Refresh profile in context
+        await refreshProfile();
+      }
+
       Alert.alert('Success', 'Your profile has been updated.', [
         { text: 'OK', onPress: () => router.back() },
       ]);
-    }, 1000);
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      Alert.alert('Error', 'Failed to update profile. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (

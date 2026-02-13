@@ -19,6 +19,7 @@ import {
   approveSupporter,
   suspendUser,
   reactivateUser,
+  updateVerificationStatus,
 } from '@/lib/database';
 import type { SupporterApplication, SessionWithDetails } from '@/types/database';
 
@@ -36,6 +37,7 @@ export default function AdminSupporterDetailScreen() {
   const [recentSessions, setRecentSessions] = useState<SessionWithDetails[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [verificationLoading, setVerificationLoading] = useState(false);
 
   const loadSupporterData = async () => {
     if (!id) return;
@@ -137,6 +139,66 @@ export default function AdminSupporterDetailScreen() {
           },
         },
       ]
+    );
+  };
+
+  const handleApproveVerification = async () => {
+    if (!supporter) return;
+
+    Alert.alert(
+      'Approve Verification',
+      `Approve ${supporter.full_name}'s verification documents?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Approve',
+          onPress: async () => {
+            setVerificationLoading(true);
+            const success = await updateVerificationStatus(supporter.id, 'approved');
+            setVerificationLoading(false);
+            if (success) {
+              Alert.alert('Success', 'Verification documents approved.');
+              loadSupporterData();
+            } else {
+              Alert.alert('Error', 'Failed to approve verification.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleRejectVerification = async () => {
+    if (!supporter) return;
+
+    Alert.prompt(
+      'Reject Verification',
+      'Please provide a reason for rejection:',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reject',
+          style: 'destructive',
+          onPress: async (reason?: string) => {
+            setVerificationLoading(true);
+            const success = await updateVerificationStatus(
+              supporter.id,
+              'rejected',
+              reason || 'Documents did not meet requirements.'
+            );
+            setVerificationLoading(false);
+            if (success) {
+              Alert.alert('Success', 'Verification rejected. Supporter will be notified.');
+              loadSupporterData();
+            } else {
+              Alert.alert('Error', 'Failed to reject verification.');
+            }
+          },
+        },
+      ],
+      'plain-text',
+      '',
+      'default'
     );
   };
 
@@ -338,8 +400,14 @@ export default function AdminSupporterDetailScreen() {
                 <View style={styles.infoRow}>
                   <Text style={styles.infoLabel}>Address</Text>
                   <Text style={styles.infoValue}>
-                    {supporter.w9_data.city && supporter.w9_data.state
-                      ? `${supporter.w9_data.city}, ${supporter.w9_data.state} ${supporter.w9_data.zip_code || ''}`
+                    {supporter.w9_data.address_line1 || supporter.w9_data.city
+                      ? [
+                          supporter.w9_data.address_line1,
+                          supporter.w9_data.address_line2,
+                          supporter.w9_data.city && supporter.w9_data.state
+                            ? `${supporter.w9_data.city}, ${supporter.w9_data.state} ${supporter.w9_data.zip_code || ''}`
+                            : null
+                        ].filter(Boolean).join('\n')
                       : 'N/A'}
                   </Text>
                 </View>
@@ -352,6 +420,97 @@ export default function AdminSupporterDetailScreen() {
                   </Text>
                 </View>
               </>
+            )}
+          </View>
+        </View>
+
+        {/* Document Verification */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Document Verification</Text>
+          <View style={styles.infoCard}>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Verification Status</Text>
+              <View style={[
+                styles.trainingBadge,
+                supporter.verification_status === 'approved' ? styles.trainingCompleteBadge :
+                supporter.verification_status === 'pending_review' ? styles.trainingInProgressBadge :
+                supporter.verification_status === 'rejected' ? styles.rejectedBadge :
+                styles.trainingInProgressBadge
+              ]}>
+                <Text style={[
+                  styles.trainingBadgeText,
+                  supporter.verification_status === 'approved' ? styles.trainingCompleteText :
+                  supporter.verification_status === 'rejected' ? styles.rejectedText :
+                  styles.trainingInProgressText
+                ]}>
+                  {supporter.verification_status === 'approved' ? 'Approved' :
+                   supporter.verification_status === 'pending_review' ? 'Pending Review' :
+                   supporter.verification_status === 'rejected' ? 'Rejected' :
+                   'Not Submitted'}
+                </Text>
+              </View>
+            </View>
+
+            {supporter.transcript_url && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Transcript</Text>
+                <TouchableOpacity
+                  onPress={() => Alert.alert('Document', 'View transcript at:\n' + supporter.transcript_url)}
+                >
+                  <Text style={[styles.infoValue, { color: PsychiColors.azure }]}>View Document</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {supporter.id_document_url && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>ID Document</Text>
+                <TouchableOpacity
+                  onPress={() => Alert.alert('Document', 'View ID at:\n' + supporter.id_document_url)}
+                >
+                  <Text style={[styles.infoValue, { color: PsychiColors.azure }]}>View Document</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {supporter.verification_submitted_at && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Submitted On</Text>
+                <Text style={styles.infoValue}>{formatDate(supporter.verification_submitted_at)}</Text>
+              </View>
+            )}
+
+            {supporter.verification_rejection_reason && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Rejection Reason</Text>
+                <Text style={[styles.infoValue, { color: PsychiColors.error }]}>
+                  {supporter.verification_rejection_reason}
+                </Text>
+              </View>
+            )}
+
+            {/* Verification Action Buttons */}
+            {supporter.verification_status === 'pending_review' && (
+              <View style={styles.verificationActions}>
+                {verificationLoading ? (
+                  <ActivityIndicator size="small" color={PsychiColors.azure} />
+                ) : (
+                  <>
+                    <TouchableOpacity
+                      style={styles.verifyApproveButton}
+                      onPress={handleApproveVerification}
+                    >
+                      <Text style={styles.verifyApproveText}>Approve</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.verifyRejectButton}
+                      onPress={handleRejectVerification}
+                    >
+                      <Text style={styles.verifyRejectText}>Reject</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+              </View>
             )}
           </View>
         </View>
@@ -728,5 +887,43 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 14,
     color: PsychiColors.textMuted,
+  },
+  rejectedBadge: {
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+  },
+  rejectedText: {
+    color: PsychiColors.error,
+  },
+  verificationActions: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    marginTop: Spacing.md,
+    paddingTop: Spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  verifyApproveButton: {
+    flex: 1,
+    backgroundColor: PsychiColors.success,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    alignItems: 'center',
+  },
+  verifyApproveText: {
+    color: PsychiColors.white,
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  verifyRejectButton: {
+    flex: 1,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    alignItems: 'center',
+  },
+  verifyRejectText: {
+    color: PsychiColors.error,
+    fontWeight: '600',
+    fontSize: 14,
   },
 });

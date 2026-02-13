@@ -42,7 +42,8 @@ interface DayAvailability {
 export default function AvailabilityScreen() {
   const { user, isDemoMode } = useAuth();
 
-  const [availability, setAvailability] = useState<Record<string, DayAvailability>>({
+  // Initial state with defaults - will be overwritten by database data
+  const getDefaultAvailability = (): Record<string, DayAvailability> => ({
     Monday: { enabled: true, slots: [{ start: '09:00', end: '17:00' }] },
     Tuesday: { enabled: true, slots: [{ start: '09:00', end: '17:00' }] },
     Wednesday: { enabled: true, slots: [{ start: '09:00', end: '17:00' }] },
@@ -51,6 +52,9 @@ export default function AvailabilityScreen() {
     Saturday: { enabled: false, slots: [] },
     Sunday: { enabled: false, slots: [] },
   });
+
+  const [availability, setAvailability] = useState<Record<string, DayAvailability>>(getDefaultAvailability());
+  const [isLoadingSchedule, setIsLoadingSchedule] = useState(true);
 
   const [timePickerVisible, setTimePickerVisible] = useState(false);
   const [editingDay, setEditingDay] = useState<string | null>(null);
@@ -63,9 +67,9 @@ export default function AvailabilityScreen() {
   const [isLoadingToggle, setIsLoadingToggle] = useState(true);
   const [isUpdatingToggle, setIsUpdatingToggle] = useState(false);
 
-  // Fetch initial accepting clients status
+  // Fetch initial accepting clients status AND availability schedule
   useEffect(() => {
-    const fetchAcceptingStatus = async () => {
+    const fetchAvailabilityData = async () => {
       if (!user?.id) {
         setIsLoadingToggle(false);
         return;
@@ -80,11 +84,71 @@ export default function AvailabilityScreen() {
       const availabilityData = await getSupporterAvailability(user.id);
       if (availabilityData) {
         setAcceptingClients(availabilityData.acceptingClients);
+
+        // Convert database format to UI format
+        // Database: { monday: ['09:00', '09:30', '10:00', ...], ... }
+        // UI: { Monday: { enabled: true, slots: [{ start: '09:00', end: '17:00' }] } }
+        if (availabilityData.availability && Object.keys(availabilityData.availability).length > 0) {
+          const newAvailability: Record<string, DayAvailability> = {};
+
+          DAYS.forEach((day) => {
+            const dayLower = day.toLowerCase();
+            const daySlots = availabilityData.availability[dayLower];
+
+            if (daySlots && daySlots.length > 0) {
+              // Convert array of time slots to start/end ranges
+              // Group consecutive slots into ranges
+              const sortedSlots = [...daySlots].sort();
+              const ranges: TimeSlot[] = [];
+              let rangeStart = sortedSlots[0];
+              let lastSlot = sortedSlots[0];
+
+              for (let i = 1; i < sortedSlots.length; i++) {
+                const currentSlot = sortedSlots[i];
+                const [lastH, lastM] = lastSlot.split(':').map(Number);
+                const [currH, currM] = currentSlot.split(':').map(Number);
+                const lastMinutes = lastH * 60 + lastM;
+                const currMinutes = currH * 60 + currM;
+
+                // If there's a gap of more than 30 minutes, end the current range
+                if (currMinutes - lastMinutes > 30) {
+                  // Add 30 min to get the end time
+                  const endMinutes = lastMinutes + 30;
+                  const endH = Math.floor(endMinutes / 60);
+                  const endM = endMinutes % 60;
+                  ranges.push({
+                    start: rangeStart,
+                    end: `${endH.toString().padStart(2, '0')}:${endM.toString().padStart(2, '0')}`,
+                  });
+                  rangeStart = currentSlot;
+                }
+                lastSlot = currentSlot;
+              }
+
+              // Close the last range
+              const [lastH, lastM] = lastSlot.split(':').map(Number);
+              const endMinutes = lastH * 60 + lastM + 30;
+              const endH = Math.floor(endMinutes / 60);
+              const endM = endMinutes % 60;
+              ranges.push({
+                start: rangeStart,
+                end: `${endH.toString().padStart(2, '0')}:${endM.toString().padStart(2, '0')}`,
+              });
+
+              newAvailability[day] = { enabled: true, slots: ranges };
+            } else {
+              newAvailability[day] = { enabled: false, slots: [] };
+            }
+          });
+
+          setAvailability(newAvailability);
+        }
       }
       setIsLoadingToggle(false);
+      setIsLoadingSchedule(false);
     };
 
-    fetchAcceptingStatus();
+    fetchAvailabilityData();
   }, [user?.id, isDemoMode]);
 
   // Handle accepting clients toggle change
