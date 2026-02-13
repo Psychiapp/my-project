@@ -53,7 +53,7 @@ export function isDemoLogin(email: string, password: string): boolean {
 }
 
 // Get demo profile based on email
-export function getDemoProfile(email: string): { profile: any; role: 'client' | 'supporter' } | null {
+export function getDemoProfile(email: string): { profile: any; role: 'client' | 'supporter' | 'admin' } | null {
   if (!DEMO_MODE_ENABLED) return null;
 
   const normalizedEmail = email.toLowerCase().trim();

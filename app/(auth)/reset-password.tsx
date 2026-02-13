@@ -32,10 +32,20 @@ export default function ResetPasswordScreen() {
     const checkSession = async () => {
       if (!supabase) return;
 
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        // No session - the reset link may have expired
-        setError('This password reset link has expired. Please request a new one.');
+      try {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) {
+          console.error('Error checking session:', sessionError);
+          setError('This password reset link has expired. Please request a new one.');
+          return;
+        }
+        if (!session) {
+          // No session - the reset link may have expired
+          setError('This password reset link has expired. Please request a new one.');
+        }
+      } catch (err) {
+        console.error('Error checking session:', err);
+        setError('Unable to verify reset link. Please try again.');
       }
     };
 

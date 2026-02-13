@@ -152,12 +152,14 @@ export default function SignUpScreen() {
     router.replace('/(supporter)');
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleQuizComplete = async (preferences: any) => {
     if (newUserId) {
       try {
         await saveClientPreferences(newUserId, preferences);
       } catch (error) {
         console.error('Error saving preferences:', error);
+        // Continue to dashboard even if preferences fail to save - they can be set later
       }
     }
     setShowOnboardingModal(false);

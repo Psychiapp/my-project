@@ -186,7 +186,7 @@ export default function SupporterProfileScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Specialties</Text>
           <View style={styles.specialtiesContainer}>
-            {supporter.specialties.map((specialty, index) => (
+            {(supporter.specialties || []).map((specialty, index) => (
               <View key={index} style={styles.specialtyTag}>
                 <Text style={styles.specialtyText}>{specialty}</Text>
               </View>

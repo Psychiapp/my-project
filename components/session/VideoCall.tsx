@@ -105,7 +105,7 @@ export default function VideoCall({
   const [showTimeWarning, setShowTimeWarning] = useState(false);
 
   // Refs for tracking
-  const connectionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const connectionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasShownTimeWarningRef = useRef(false);
   const appStateRef = useRef(AppState.currentState);
 
@@ -175,9 +175,9 @@ export default function VideoCall({
           }
         });
 
-        call.on('error', (event) => {
+        call.on('error', (event: { errorMsg?: string }) => {
           console.error('Daily.co error:', event);
-          const errorMsg = (event as any)?.errorMsg || 'Connection error';
+          const errorMsg = event?.errorMsg || 'Connection error';
           setError(errorMsg);
           onError?.(errorMsg);
         });
@@ -422,8 +422,8 @@ export default function VideoCall({
         call.on('participant-joined', () => setParticipants({ ...call.participants() }));
         call.on('participant-updated', () => setParticipants({ ...call.participants() }));
         call.on('participant-left', () => setParticipants({ ...call.participants() }));
-        call.on('error', (event) => {
-          const errorMsg = (event as any)?.errorMsg || 'Connection error';
+        call.on('error', (event: { errorMsg?: string }) => {
+          const errorMsg = event?.errorMsg || 'Connection error';
           setError(errorMsg);
         });
 

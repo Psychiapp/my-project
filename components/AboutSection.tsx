@@ -103,7 +103,9 @@ export default function AboutSection({ onGetStarted }: AboutSectionProps) {
             const IconComponent = value.icon;
             return (
               <View key={value.id} style={styles.valueCard}>
-                <IconComponent size={32} color={value.accentColor} style={styles.valueIcon} />
+                <View style={styles.valueIcon}>
+                  <IconComponent size={32} color={value.accentColor} />
+                </View>
                 <Text style={styles.valueTitle}>{value.title}</Text>
                 <Text style={styles.valueDescription}>{value.description}</Text>
               </View>

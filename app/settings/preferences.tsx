@@ -308,7 +308,7 @@ export default function PreferencesScreen() {
               <Text style={styles.sectionSubtitle}>Select all that work for you</Text>
             </View>
           </View>
-          <View style={styles.sessionTypesRow} accessibilityRole="group" accessibilityLabel="Session types">
+          <View style={styles.sessionTypesRow} accessibilityLabel="Session types">
             {sessionTypes.map((type) => {
               const IconComponent = type.icon;
               const isSelected = selectedSessionTypes.includes(type.id);

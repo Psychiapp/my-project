@@ -109,19 +109,25 @@ export default function ChatSession({
     setInputText('');
     setIsSending(true);
 
-    if (useEncryption && encryptedChat.isReady) {
-      // Send encrypted message
-      const success = await encryptedChat.sendMessage(messageContent);
-      if (!success) {
-        // Fall back to local if encryption fails
+    try {
+      if (useEncryption && encryptedChat.isReady) {
+        // Send encrypted message
+        const success = await encryptedChat.sendMessage(messageContent);
+        if (!success) {
+          // Fall back to local if encryption fails
+          addLocalMessage(messageContent);
+        }
+      } else {
+        // Demo mode - add locally
         addLocalMessage(messageContent);
       }
-    } else {
-      // Demo mode - add locally
+    } catch (error) {
+      console.error('Failed to send message:', error);
+      // Fall back to local message on any error
       addLocalMessage(messageContent);
+    } finally {
+      setIsSending(false);
     }
-
-    setIsSending(false);
   };
 
   const addLocalMessage = (content: string) => {

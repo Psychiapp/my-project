@@ -463,7 +463,20 @@ export async function getSupporterDetail(supporterId: string): Promise<Supporter
     .single();
 
   // Details may not exist yet for new supporters - that's ok
-  const details = detailsData || {};
+  const details = detailsData as {
+    bio?: string;
+    specialties?: string[];
+    education?: string;
+    languages?: string[];
+    years_experience?: number;
+    approach?: string;
+    total_sessions?: number;
+    is_available?: boolean;
+    accepting_clients?: boolean;
+    training_complete?: boolean;
+    availability?: { [key: string]: string[] };
+    session_types?: SessionType[];
+  } | null;
 
   // Fetch reviews/feedback separately
   const reviews = await getSupporterReviews(supporterId);
@@ -472,19 +485,19 @@ export async function getSupporterDetail(supporterId: string): Promise<Supporter
     id: profileData.id,
     full_name: profileData.full_name,
     avatar_url: profileData.avatar_url,
-    bio: details.bio || '',
-    specialties: details.specialties || [],
-    education: details.education || '',
-    languages: details.languages || ['English'],
-    years_experience: details.years_experience || 0,
-    approach: details.approach || '',
-    total_sessions: details.total_sessions || 0,
-    is_available: details.is_available || false,
-    accepting_clients: details.accepting_clients || false,
-    training_complete: details.training_complete || false,
-    onboarding_complete: details.training_complete || false, // Use training_complete as proxy
-    availability: details.availability || {},
-    session_types: details.session_types || ['chat', 'phone', 'video'],
+    bio: details?.bio || '',
+    specialties: details?.specialties || [],
+    education: details?.education || '',
+    languages: details?.languages || ['English'],
+    years_experience: details?.years_experience || 0,
+    approach: details?.approach || '',
+    total_sessions: details?.total_sessions || 0,
+    is_available: details?.is_available || false,
+    accepting_clients: details?.accepting_clients || false,
+    training_complete: details?.training_complete || false,
+    onboarding_complete: details?.training_complete || false, // Use training_complete as proxy
+    availability: details?.availability || {} as { [key: string]: string[] },
+    session_types: details?.session_types || ['chat', 'phone', 'video'] as SessionType[],
     reviews,
   };
 }

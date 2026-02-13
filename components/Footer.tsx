@@ -158,7 +158,7 @@ export default function Footer({ onNavigate, onScrollToSection }: FooterProps) {
         </View>
 
         {/* Links Grid - matches web app exactly */}
-        <View style={styles.linksContainer} accessibilityRole="navigation">
+        <View style={styles.linksContainer}>
           {/* Row 1: Support & Company */}
           <View style={styles.linksRow}>
             {/* Support Links */}

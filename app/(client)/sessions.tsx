@@ -102,8 +102,8 @@ export default function SessionsScreen() {
           getPastSessions(user.id, 'client'),
         ]);
 
-        setUpcomingSessions(upcoming.map(formatSessionFromDb));
-        setPastSessions(past.map(formatSessionFromDb));
+        setUpcomingSessions((upcoming || []).map(formatSessionFromDb));
+        setPastSessions((past || []).map(formatSessionFromDb));
       } catch (error) {
         console.error('Error fetching sessions:', error);
       } finally {

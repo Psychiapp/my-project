@@ -108,7 +108,9 @@ export default function PostCallContact({
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      if (supabase) {
+        supabase.removeChannel(channel);
+      }
     };
   }, [sessionId, currentUserId]);
 

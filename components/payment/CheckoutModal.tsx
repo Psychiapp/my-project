@@ -72,7 +72,7 @@ export default function CheckoutModal({
 
     try {
       // Create payment intent
-      const { clientSecret } = await createPaymentIntent({
+      const paymentIntent = await createPaymentIntent({
         amount,
         metadata: {
           sessionType,
@@ -82,19 +82,26 @@ export default function CheckoutModal({
         },
       });
 
-      // Confirm payment
-      const result = await confirmPayment(clientSecret);
+      if (!paymentIntent?.clientSecret) {
+        setError('Failed to initialize payment. Please try again.');
+        setStep('payment');
+        return;
+      }
 
-      if (result.success) {
+      // Confirm payment
+      const result = await confirmPayment(paymentIntent.clientSecret);
+
+      if (result?.success) {
         setStep('success');
         setTimeout(() => {
           onSuccess();
         }, 2000);
       } else {
-        setError(result.error || 'Payment failed');
+        setError(result?.error || 'Payment failed');
         setStep('payment');
       }
     } catch (err) {
+      console.error('Payment error:', err);
       setError('An error occurred. Please try again.');
       setStep('payment');
     }
