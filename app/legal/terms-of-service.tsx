@@ -122,11 +122,11 @@ You agree to indemnify and hold harmless Psychi and its officers, directors, emp
 
 DISPUTE RESOLUTION
 
-Before filing a claim, you agree to contact us at legal@psychi.app to attempt informal resolution. Any disputes not resolved informally shall be resolved by binding arbitration.
+Before filing a claim, you agree to contact us at psychiapp@outlook.com to attempt informal resolution. Any disputes not resolved informally shall be resolved by binding arbitration.
 
 GOVERNING LAW
 
-These terms are governed by the laws of the State of Delaware, without regard to conflict of law principles.
+These terms are governed by the laws of the State of Illinois, without regard to conflict of law principles.
 
 MODIFICATIONS TO SERVICE
 
@@ -139,7 +139,7 @@ We may terminate or suspend your account for violation of these terms, conduct h
 CONTACT INFORMATION
 
 For questions about these terms:
-- Email: legal@psychi.app
+- Email: psychiapp@outlook.com
 - In-App: Settings > Help & Support > Legal Inquiry
 
 ACKNOWLEDGMENT

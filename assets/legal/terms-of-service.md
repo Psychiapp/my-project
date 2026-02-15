@@ -125,7 +125,7 @@ Before filing a claim, you agree to contact us at psychiapp@outlook.com to attem
 Any disputes not resolved informally shall be resolved by binding arbitration under AAA Commercial Arbitration Rules. Class action waivers apply.
 
 ### Governing Law
-These terms are governed by the laws of the State of Delaware, without regard to conflict of law principles.
+These terms are governed by the laws of the State of Illinois, without regard to conflict of law principles.
 
 ## Modifications to Service
 
