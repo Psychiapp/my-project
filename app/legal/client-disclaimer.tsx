@@ -68,9 +68,9 @@ export default function ClientDisclaimerScreen() {
             Questions? Contact us at{' '}
             <Text
               style={styles.emailLink}
-              onPress={() => Linking.openURL('mailto:support@psychi.app')}
+              onPress={() => Linking.openURL('mailto:psychiapp@outlook.com')}
             >
-              support@psychi.app
+              psychiapp@outlook.com
             </Text>
           </Text>
         </View>
