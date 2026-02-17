@@ -26,8 +26,8 @@ import EmergencyButton from './EmergencyButton';
 
 // Constants for timeouts and warnings
 const CONNECTION_TIMEOUT_MS = 30000; // 30 seconds to connect
-const SESSION_WARNING_MINUTES = 55; // Warn at 55 minutes (5 min before expiry)
-const SESSION_MAX_MINUTES = 60; // Max session duration
+const SESSION_WARNING_MINUTES = 40; // Warn at 40 minutes (5 min before 45 min expiry)
+const SESSION_MAX_MINUTES = 45; // Max session duration for voice/video calls
 
 // Conditionally import Daily.co to avoid crash in Expo Go
 let Daily: any = null;

@@ -211,7 +211,7 @@ export default function ChatSession({
           </View>
         )}
         <Text style={styles.sessionBannerText}>Chat session in progress</Text>
-        <Text style={styles.sessionBannerTime}>30 min</Text>
+        <Text style={styles.sessionBannerTime}>25 min</Text>
       </View>
 
       {/* Messages */}

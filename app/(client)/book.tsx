@@ -43,7 +43,7 @@ const sessionTypes = [
   {
     id: 'chat' as SessionType,
     name: 'Chat Session',
-    duration: '30 minutes',
+    duration: `${Config.sessionDurations.chat} minutes`,
     price: Config.pricing.chat.display,
     description: 'Text-based conversation at your own pace',
     Icon: ChatIcon,
@@ -51,7 +51,7 @@ const sessionTypes = [
   {
     id: 'phone' as SessionType,
     name: 'Phone Call',
-    duration: '30 minutes',
+    duration: `${Config.sessionDurations.phone} minutes`,
     price: Config.pricing.phone.display,
     description: 'Voice conversation for deeper connection',
     Icon: PhoneIcon,
@@ -59,7 +59,7 @@ const sessionTypes = [
   {
     id: 'video' as SessionType,
     name: 'Video Call',
-    duration: '45 minutes',
+    duration: `${Config.sessionDurations.video} minutes`,
     price: Config.pricing.video.display,
     description: 'Face-to-face virtual session',
     Icon: VideoIcon,
