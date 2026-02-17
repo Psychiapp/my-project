@@ -431,6 +431,31 @@ export default function EarningsScreen() {
               </View>
             </View>
           </View>
+
+          {/* Stripe Processing Fees */}
+          <Text style={styles.breakdownSubtitle}>Payment Processing Fees</Text>
+          <View style={styles.feeInfoCard}>
+            <Text style={styles.feeInfoText}>
+              When you receive a payout, Stripe deducts a small processing fee:
+            </Text>
+            <View style={styles.feeList}>
+              <View style={styles.feeRow}>
+                <Text style={styles.feeBullet}>{'\u2022'}</Text>
+                <Text style={styles.feeText}>
+                  <Text style={styles.feeBold}>0.25% + $0.25</Text> per payout transfer
+                </Text>
+              </View>
+            </View>
+            <View style={styles.feeExampleCard}>
+              <Text style={styles.feeExampleTitle}>Example</Text>
+              <Text style={styles.feeExampleText}>
+                $100 payout → $0.50 fee → <Text style={styles.feeBold}>$99.50 deposited</Text>
+              </Text>
+            </View>
+            <Text style={styles.feeNote}>
+              These fees are charged by Stripe for secure payment processing and are standard across all payment platforms.
+            </Text>
+          </View>
         </View>
 
         {/* Recent Payouts */}
@@ -783,5 +808,63 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: PsychiColors.textMuted,
     marginTop: 2,
+  },
+  feeInfoCard: {
+    backgroundColor: PsychiColors.white,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.md,
+    ...Shadows.soft,
+  },
+  feeInfoText: {
+    fontSize: 14,
+    color: PsychiColors.textSecondary,
+    lineHeight: 20,
+    marginBottom: Spacing.sm,
+  },
+  feeList: {
+    marginBottom: Spacing.sm,
+  },
+  feeRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 4,
+  },
+  feeBullet: {
+    fontSize: 14,
+    color: PsychiColors.textSecondary,
+    marginRight: 8,
+    lineHeight: 20,
+  },
+  feeText: {
+    fontSize: 14,
+    color: PsychiColors.textSecondary,
+    flex: 1,
+    lineHeight: 20,
+  },
+  feeBold: {
+    fontWeight: '600',
+    color: PsychiColors.midnight,
+  },
+  feeExampleCard: {
+    backgroundColor: 'rgba(74, 144, 226, 0.08)',
+    borderRadius: BorderRadius.md,
+    padding: Spacing.sm,
+    marginBottom: Spacing.sm,
+  },
+  feeExampleTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: PsychiColors.azure,
+    marginBottom: 4,
+  },
+  feeExampleText: {
+    fontSize: 14,
+    color: PsychiColors.textSecondary,
+  },
+  feeNote: {
+    fontSize: 12,
+    color: PsychiColors.textMuted,
+    fontStyle: 'italic',
+    lineHeight: 18,
   },
 });
