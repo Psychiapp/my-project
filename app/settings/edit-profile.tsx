@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -32,8 +32,55 @@ export default function EditProfileScreen() {
   const [phone, setPhone] = useState('');
   const [bio, setBio] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoadingData, setIsLoadingData] = useState(true);
   const [avatarUri, setAvatarUri] = useState<string | null>(profile?.avatarUrl || null);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+
+  // Load existing profile data from database
+  useEffect(() => {
+    const loadProfileData = async () => {
+      if (!user?.id || !supabase) {
+        setIsLoadingData(false);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('first_name, last_name, full_name, email, phone, bio, avatar_url')
+          .eq('id', user.id)
+          .single();
+
+        if (error) {
+          console.error('Error loading profile:', error);
+        } else if (data) {
+          // Use first_name/last_name if available, otherwise parse full_name
+          if (data.first_name) setFirstName(data.first_name);
+          else if (data.full_name) {
+            const parts = data.full_name.split(' ');
+            setFirstName(parts[0] || '');
+          }
+
+          if (data.last_name) setLastName(data.last_name);
+          else if (data.full_name) {
+            const parts = data.full_name.split(' ');
+            setLastName(parts.slice(1).join(' ') || '');
+          }
+
+          if (data.email) setEmail(data.email);
+          if (data.phone) setPhone(data.phone);
+          if (data.bio) setBio(data.bio);
+          if (data.avatar_url) setAvatarUri(data.avatar_url);
+        }
+      } catch (error) {
+        console.error('Error loading profile data:', error);
+      } finally {
+        setIsLoadingData(false);
+      }
+    };
+
+    loadProfileData();
+  }, [user?.id]);
 
   const handleChangePhoto = async () => {
     // Request permission
@@ -158,9 +205,30 @@ export default function EditProfileScreen() {
     }
   };
 
+  const validateEmail = (emailToCheck: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(emailToCheck);
+  };
+
   const handleSave = async () => {
-    if (!firstName.trim() || !lastName.trim()) {
-      Alert.alert('Required Fields', 'Please fill in your first and last name.');
+    // Validate required fields
+    if (!firstName.trim()) {
+      Alert.alert('Required Field', 'Please enter your first name.');
+      return;
+    }
+
+    if (!lastName.trim()) {
+      Alert.alert('Required Field', 'Please enter your last name.');
+      return;
+    }
+
+    if (!email.trim()) {
+      Alert.alert('Required Field', 'Please enter your email address.');
+      return;
+    }
+
+    if (!validateEmail(email.trim())) {
+      Alert.alert('Invalid Email', 'Please enter a valid email address.');
       return;
     }
 
@@ -173,23 +241,35 @@ export default function EditProfileScreen() {
 
     try {
       if (supabase) {
-        // Update profiles table with full_name and optional fields
+        // Update profiles table with all fields
         const fullName = `${firstName.trim()} ${lastName.trim()}`;
-        const { error } = await supabase
+        const updateData: Record<string, unknown> = {
+          full_name: fullName,
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          email: email.trim().toLowerCase(),
+          phone: phone.trim() || null,
+          bio: bio.trim() || null,
+          updated_at: new Date().toISOString(),
+        };
+
+        console.log('Saving profile update for user:', user.id);
+        console.log('Update data:', updateData);
+
+        const { data, error } = await supabase
           .from('profiles')
-          .update({
-            full_name: fullName,
-            first_name: firstName.trim(),
-            last_name: lastName.trim(),
-            phone: phone.trim() || null,
-            bio: bio.trim() || null,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', user.id);
+          .update(updateData)
+          .eq('id', user.id)
+          .select();
 
-        if (error) throw error;
+        if (error) {
+          console.error('Supabase update error:', error);
+          throw error;
+        }
 
-        // Refresh profile in context
+        console.log('Profile update result:', data);
+
+        // Refresh profile in context so other screens reflect changes
         await refreshProfile();
       }
 
@@ -198,11 +278,24 @@ export default function EditProfileScreen() {
       ]);
     } catch (error) {
       console.error('Error saving profile:', error);
-      Alert.alert('Error', 'Failed to update profile. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      Alert.alert('Error', `Failed to update profile: ${errorMessage}`);
     } finally {
       setIsSaving(false);
     }
   };
+
+  // Show loading while fetching profile data
+  if (isLoadingData) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={PsychiColors.azure} />
+          <Text style={styles.loadingText}>Loading profile...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -303,19 +396,19 @@ export default function EditProfileScreen() {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel} nativeID="emailLabel">Email</Text>
+              <Text style={styles.inputLabel} nativeID="emailLabel">Email *</Text>
               <TextInput
-                style={[styles.input, styles.inputDisabled]}
+                style={styles.input}
                 placeholder="Enter email"
                 placeholderTextColor={PsychiColors.textMuted}
                 value={email}
-                editable={false}
+                onChangeText={setEmail}
                 keyboardType="email-address"
-                accessibilityLabel="Email address, read-only"
+                autoCapitalize="none"
+                autoCorrect={false}
+                accessibilityLabel="Email address, required"
                 accessibilityLabelledBy="emailLabel"
-                accessibilityState={{ disabled: true }}
               />
-              <Text style={styles.inputHint}>Email cannot be changed</Text>
             </View>
 
             <View style={styles.inputGroup}>
@@ -378,6 +471,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: PsychiColors.cream,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.lg,
+  },
+  loadingText: {
+    marginTop: Spacing.md,
+    fontSize: 16,
+    color: PsychiColors.textSecondary,
   },
   keyboardView: {
     flex: 1,

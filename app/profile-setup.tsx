@@ -19,7 +19,7 @@ import { PsychiColors, Spacing, BorderRadius, Shadows, Typography } from '@/cons
 import { CameraIcon, CheckIcon, ChevronRightIcon } from '@/components/icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
-import { uploadAvatar, saveSupporterSchedule } from '@/lib/database';
+import { uploadAvatar, saveSupporterSchedule, checkClientProfileCompletion, checkSupporterProfileCompletion } from '@/lib/database';
 
 const SPECIALTIES = [
   'Anxiety',
@@ -49,6 +49,7 @@ export default function ProfileSetupScreen() {
   // Form state
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
   const [bio, setBio] = useState('');
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
   const [selectedSpecialties, setSelectedSpecialties] = useState<string[]>([]);
@@ -57,14 +58,57 @@ export default function ProfileSetupScreen() {
   // Loading states
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [isLoadingData, setIsLoadingData] = useState(true);
 
   // Determine which fields are missing
   const needsFirstName = missingFields.includes('First Name');
   const needsLastName = missingFields.includes('Last Name');
+  const needsEmail = missingFields.includes('Email');
   const needsBio = missingFields.includes('Bio');
   const needsPhoto = missingFields.includes('Profile Photo');
   const needsSpecialties = missingFields.includes('Specialties');
   const needsAvailability = missingFields.includes('Availability');
+
+  // Load existing profile data to pre-fill form
+  useEffect(() => {
+    const loadExistingData = async () => {
+      if (!user?.id) {
+        setIsLoadingData(false);
+        return;
+      }
+
+      try {
+        // Pre-fill email from auth user
+        if (user.email) {
+          setEmail(user.email);
+        }
+
+        // Fetch existing profile data
+        if (isSupporter) {
+          const completion = await checkSupporterProfileCompletion(user.id);
+          if (completion.firstName) setFirstName(completion.firstName);
+          if (completion.lastName) setLastName(completion.lastName);
+          if (completion.email) setEmail(completion.email);
+          if (completion.bio) setBio(completion.bio);
+          if (completion.avatarUrl) setAvatarUri(completion.avatarUrl);
+          if (completion.specialties && completion.specialties.length > 0) {
+            setSelectedSpecialties(completion.specialties);
+          }
+        } else {
+          const completion = await checkClientProfileCompletion(user.id);
+          if (completion.firstName) setFirstName(completion.firstName);
+          if (completion.lastName) setLastName(completion.lastName);
+          if (completion.email) setEmail(completion.email);
+        }
+      } catch (error) {
+        console.error('Error loading existing profile data:', error);
+      } finally {
+        setIsLoadingData(false);
+      }
+    };
+
+    loadExistingData();
+  }, [user?.id, isSupporter]);
 
   const handleChangePhoto = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -152,6 +196,11 @@ export default function ProfileSetupScreen() {
     );
   };
 
+  const validateEmail = (emailToValidate: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(emailToValidate);
+  };
+
   const validateForm = (): boolean => {
     if (needsFirstName && !firstName.trim()) {
       Alert.alert('Required', 'Please enter your first name.');
@@ -159,6 +208,14 @@ export default function ProfileSetupScreen() {
     }
     if (needsLastName && !lastName.trim()) {
       Alert.alert('Required', 'Please enter your last name.');
+      return false;
+    }
+    if (needsEmail && !email.trim()) {
+      Alert.alert('Required', 'Please enter your email address.');
+      return false;
+    }
+    if (needsEmail && !validateEmail(email.trim())) {
+      Alert.alert('Invalid Email', 'Please enter a valid email address.');
       return false;
     }
     if (isSupporter) {
@@ -207,6 +264,9 @@ export default function ProfileSetupScreen() {
         }
         if (fullName) {
           profileUpdates.full_name = fullName;
+        }
+        if (email.trim()) {
+          profileUpdates.email = email.trim().toLowerCase();
         }
 
         const { error: profileError } = await supabase
@@ -282,6 +342,18 @@ export default function ProfileSetupScreen() {
       setIsSaving(false);
     }
   };
+
+  // Show loading while fetching existing data
+  if (isLoadingData) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={PsychiColors.azure} />
+          <Text style={styles.loadingText}>Loading your profile...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -377,6 +449,23 @@ export default function ProfileSetupScreen() {
                   </View>
                 )}
               </View>
+            </View>
+          )}
+
+          {/* Email Field */}
+          {needsEmail && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Email Address *</Text>
+              <TextInput
+                style={styles.input}
+                value={email}
+                onChangeText={setEmail}
+                placeholder="Enter your email"
+                placeholderTextColor={PsychiColors.textMuted}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
             </View>
           )}
 
@@ -485,6 +574,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: PsychiColors.cream,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.lg,
+  },
+  loadingText: {
+    marginTop: Spacing.md,
+    fontSize: Typography.fontSize.base,
+    color: PsychiColors.textSecondary,
   },
   scrollView: {
     flex: 1,

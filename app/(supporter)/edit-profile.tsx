@@ -230,25 +230,54 @@ export default function SupporterEditProfileScreen() {
       });
 
       if (supabase) {
-        // Update profiles table
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update({ full_name: displayName })
-          .eq('id', user.id);
+        // Parse displayName into first and last name
+        const nameParts = displayName.trim().split(' ').filter(Boolean);
+        const firstName = nameParts[0] || '';
+        const lastName = nameParts.slice(1).join(' ') || '';
 
-        if (profileError) throw profileError;
+        console.log('Saving supporter profile for user:', user.id);
+        console.log('Profile data:', { displayName, firstName, lastName });
+
+        // Update profiles table with full_name, first_name, and last_name
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .update({
+            full_name: displayName.trim(),
+            first_name: firstName,
+            last_name: lastName,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', user.id)
+          .select();
+
+        if (profileError) {
+          console.error('Profile update error:', profileError);
+          throw profileError;
+        }
+        console.log('Profile update result:', profileData);
 
         // Update supporter_details table
-        const { error: detailsError } = await supabase
+        console.log('Saving supporter details:', { bio, specialties: selectedSpecialties, availability });
+        const { data: detailsData, error: detailsError } = await supabase
           .from('supporter_details')
           .upsert({
             supporter_id: user.id,
             bio,
             specialties: selectedSpecialties,
             availability,
-          });
+          })
+          .select();
 
-        if (detailsError) throw detailsError;
+        if (detailsError) {
+          console.error('Supporter details update error:', detailsError);
+          throw detailsError;
+        }
+        console.log('Supporter details update result:', detailsData);
+
+        // Refresh the AuthContext profile so dashboard updates immediately
+        console.log('Refreshing profile in AuthContext...');
+        await refreshProfile();
+        console.log('Profile refresh complete');
       }
 
       Alert.alert('Success', 'Your profile has been updated', [
