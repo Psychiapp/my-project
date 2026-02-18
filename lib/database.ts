@@ -76,7 +76,8 @@ export interface SupporterProfileCompletion {
  * Required fields: first name, last name, email
  */
 export async function checkClientProfileCompletion(
-  userId: string
+  userId: string,
+  retryCount: number = 3
 ): Promise<ClientProfileCompletion> {
   if (!supabase) {
     return {
@@ -88,11 +89,27 @@ export async function checkClientProfileCompletion(
     };
   }
 
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('full_name, first_name, last_name, email')
-    .eq('id', userId)
-    .single();
+  let data = null;
+  let error = null;
+
+  // Retry logic to handle race condition after signup
+  for (let attempt = 0; attempt < retryCount; attempt++) {
+    const result = await supabase
+      .from('profiles')
+      .select('full_name, first_name, last_name, email')
+      .eq('id', userId)
+      .single();
+
+    data = result.data;
+    error = result.error;
+
+    if (data) break; // Success, exit retry loop
+
+    // Wait before retrying (500ms, 1000ms, 1500ms)
+    if (attempt < retryCount - 1) {
+      await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1)));
+    }
+  }
 
   if (error || !data) {
     return {
@@ -133,7 +150,8 @@ export async function checkClientProfileCompletion(
  * Required fields: first name, last name, bio, profile photo, specialties, availability, email
  */
 export async function checkSupporterProfileCompletion(
-  userId: string
+  userId: string,
+  retryCount: number = 3
 ): Promise<SupporterProfileCompletion> {
   if (!supabase) {
     return {
@@ -149,14 +167,29 @@ export async function checkSupporterProfileCompletion(
     };
   }
 
-  // Fetch profile data
-  const { data: profileData, error: profileError } = await supabase
-    .from('profiles')
-    .select('full_name, first_name, last_name, email, avatar_url')
-    .eq('id', userId)
-    .single();
+  let profileData = null;
+  let profileError = null;
 
-  // Fetch supporter details
+  // Retry logic to handle race condition after signup
+  for (let attempt = 0; attempt < retryCount; attempt++) {
+    const result = await supabase
+      .from('profiles')
+      .select('full_name, first_name, last_name, email, avatar_url')
+      .eq('id', userId)
+      .single();
+
+    profileData = result.data;
+    profileError = result.error;
+
+    if (profileData) break; // Success, exit retry loop
+
+    // Wait before retrying (500ms, 1000ms, 1500ms)
+    if (attempt < retryCount - 1) {
+      await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1)));
+    }
+  }
+
+  // Fetch supporter details (no retry needed - may not exist yet for new users)
   const { data: detailsData } = await supabase
     .from('supporter_details')
     .select('bio, specialties, availability')

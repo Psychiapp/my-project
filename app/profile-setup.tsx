@@ -61,13 +61,15 @@ export default function ProfileSetupScreen() {
   const [isLoadingData, setIsLoadingData] = useState(true);
 
   // Determine which fields are missing
-  const needsFirstName = missingFields.includes('First Name');
-  const needsLastName = missingFields.includes('Last Name');
-  const needsEmail = missingFields.includes('Email');
-  const needsBio = missingFields.includes('Bio');
-  const needsPhoto = missingFields.includes('Profile Photo');
-  const needsSpecialties = missingFields.includes('Specialties');
-  const needsAvailability = missingFields.includes('Availability');
+  // If "Profile not found", show all required fields as a fallback
+  const profileNotFound = missingFields.includes('Profile not found');
+  const needsFirstName = profileNotFound || missingFields.includes('First Name');
+  const needsLastName = profileNotFound || missingFields.includes('Last Name');
+  const needsEmail = profileNotFound || missingFields.includes('Email');
+  const needsBio = isSupporter && (profileNotFound || missingFields.includes('Bio'));
+  const needsPhoto = isSupporter && (profileNotFound || missingFields.includes('Profile Photo'));
+  const needsSpecialties = isSupporter && (profileNotFound || missingFields.includes('Specialties'));
+  const needsAvailability = isSupporter && (profileNotFound || missingFields.includes('Availability'));
 
   // Load existing profile data to pre-fill form
   useEffect(() => {

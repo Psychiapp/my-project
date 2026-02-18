@@ -33,6 +33,8 @@ import OnboardingModal from '@/components/OnboardingModal';
 import {
   getClientCurrentAssignment,
   requestSupporterReassignment,
+  getClientPreferences,
+  saveClientPreferences,
 } from '@/lib/database';
 import type { ClientAssignment } from '@/types/database';
 
@@ -62,42 +64,94 @@ export default function PreferencesScreen() {
   const [currentAssignment, setCurrentAssignment] = useState<ClientAssignment | null>(null);
   const [isLoadingAssignment, setIsLoadingAssignment] = useState(true);
 
-  // Auto-detect timezone and fetch current assignment on mount
+  // Load saved preferences and current assignment on mount
   useEffect(() => {
-    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    const matchingTz = timezones.find(t => t.id === tz);
-    if (matchingTz) {
-      setSelectedTimezone(tz);
-    }
-
-    // Fetch current supporter assignment
-    const fetchAssignment = async () => {
-      if (user?.id) {
-        const assignment = await getClientCurrentAssignment(user.id);
-        setCurrentAssignment(assignment);
+    const loadData = async () => {
+      if (!user?.id) {
+        setIsLoadingAssignment(false);
+        return;
       }
+
+      // Load saved preferences from database
+      const savedPrefs = await getClientPreferences(user.id);
+      if (savedPrefs) {
+        if (savedPrefs.timezone) {
+          setSelectedTimezone(savedPrefs.timezone);
+        }
+        if (savedPrefs.preferred_session_types && savedPrefs.preferred_session_types.length > 0) {
+          setSelectedSessionTypes(savedPrefs.preferred_session_types);
+        }
+      } else {
+        // No saved preferences - auto-detect timezone
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        const matchingTz = timezones.find(t => t.id === tz);
+        if (matchingTz) {
+          setSelectedTimezone(tz);
+        }
+      }
+
+      // Fetch current supporter assignment
+      const assignment = await getClientCurrentAssignment(user.id);
+      setCurrentAssignment(assignment);
       setIsLoadingAssignment(false);
     };
-    fetchAssignment();
+
+    loadData();
   }, [user?.id]);
 
-  const toggleSessionType = (typeId: string) => {
-    setSelectedSessionTypes(prev => {
-      if (prev.includes(typeId)) {
-        // Don't allow deselecting all types
-        if (prev.length === 1) {
-          Alert.alert('Required', 'You must have at least one session type selected.');
-          return prev;
-        }
-        return prev.filter(t => t !== typeId);
+  const toggleSessionType = async (typeId: string) => {
+    let newSessionTypes: string[];
+
+    if (selectedSessionTypes.includes(typeId)) {
+      // Don't allow deselecting all types
+      if (selectedSessionTypes.length === 1) {
+        Alert.alert('Required', 'You must have at least one session type selected.');
+        return;
       }
-      return [...prev, typeId];
-    });
+      newSessionTypes = selectedSessionTypes.filter(t => t !== typeId);
+    } else {
+      newSessionTypes = [...selectedSessionTypes, typeId];
+    }
+
+    setSelectedSessionTypes(newSessionTypes);
+
+    // Save to database
+    if (user?.id) {
+      const existingPrefs = await getClientPreferences(user.id);
+      await saveClientPreferences(user.id, {
+        mood: existingPrefs?.mood ?? 3,
+        topics: existingPrefs?.topics ?? [],
+        communication_style: existingPrefs?.communication_style ?? 'balanced',
+        preferred_session_types: newSessionTypes,
+        scheduling_preference: existingPrefs?.scheduling_preference ?? 'flexible',
+        preferred_times: existingPrefs?.preferred_times ?? ['morning', 'afternoon', 'evening'],
+        personality_preference: existingPrefs?.personality_preference ?? 'warm',
+        goals: existingPrefs?.goals ?? ['connection'],
+        urgency: existingPrefs?.urgency ?? 'moderate',
+        timezone: selectedTimezone,
+      });
+    }
   };
 
   const handleTimezoneChange = async (tzId: string) => {
     setSelectedTimezone(tzId);
-    // In production, save to database
+
+    // Save to database
+    if (user?.id) {
+      const existingPrefs = await getClientPreferences(user.id);
+      await saveClientPreferences(user.id, {
+        mood: existingPrefs?.mood ?? 3,
+        topics: existingPrefs?.topics ?? [],
+        communication_style: existingPrefs?.communication_style ?? 'balanced',
+        preferred_session_types: selectedSessionTypes,
+        scheduling_preference: existingPrefs?.scheduling_preference ?? 'flexible',
+        preferred_times: existingPrefs?.preferred_times ?? ['morning', 'afternoon', 'evening'],
+        personality_preference: existingPrefs?.personality_preference ?? 'warm',
+        goals: existingPrefs?.goals ?? ['connection'],
+        urgency: existingPrefs?.urgency ?? 'moderate',
+        timezone: tzId,
+      });
+    }
   };
 
   const handleRequestNewSupporter = () => {

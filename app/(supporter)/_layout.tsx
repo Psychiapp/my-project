@@ -74,10 +74,19 @@ export default function SupporterLayout() {
         return;
       }
 
+      // Small delay to allow database to sync after signup/profile save
+      await new Promise(resolve => setTimeout(resolve, 300));
+
       const completion = await checkSupporterProfileCompletion(user.id);
 
-      if (!completion.isComplete) {
+      // Only redirect if profile truly not found or has missing fields (not just a sync issue)
+      if (!completion.isComplete && !completion.missingFields.includes('Profile not found')) {
         // Redirect to profile setup with missing fields info
+        const missingFieldsParam = encodeURIComponent(completion.missingFields.join(','));
+        router.replace(`/profile-setup?role=supporter&missing=${missingFieldsParam}` as any);
+      } else if (!completion.isComplete && completion.missingFields.includes('Profile not found')) {
+        // Profile not found after retries - still redirect but this is unusual
+        console.warn('Profile not found after retries for user:', user.id);
         const missingFieldsParam = encodeURIComponent(completion.missingFields.join(','));
         router.replace(`/profile-setup?role=supporter&missing=${missingFieldsParam}` as any);
       }

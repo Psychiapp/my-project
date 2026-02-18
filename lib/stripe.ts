@@ -50,21 +50,45 @@ export async function createPaymentIntent(params: CreatePaymentParams): Promise<
     throw new Error('Supabase configuration missing');
   }
 
-  const response = await fetch(`${SupabaseConfig.url}/functions/v1/create-payment-intent`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${SupabaseConfig.anonKey}`,
-    },
-    body: JSON.stringify({ amount, currency, customerId, metadata }),
-  });
+  try {
+    const response = await fetch(`${SupabaseConfig.url}/functions/v1/create-payment-intent`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SupabaseConfig.anonKey}`,
+      },
+      body: JSON.stringify({ amount, currency, customerId, metadata }),
+    });
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to create payment intent');
+    if (!response.ok) {
+      const errorText = await response.text();
+      let errorMessage = 'Failed to create payment intent';
+      try {
+        const errorJson = JSON.parse(errorText);
+        errorMessage = errorJson.error || errorMessage;
+      } catch {
+        // Response wasn't JSON
+        if (response.status === 404) {
+          errorMessage = 'Payment service not available. Please try again later.';
+        } else if (response.status === 500) {
+          errorMessage = 'Payment service error. Please try again.';
+        }
+      }
+      throw new Error(errorMessage);
+    }
+
+    return response.json();
+  } catch (error) {
+    // Handle network errors (SSL, DNS, timeout)
+    if (error instanceof TypeError && error.message.includes('Network request failed')) {
+      throw new Error('Unable to connect to payment service. Please check your internet connection.');
+    }
+    // Re-throw if it's already an Error we created
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error('Payment service unavailable. Please try again later.');
   }
-
-  return response.json();
 }
 
 // Confirm payment
