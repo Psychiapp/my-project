@@ -215,7 +215,6 @@ export type RootStackParamList = {
 export type AuthStackParamList = {
   'sign-in': undefined;
   'sign-up': undefined;
-  'role-select': undefined;
   'forgot-password': undefined;
 };
 

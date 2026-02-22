@@ -95,7 +95,8 @@ export function handleDeepLink(parsedLink: DeepLinkPath): void {
       router.push('/(auth)/reset-password');
       break;
     case 'messages':
-      router.push('/(client)/messages' as any);
+      // Messages are handled within sessions - redirect to sessions
+      router.push('/(client)/sessions' as any);
       break;
     case 'payout-settings': {
       // Build query string for payout settings
@@ -134,7 +135,8 @@ export function handleNotificationResponse(
   if (data.type === 'session_reminder' && data.sessionId) {
     router.push(`/session/${data.sessionId}` as any);
   } else if (data.type === 'new_message' && data.conversationId) {
-    router.push('/(client)/messages' as any);
+    // Messages are handled within sessions
+    router.push('/(client)/sessions' as any);
   } else if (data.type === 'supporter_update' && data.supporterId) {
     router.push(`/(client)/supporter/${data.supporterId}` as any);
   } else if (data.deepLink) {

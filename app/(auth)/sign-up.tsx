@@ -299,6 +299,18 @@ export default function SignUpScreen() {
               <Text style={styles.safetyNote}>
                 You can always access these resources from within the app.
               </Text>
+
+              {/* Exit option for users who selected "Yes, I need help" */}
+              <TouchableOpacity
+                style={styles.exitButton}
+                onPress={() => router.back()}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel="Go back"
+                accessibilityHint="Returns to the welcome screen"
+              >
+                <Text style={styles.exitButtonText}>Not ready to sign up yet</Text>
+              </TouchableOpacity>
             </View>
           </ScrollView>
         </View>
@@ -712,25 +724,6 @@ export default function SignUpScreen() {
               )}
             </View>
 
-            {/* Divider */}
-            <View style={styles.divider}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>or</Text>
-              <View style={styles.dividerLine} />
-            </View>
-
-            {/* Social Login Buttons */}
-            <TouchableOpacity
-              style={styles.socialButton}
-              activeOpacity={0.8}
-              accessibilityRole="button"
-              accessibilityLabel="Continue with Google"
-              accessibilityHint="Signs up using your Google account"
-            >
-              <Text style={styles.socialIcon}>G</Text>
-              <Text style={styles.socialButtonText}>Continue with Google</Text>
-            </TouchableOpacity>
-
             {/* Footer */}
             <View style={styles.footer}>
               <Text style={styles.footerText}>Already have an account? </Text>
@@ -762,7 +755,7 @@ export default function SignUpScreen() {
         visible={showEquipmentModal}
         transparent
         animationType="fade"
-        onRequestClose={() => {}}
+        onRequestClose={() => setShowEquipmentModal(false)}
         accessibilityViewIsModal={true}
       >
         <View style={styles.modalOverlay}>
@@ -821,6 +814,19 @@ export default function SignUpScreen() {
               >
                 <Text style={styles.equipmentAgreeText}>I Understand and Agree</Text>
               </LinearGradient>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.equipmentCancelButton}
+              onPress={() => {
+                setShowEquipmentModal(false);
+                router.replace('/(supporter)');
+              }}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel="Continue without confirming"
+            >
+              <Text style={styles.equipmentCancelText}>I'll confirm this later</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -1225,6 +1231,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: PsychiColors.white,
   },
+  equipmentCancelButton: {
+    marginTop: Spacing.md,
+    paddingVertical: Spacing.sm,
+    alignItems: 'center',
+  },
+  equipmentCancelText: {
+    fontSize: Typography.fontSize.sm,
+    color: PsychiColors.textMuted,
+    fontWeight: '500',
+  },
   // Safety Screening Styles
   safetyIconContainer: {
     width: 80,
@@ -1370,5 +1386,15 @@ const styles = StyleSheet.create({
     color: PsychiColors.textMuted,
     textAlign: 'center',
     fontStyle: 'italic',
+  },
+  exitButton: {
+    marginTop: Spacing.lg,
+    paddingVertical: Spacing.md,
+    alignItems: 'center',
+  },
+  exitButtonText: {
+    fontSize: Typography.fontSize.sm,
+    color: PsychiColors.textMuted,
+    textDecorationLine: 'underline',
   },
 });

@@ -168,24 +168,6 @@ export default function SignInScreen() {
               </LinearGradient>
             </TouchableOpacity>
 
-            {/* Divider */}
-            <View style={styles.divider}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>or</Text>
-              <View style={styles.dividerLine} />
-            </View>
-
-            {/* Social Login Buttons */}
-            <TouchableOpacity
-              style={styles.socialButton}
-              activeOpacity={0.8}
-              accessibilityRole="button"
-              accessibilityLabel="Continue with Google"
-              accessibilityHint="Signs in using your Google account"
-            >
-              <Text style={styles.socialIcon}>G</Text>
-              <Text style={styles.socialButtonText}>Continue with Google</Text>
-            </TouchableOpacity>
 
             {/* Footer */}
             <View style={styles.footer}>

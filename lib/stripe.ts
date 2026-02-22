@@ -91,16 +91,35 @@ export async function createPaymentIntent(params: CreatePaymentParams): Promise<
   }
 }
 
-// Confirm payment
+// Confirm payment using Stripe Payment Sheet
 export async function confirmPayment(clientSecret: string): Promise<{ success: boolean; error?: string }> {
-  // In production, this would use Stripe SDK
-  console.log('Confirming payment with secret:', clientSecret);
+  // If Stripe native module isn't available, return error
+  if (!stripeAvailable || !presentPaymentSheet) {
+    console.warn('Stripe native module not available for payment confirmation');
+    return {
+      success: false,
+      error: 'Payment processing is not available in this environment. Please use a production build.'
+    };
+  }
 
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({ success: true });
-    }, 1500);
-  });
+  try {
+    // Present the payment sheet to confirm payment
+    const { error } = await presentPaymentSheet();
+
+    if (error) {
+      if (error.code === 'Canceled') {
+        return { success: false, error: 'Payment cancelled' };
+      }
+      console.error('Payment confirmation error:', error);
+      return { success: false, error: error.message || 'Payment failed' };
+    }
+
+    // Payment was successful
+    return { success: true };
+  } catch (err) {
+    console.error('Unexpected payment error:', err);
+    return { success: false, error: 'An unexpected error occurred. Please try again.' };
+  }
 }
 
 // Get saved payment methods for a customer
