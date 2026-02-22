@@ -111,7 +111,7 @@ const supporterSteps: TutorialStep[] = [
     title: 'Welcome to Your Supporter Dashboard',
     description: 'Congratulations on becoming a Psychi supporter! This dashboard is your command center for managing sessions, tracking earnings, and supporting clients.',
     icon: 'heart',
-    tip: 'Bookmark this page for quick access to your dashboard.',
+    tip: 'Check your dashboard daily to stay on top of new session requests.',
   },
   {
     title: 'Overview Tab',
