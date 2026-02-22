@@ -1,7 +1,8 @@
 {
   "cli": {
     "version": ">= 12.0.0",
-    "appVersionSource": "remote"
+    "appVersionSource": "remote",
+    "promptToConfigurePushNotifications": false
   },
   "build": {
     "development": {
@@ -29,7 +30,11 @@
         "buildType": "apk"
       },
       "env": {
-        "APP_ENV": "preview"
+        "APP_ENV": "preview",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://oockipafkvgarldpgzac.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9vY2tpcGFma3ZnYXJsZHBnemFjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczMjg1NTgsImV4cCI6MjA4MjkwNDU1OH0.6YpFJN0IMYxlQXvRAVVnhsJn2LnzmRpe9tGHJX5ASkg",
+        "EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY": "pk_test_51Sl1Cx6Vw36hpByXLAcZ43QqaaJwFMYmfpRKHHlQxkwlrxKnDZyXNkDyEm6hH9Ksdx5xD3mToGIogvJ5wg1PtgEa00MWz37TjF",
+        "EXPO_PUBLIC_DAILY_API_KEY": "95564a26a801e68281cf572e06423bc1546915ca1110f57041cb99a0ac5cc957"
       },
       "channel": "preview"
     },
