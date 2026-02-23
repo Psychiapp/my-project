@@ -254,10 +254,16 @@ export default function ProfileSetupScreen() {
       if (supabase) {
         // Update profiles table using upsert to handle case where profile doesn't exist
         const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
+        const now = new Date().toISOString();
+
+        // Determine role - use param or default based on context
+        const userRole = role || (isSupporter ? 'supporter' : 'client');
+
         const profileData: Record<string, unknown> = {
           id: user.id,
-          role: role || 'client',
-          updated_at: new Date().toISOString(),
+          role: userRole,
+          updated_at: now,
+          created_at: now, // Required for INSERT part of upsert
         };
 
         if (firstName.trim()) {
@@ -273,11 +279,28 @@ export default function ProfileSetupScreen() {
           profileData.email = email.trim().toLowerCase();
         }
 
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .upsert(profileData, { onConflict: 'id' });
+        console.log('Attempting profile upsert for user:', user.id);
+        console.log('Profile data:', JSON.stringify(profileData, null, 2));
 
-        if (profileError) throw profileError;
+        const { data: upsertResult, error: profileError } = await supabase
+          .from('profiles')
+          .upsert(profileData, {
+            onConflict: 'id',
+            ignoreDuplicates: false
+          })
+          .select();
+
+        console.log('Profile upsert result:', upsertResult);
+
+        if (profileError) {
+          console.error('Profile upsert error:', profileError);
+          throw profileError;
+        }
+
+        if (!upsertResult || upsertResult.length === 0) {
+          console.error('Profile upsert returned no data - possible RLS issue');
+          throw new Error('Profile save failed - please check your permissions');
+        }
 
         // For supporters, update supporter_details
         if (isSupporter) {

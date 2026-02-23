@@ -238,20 +238,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (data.user) {
-        // Create profile in database
-        const { error: profileError } = await supabase
+        // Create profile in database using upsert to handle any existing partial profile
+        const now = new Date().toISOString();
+        const { data: profileData, error: profileError } = await supabase
           .from('profiles')
-          .insert({
+          .upsert({
             id: data.user.id,
             email: data.user.email,
             full_name: '',
             role: role,
             avatar_url: null,
-          });
+            created_at: now,
+            updated_at: now,
+          }, {
+            onConflict: 'id',
+            ignoreDuplicates: false
+          })
+          .select();
 
         if (profileError) {
           console.error('Error creating profile:', profileError);
-          // Don't fail signup, profile might be created by trigger
+          console.error('Profile error code:', profileError.code);
+          console.error('Profile error details:', profileError.details);
+          console.error('Profile error hint:', profileError.hint);
+          // Continue - profile-setup will handle creation if this fails
+        } else {
+          console.log('Profile created successfully:', profileData);
         }
 
         const authUser = { id: data.user.id, email: data.user.email || '' };

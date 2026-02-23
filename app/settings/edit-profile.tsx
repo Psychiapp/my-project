@@ -241,16 +241,26 @@ export default function EditProfileScreen() {
 
     try {
       if (supabase) {
-        // Update profiles table with all fields
+        // First verify session is valid
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (!sessionData?.session) {
+          throw new Error('Session expired. Please sign in again.');
+        }
+
+        // Use upsert to handle edge cases where profile might not exist
         const fullName = `${firstName.trim()} ${lastName.trim()}`;
+        const now = new Date().toISOString();
         const updateData: Record<string, unknown> = {
+          id: user.id,
           full_name: fullName,
           first_name: firstName.trim(),
           last_name: lastName.trim(),
           email: email.trim().toLowerCase(),
           phone: phone.trim() || null,
           bio: bio.trim() || null,
-          updated_at: new Date().toISOString(),
+          updated_at: now,
+          created_at: now, // For INSERT case
+          role: profile?.role || 'client',
         };
 
         console.log('Saving profile update for user:', user.id);
@@ -258,13 +268,22 @@ export default function EditProfileScreen() {
 
         const { data, error } = await supabase
           .from('profiles')
-          .update(updateData)
-          .eq('id', user.id)
+          .upsert(updateData, {
+            onConflict: 'id',
+            ignoreDuplicates: false
+          })
           .select();
 
         if (error) {
           console.error('Supabase update error:', error);
-          throw error;
+          console.error('Error code:', error.code);
+          console.error('Error details:', error.details);
+          throw new Error(`Database error: ${error.message}`);
+        }
+
+        if (!data || data.length === 0) {
+          console.error('Profile update returned no data - possible RLS issue');
+          throw new Error('Profile update failed - please try again');
         }
 
         console.log('Profile update result:', data);

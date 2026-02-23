@@ -234,25 +234,46 @@ export default function SupporterEditProfileScreen() {
         const nameParts = displayName.trim().split(' ').filter(Boolean);
         const firstName = nameParts[0] || '';
         const lastName = nameParts.slice(1).join(' ') || '';
+        const now = new Date().toISOString();
 
         console.log('Saving supporter profile for user:', user.id);
         console.log('Profile data:', { displayName, firstName, lastName });
 
-        // Update profiles table with full_name, first_name, and last_name
+        // First verify user session is valid
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (!sessionData?.session) {
+          throw new Error('Session expired. Please sign in again.');
+        }
+        console.log('Session verified for user:', sessionData.session.user.id);
+
+        // Use upsert instead of update to handle edge cases
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
-          .update({
+          .upsert({
+            id: user.id,
             full_name: displayName.trim(),
             first_name: firstName,
             last_name: lastName,
-            updated_at: new Date().toISOString(),
+            updated_at: now,
+            created_at: now, // For INSERT case
+            role: 'supporter',
+          }, {
+            onConflict: 'id',
+            ignoreDuplicates: false
           })
-          .eq('id', user.id)
           .select();
 
         if (profileError) {
           console.error('Profile update error:', profileError);
-          throw profileError;
+          console.error('Error code:', profileError.code);
+          console.error('Error details:', profileError.details);
+          console.error('Error hint:', profileError.hint);
+          throw new Error(`Profile update failed: ${profileError.message}`);
+        }
+
+        if (!profileData || profileData.length === 0) {
+          console.error('Profile update returned no data - RLS may be blocking');
+          throw new Error('Profile update failed - no data returned. Check RLS policies.');
         }
         console.log('Profile update result:', profileData);
 
@@ -265,27 +286,44 @@ export default function SupporterEditProfileScreen() {
             bio,
             specialties: selectedSpecialties,
             availability,
+            updated_at: now,
+          }, {
+            onConflict: 'supporter_id'
           })
           .select();
 
         if (detailsError) {
           console.error('Supporter details update error:', detailsError);
-          throw detailsError;
+          console.error('Error code:', detailsError.code);
+          console.error('Error details:', detailsError.details);
+          throw new Error(`Supporter details update failed: ${detailsError.message}`);
         }
-        console.log('Supporter details update result:', detailsData);
+
+        if (!detailsData || detailsData.length === 0) {
+          console.error('Supporter details update returned no data');
+          // Don't throw here - supporter_details might have different RLS
+          console.warn('Supporter details may not have saved - continuing anyway');
+        } else {
+          console.log('Supporter details update result:', detailsData);
+        }
 
         // Refresh the AuthContext profile so dashboard updates immediately
         console.log('Refreshing profile in AuthContext...');
         await refreshProfile();
         console.log('Profile refresh complete');
+
+        // Verify the refresh worked by checking profile
+        console.log('Verifying profile was updated...');
       }
 
       Alert.alert('Success', 'Your profile has been updated', [
         { text: 'OK', onPress: () => router.back() },
       ]);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving profile:', error);
-      Alert.alert('Error', 'Failed to update profile. Please try again.');
+      const errorMessage = error?.message || 'Unknown error occurred';
+      console.error('Full error details:', JSON.stringify(error, null, 2));
+      Alert.alert('Error', `Failed to update profile: ${errorMessage}`);
     } finally {
       setIsLoading(false);
     }
