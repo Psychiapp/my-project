@@ -33,22 +33,22 @@ export const Config = {
   // Subscription tiers (monthly, in cents)
   subscriptions: {
     basic: {
-      amount: 9500,
-      display: '$95/month',
+      amount: 5500,
+      display: '$55/month',
       description: '1 live call/week + 2 chat sessions',
       chatSessionsPerMonth: 2,
       liveCallsPerWeek: 1, // phone or video
     },
     standard: {
-      amount: 14500,
-      display: '$145/month',
+      amount: 10900,
+      display: '$109/month',
       description: '2 live calls/week + 3 chat sessions',
       chatSessionsPerMonth: 3,
       liveCallsPerWeek: 2, // phone or video
     },
     premium: {
-      amount: 17500,
-      display: '$175/month',
+      amount: 14900,
+      display: '$149/month',
       description: '3 live calls/week + unlimited chat',
       chatSessionsPerMonth: -1, // unlimited
       liveCallsPerWeek: 3, // phone or video

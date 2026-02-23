@@ -1,6 +1,6 @@
 /**
  * Pricing Section - Exact match to web app PricingComparison.tsx
- * Subscription plans: Essential $95, Growth $145, Unlimited $175
+ * Subscription plans: Essential $55, Growth $109, Unlimited $149
  */
 
 import React, { useState } from 'react';
@@ -25,38 +25,36 @@ const plans = [
   {
     id: 'essential',
     name: 'Essential',
-    price: '$95',
+    price: '$55',
     period: '/month',
     description: 'Perfect for getting started',
     features: [
-      '4 chat sessions per month',
-      '2 phone sessions per month',
+      '1 live phone or video call per week',
+      '2 chat sessions per month',
     ],
     popular: false,
   },
   {
     id: 'growth',
     name: 'Growth',
-    price: '$145',
+    price: '$109',
     period: '/month',
     description: 'Our most popular plan',
     features: [
-      '8 chat sessions per month',
-      '4 phone sessions per month',
-      '1 video session per month',
+      '2 live phone or video calls per week',
+      '3 chat sessions per month',
     ],
     popular: true,
   },
   {
     id: 'unlimited',
     name: 'Unlimited',
-    price: '$175',
+    price: '$149',
     period: '/month',
     description: 'For comprehensive support',
     features: [
+      '3 live phone or video calls per week',
       'Unlimited chat sessions',
-      '8 phone sessions per month',
-      '4 video sessions per month',
     ],
     popular: false,
   },
