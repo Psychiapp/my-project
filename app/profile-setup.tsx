@@ -252,29 +252,30 @@ export default function ProfileSetupScreen() {
 
     try {
       if (supabase) {
-        // Update profiles table
+        // Update profiles table using upsert to handle case where profile doesn't exist
         const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
-        const profileUpdates: Record<string, unknown> = {
+        const profileData: Record<string, unknown> = {
+          id: user.id,
+          role: role || 'client',
           updated_at: new Date().toISOString(),
         };
 
         if (firstName.trim()) {
-          profileUpdates.first_name = firstName.trim();
+          profileData.first_name = firstName.trim();
         }
         if (lastName.trim()) {
-          profileUpdates.last_name = lastName.trim();
+          profileData.last_name = lastName.trim();
         }
         if (fullName) {
-          profileUpdates.full_name = fullName;
+          profileData.full_name = fullName;
         }
         if (email.trim()) {
-          profileUpdates.email = email.trim().toLowerCase();
+          profileData.email = email.trim().toLowerCase();
         }
 
         const { error: profileError } = await supabase
           .from('profiles')
-          .update(profileUpdates)
-          .eq('id', user.id);
+          .upsert(profileData, { onConflict: 'id' });
 
         if (profileError) throw profileError;
 
@@ -337,9 +338,11 @@ export default function ProfileSetupScreen() {
           router.replace('/(client)' as any);
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving profile:', error);
-      Alert.alert('Error', 'Failed to save profile. Please try again.');
+      const errorMessage = error?.message || error?.details || 'Unknown error';
+      console.error('Profile save error details:', errorMessage);
+      Alert.alert('Error', `Failed to save profile: ${errorMessage}`);
     } finally {
       setIsSaving(false);
     }
