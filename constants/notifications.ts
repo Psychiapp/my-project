@@ -11,6 +11,11 @@ export type NotificationType =
   | 'availability_reminder'
   | 'refund_processed'
   | 'supporter_message'
+  | 'live_support_request'
+  | 'live_support_accepted'
+  | 'live_support_declined'
+  | 'live_support_no_supporters'
+  | 'live_support_expired'
   | 'system';
 
 export interface NotificationTemplate {
@@ -26,6 +31,7 @@ export const NOTIFICATION_CHANNELS = {
   SESSIONS: 'sessions',
   REMINDERS: 'reminders',
   BOOKINGS: 'bookings',
+  LIVE_SUPPORT: 'live_support',
 };
 
 // Reminder timing options (in minutes)
@@ -162,6 +168,65 @@ export function getNotificationContent(
           type: 'refund_processed',
           refundId: params.refundId,
           amount: params.amount,
+        },
+      };
+
+    // Live Support Request - sent to supporter
+    case 'live_support_request':
+      return {
+        title: 'Live Support Request',
+        body: `${params.clientName} is requesting a live ${params.sessionType} session. Tap to respond within 15 minutes.`,
+        data: {
+          type: 'live_support_request',
+          requestId: params.requestId,
+          clientId: params.clientId,
+          sessionType: params.sessionType,
+        },
+      };
+
+    // Live Support Accepted - sent to client
+    case 'live_support_accepted':
+      return {
+        title: 'Request Accepted!',
+        body: `${params.supporterName} accepted your request. Your ${params.sessionType} session is starting now.`,
+        data: {
+          type: 'live_support_accepted',
+          requestId: params.requestId,
+          sessionId: params.sessionId,
+          sessionType: params.sessionType,
+        },
+      };
+
+    // Live Support Declined - sent to client when routed to next supporter
+    case 'live_support_declined':
+      return {
+        title: 'Finding Another Supporter',
+        body: `We're connecting you with another available supporter. Please wait...`,
+        data: {
+          type: 'live_support_declined',
+          requestId: params.requestId,
+        },
+      };
+
+    // Live Support No Supporters - sent to client when no supporters available
+    case 'live_support_no_supporters':
+      return {
+        title: 'No Supporters Available',
+        body: `We couldn't find an available supporter right now. Please try again later or schedule a session in advance.`,
+        data: {
+          type: 'live_support_no_supporters',
+          requestId: params.requestId,
+        },
+      };
+
+    // Live Support Expired - sent to client when request times out
+    case 'live_support_expired':
+      return {
+        title: 'Request Expired',
+        body: `Your live support request has expired. ${params.refundProcessed === 'true' ? 'A refund has been processed.' : 'Please try again or schedule a session.'}`,
+        data: {
+          type: 'live_support_expired',
+          requestId: params.requestId,
         },
       };
 

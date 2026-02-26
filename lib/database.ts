@@ -3509,3 +3509,695 @@ export async function getVerificationPendingCount(): Promise<number> {
 
   return count || 0;
 }
+
+// ============================================
+// LIVE SUPPORT FUNCTIONS
+// ============================================
+
+import type {
+  LiveSupportRequestRow,
+  AllowanceCheckResult,
+  PresenceState,
+} from '@/types/liveSupport';
+import { TIER_ALLOWANCES, PAYG_PRICES, TIER_MAP } from '@/types/liveSupport';
+
+/**
+ * Get available supporters for live support
+ * Returns supporters who are online, not in session, and available for live support
+ */
+export async function getAvailableSupportersForLiveSupport(
+  excludeIds: string[] = []
+): Promise<{ id: string; fullName: string; avatarUrl: string | null }[]> {
+  if (!supabase) return [];
+
+  let query = supabase
+    .from('profiles')
+    .select('id, full_name, avatar_url')
+    .eq('role', 'supporter')
+    .eq('is_online', true)
+    .eq('in_session', false)
+    .eq('available_for_live_support', true);
+
+  if (excludeIds.length > 0) {
+    query = query.not('id', 'in', `(${excludeIds.join(',')})`);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error('Error fetching available supporters:', error);
+    return [];
+  }
+
+  return (data || []).map(s => ({
+    id: s.id,
+    fullName: s.full_name || 'Supporter',
+    avatarUrl: s.avatar_url,
+  }));
+}
+
+/**
+ * Find the best available supporter using database function
+ */
+export async function findAvailableSupporter(
+  excludeIds: string[] = []
+): Promise<string | null> {
+  if (!supabase) return null;
+
+  const { data: supporterId, error } = await supabase
+    .rpc('find_available_supporter', { p_exclude_ids: excludeIds });
+
+  if (error) {
+    console.error('Error finding available supporter:', error);
+    return null;
+  }
+
+  return supporterId || null;
+}
+
+/**
+ * Create a live support request
+ */
+export async function createLiveSupportRequest(params: {
+  clientId: string;
+  supporterId: string;
+  sessionType: SessionType;
+  paymentIntentId?: string;
+  chargedAsPayg: boolean;
+  amountCharged?: number;
+  expiresAt: Date;
+}): Promise<LiveSupportRequestRow | null> {
+  if (!supabase) return null;
+
+  const { data, error } = await supabase
+    .from('live_support_requests')
+    .insert({
+      client_id: params.clientId,
+      requested_supporter_id: params.supporterId,
+      session_type: params.sessionType,
+      status: 'pending',
+      payment_intent_id: params.paymentIntentId || null,
+      charged_as_payg: params.chargedAsPayg,
+      amount_charged: params.amountCharged || null,
+      expires_at: params.expiresAt.toISOString(),
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error creating live support request:', error);
+    return null;
+  }
+
+  return data;
+}
+
+/**
+ * Update live support request status
+ */
+export async function updateLiveSupportRequestStatus(
+  requestId: string,
+  status: 'pending' | 'accepted' | 'declined' | 'expired' | 'cancelled' | 'completed' | 'no_supporters',
+  additionalData?: {
+    acceptedAt?: Date;
+    completedAt?: Date;
+    sessionId?: string;
+  }
+): Promise<boolean> {
+  if (!supabase) return false;
+
+  const updateData: Record<string, any> = { status };
+
+  if (additionalData?.acceptedAt) {
+    updateData.accepted_at = additionalData.acceptedAt.toISOString();
+  }
+  if (additionalData?.completedAt) {
+    updateData.completed_at = additionalData.completedAt.toISOString();
+  }
+  if (additionalData?.sessionId) {
+    updateData.session_id = additionalData.sessionId;
+  }
+
+  const { error } = await supabase
+    .from('live_support_requests')
+    .update(updateData)
+    .eq('id', requestId);
+
+  if (error) {
+    console.error('Error updating live support request:', error);
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Get live support request by ID
+ */
+export async function getLiveSupportRequest(
+  requestId: string
+): Promise<LiveSupportRequestRow | null> {
+  if (!supabase) return null;
+
+  const { data, error } = await supabase
+    .from('live_support_requests')
+    .select('*')
+    .eq('id', requestId)
+    .single();
+
+  if (error) {
+    console.error('Error fetching live support request:', error);
+    return null;
+  }
+
+  return data;
+}
+
+/**
+ * Get active live support request for a client
+ */
+export async function getClientActiveLiveSupportRequest(
+  clientId: string
+): Promise<LiveSupportRequestRow | null> {
+  if (!supabase) return null;
+
+  const { data, error } = await supabase
+    .from('live_support_requests')
+    .select('*')
+    .eq('client_id', clientId)
+    .in('status', ['pending', 'accepted'])
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error('Error fetching client active request:', error);
+    return null;
+  }
+
+  return data;
+}
+
+/**
+ * Get pending live support requests for a supporter
+ */
+export async function getSupporterPendingRequests(
+  supporterId: string
+): Promise<LiveSupportRequestRow[]> {
+  if (!supabase) return [];
+
+  const { data, error } = await supabase
+    .from('live_support_requests')
+    .select('*')
+    .eq('requested_supporter_id', supporterId)
+    .eq('status', 'pending')
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    console.error('Error fetching pending requests:', error);
+    return [];
+  }
+
+  return data || [];
+}
+
+/**
+ * Route live support request to next available supporter
+ */
+export async function routeToNextSupporter(requestId: string): Promise<string | null> {
+  if (!supabase) return null;
+
+  const { data: nextSupporterId, error } = await supabase
+    .rpc('route_to_next_supporter', { p_request_id: requestId });
+
+  if (error) {
+    console.error('Error routing to next supporter:', error);
+    return null;
+  }
+
+  return nextSupporterId || null;
+}
+
+/**
+ * Get current period usage for a client
+ */
+export async function getClientCurrentPeriodUsage(
+  clientId: string
+): Promise<{ chatCount: number; voiceVideoCount: number; billingPeriodStart: string; billingPeriodEnd: string } | null> {
+  if (!supabase) return null;
+
+  const { data, error } = await supabase
+    .rpc('get_current_period_usage', { p_client_id: clientId });
+
+  if (error) {
+    console.error('Error fetching period usage:', error);
+    return null;
+  }
+
+  const row = data?.[0];
+  if (!row) return null;
+
+  return {
+    chatCount: row.chat_count || 0,
+    voiceVideoCount: row.voice_video_count || 0,
+    billingPeriodStart: row.billing_period_start,
+    billingPeriodEnd: row.billing_period_end,
+  };
+}
+
+/**
+ * Record session usage for a client
+ */
+export async function recordSessionUsage(params: {
+  clientId: string;
+  sessionType: SessionType;
+  sessionId?: string;
+  chargedAsPayg: boolean;
+  paymentIntentId?: string;
+}): Promise<boolean> {
+  if (!supabase) return false;
+
+  // Get billing period start
+  const { data: periodStart, error: periodError } = await supabase
+    .rpc('get_billing_period_start', { p_client_id: params.clientId });
+
+  if (periodError) {
+    console.error('Error getting billing period:', periodError);
+    return false;
+  }
+
+  // Get subscription tier
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('subscription_tier, subscription_status')
+    .eq('id', params.clientId)
+    .single();
+
+  if (profileError) {
+    console.error('Error getting profile:', profileError);
+    return false;
+  }
+
+  const tierString = profile?.subscription_tier;
+  const isActive = profile?.subscription_status === 'active';
+  const tierNumber = (tierString && isActive) ? (TIER_MAP[tierString] || 0) : 0;
+
+  // Insert usage record
+  const { error: insertError } = await supabase
+    .from('session_usage')
+    .insert({
+      client_id: params.clientId,
+      session_type: params.sessionType,
+      session_id: params.sessionId || null,
+      billing_period_start: periodStart,
+      subscription_tier: tierNumber,
+      charged_as_payg: params.chargedAsPayg,
+      payment_intent_id: params.paymentIntentId || null,
+    });
+
+  if (insertError) {
+    console.error('Error recording usage:', insertError);
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Update user presence (online/offline status)
+ */
+export async function updatePresence(
+  userId: string,
+  isOnline: boolean
+): Promise<boolean> {
+  if (!supabase) return false;
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({
+      is_online: isOnline,
+      last_seen: new Date().toISOString(),
+    })
+    .eq('id', userId);
+
+  if (error) {
+    console.error('Error updating presence:', error);
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Send heartbeat to keep presence alive
+ */
+export async function sendHeartbeat(userId: string): Promise<boolean> {
+  if (!supabase) return false;
+
+  const { error } = await supabase
+    .rpc('update_heartbeat', { p_user_id: userId });
+
+  if (error) {
+    console.error('Error sending heartbeat:', error);
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Set supporter availability for live support
+ */
+export async function setLiveSupportAvailability(
+  userId: string,
+  available: boolean
+): Promise<boolean> {
+  if (!supabase) return false;
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({ available_for_live_support: available })
+    .eq('id', userId);
+
+  if (error) {
+    console.error('Error setting live support availability:', error);
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Set user in-session status
+ */
+export async function setInSessionStatus(
+  userId: string,
+  inSession: boolean
+): Promise<boolean> {
+  if (!supabase) return false;
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({ in_session: inSession })
+    .eq('id', userId);
+
+  if (error) {
+    console.error('Error setting in-session status:', error);
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Get user presence state
+ */
+export async function getPresenceState(userId: string): Promise<PresenceState | null> {
+  if (!supabase) return null;
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('is_online, last_seen, in_session, available_for_live_support')
+    .eq('id', userId)
+    .single();
+
+  if (error) {
+    console.error('Error fetching presence:', error);
+    return null;
+  }
+
+  return {
+    isOnline: data.is_online || false,
+    lastSeen: data.last_seen ? new Date(data.last_seen) : null,
+    inSession: data.in_session || false,
+    availableForLiveSupport: data.available_for_live_support || false,
+  };
+}
+
+/**
+ * Check if a client has session allowance for a given session type
+ */
+export async function checkSessionAllowance(
+  clientId: string,
+  sessionType: SessionType
+): Promise<AllowanceCheckResult> {
+  if (!supabase) {
+    return {
+      hasAllowance: false,
+      remaining: 0,
+      paygRequired: true,
+      paygPrice: PAYG_PRICES[sessionType],
+      subscriptionTier: null,
+    };
+  }
+
+  // Get subscription tier
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('subscription_tier, subscription_status')
+    .eq('id', clientId)
+    .single();
+
+  if (profileError) {
+    console.error('Error fetching profile:', profileError);
+    return {
+      hasAllowance: false,
+      remaining: 0,
+      paygRequired: true,
+      paygPrice: PAYG_PRICES[sessionType],
+      subscriptionTier: null,
+    };
+  }
+
+  const tierString = profile?.subscription_tier;
+  const isActive = profile?.subscription_status === 'active';
+  const tierNumber = (tierString && isActive) ? (TIER_MAP[tierString] || 0) : 0;
+
+  // No subscription - require PAYG
+  if (tierNumber === 0) {
+    return {
+      hasAllowance: false,
+      remaining: 0,
+      paygRequired: true,
+      paygPrice: PAYG_PRICES[sessionType],
+      subscriptionTier: null,
+    };
+  }
+
+  // Get current period usage
+  const usageData = await getClientCurrentPeriodUsage(clientId);
+
+  const allowances = TIER_ALLOWANCES[tierNumber as 1 | 2 | 3];
+  const isChat = sessionType === 'chat';
+  const used = isChat ? (usageData?.chatCount || 0) : (usageData?.voiceVideoCount || 0);
+  const allowed = isChat ? allowances.chat : allowances.voiceVideo;
+
+  // Handle unlimited chats (tier 3)
+  if (allowed === Infinity) {
+    return {
+      hasAllowance: true,
+      remaining: 999,
+      paygRequired: false,
+      paygPrice: PAYG_PRICES[sessionType],
+      subscriptionTier: tierNumber,
+    };
+  }
+
+  const remaining = Math.max(0, allowed - used);
+  const hasAllowance = remaining > 0;
+
+  return {
+    hasAllowance,
+    remaining,
+    paygRequired: !hasAllowance,
+    paygPrice: PAYG_PRICES[sessionType],
+    subscriptionTier: tierNumber,
+  };
+}
+
+/**
+ * Complete a live support session
+ * Updates request status, records usage, and clears in-session status
+ */
+export async function completeLiveSupportSession(
+  requestId: string,
+  sessionId: string
+): Promise<boolean> {
+  if (!supabase) return false;
+
+  // Get the request
+  const request = await getLiveSupportRequest(requestId);
+  if (!request) return false;
+
+  // Update request status
+  const updated = await updateLiveSupportRequestStatus(requestId, 'completed', {
+    completedAt: new Date(),
+    sessionId,
+  });
+
+  if (!updated) return false;
+
+  // Record session usage
+  await recordSessionUsage({
+    clientId: request.client_id,
+    sessionType: request.session_type as SessionType,
+    sessionId,
+    chargedAsPayg: request.charged_as_payg,
+    paymentIntentId: request.payment_intent_id || undefined,
+  });
+
+  // Clear supporter in-session status
+  if (request.requested_supporter_id) {
+    await setInSessionStatus(request.requested_supporter_id, false);
+  }
+
+  return true;
+}
+
+/**
+ * Save Expo push token to user's profile
+ */
+export async function saveExpoPushToken(
+  userId: string,
+  token: string
+): Promise<boolean> {
+  if (!supabase) return false;
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({ expo_push_token: token })
+    .eq('id', userId);
+
+  if (error) {
+    console.error('Error saving push token:', error);
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Get user's Expo push token
+ */
+export async function getExpoPushToken(userId: string): Promise<string | null> {
+  if (!supabase) return null;
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('expo_push_token')
+    .eq('id', userId)
+    .single();
+
+  if (error || !data) {
+    console.error('Error getting push token:', error);
+    return null;
+  }
+
+  return data.expo_push_token;
+}
+
+/**
+ * Send live support notification via Edge Function
+ */
+export async function sendLiveSupportPushNotification(params: {
+  userId: string;
+  title: string;
+  body: string;
+  data?: Record<string, unknown>;
+  priority?: 'default' | 'normal' | 'high';
+}): Promise<{ sent: boolean; error?: string }> {
+  if (!supabase) return { sent: false, error: 'Database not initialized' };
+
+  try {
+    const { data, error } = await supabase.functions.invoke('send-live-support-notification', {
+      body: {
+        userId: params.userId,
+        title: params.title,
+        body: params.body,
+        data: params.data,
+        priority: params.priority || 'high',
+      },
+    });
+
+    if (error) {
+      console.error('Error invoking push notification function:', error);
+      return { sent: false, error: error.message };
+    }
+
+    return data as { sent: boolean; error?: string };
+  } catch (error) {
+    console.error('Error sending push notification:', error);
+    return { sent: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
+
+/**
+ * Send live support request notification to a supporter
+ */
+export async function notifySupporterOfLiveRequest(params: {
+  supporterId: string;
+  requestId: string;
+  clientName: string;
+  sessionType: SessionType;
+}): Promise<boolean> {
+  const result = await sendLiveSupportPushNotification({
+    userId: params.supporterId,
+    title: 'Live Support Request',
+    body: `${params.clientName} is requesting a live ${params.sessionType} session. Tap to respond.`,
+    data: {
+      type: 'live_support_request',
+      requestId: params.requestId,
+      sessionType: params.sessionType,
+    },
+    priority: 'high',
+  });
+
+  return result.sent;
+}
+
+/**
+ * Notify client that their live support request was accepted
+ */
+export async function notifyClientOfAcceptedRequest(params: {
+  clientId: string;
+  requestId: string;
+  sessionId: string;
+  supporterName: string;
+  sessionType: SessionType;
+}): Promise<boolean> {
+  const result = await sendLiveSupportPushNotification({
+    userId: params.clientId,
+    title: 'Request Accepted!',
+    body: `${params.supporterName} accepted your request. Your ${params.sessionType} session is starting now.`,
+    data: {
+      type: 'live_support_accepted',
+      requestId: params.requestId,
+      sessionId: params.sessionId,
+      sessionType: params.sessionType,
+    },
+    priority: 'high',
+  });
+
+  return result.sent;
+}
+
+/**
+ * Notify client that no supporters are available
+ */
+export async function notifyClientNoSupportersAvailable(params: {
+  clientId: string;
+  requestId: string;
+}): Promise<boolean> {
+  const result = await sendLiveSupportPushNotification({
+    userId: params.clientId,
+    title: 'No Supporters Available',
+    body: 'We couldn\'t find an available supporter right now. Please try again later or schedule a session.',
+    data: {
+      type: 'live_support_no_supporters',
+      requestId: params.requestId,
+    },
+    priority: 'default',
+  });
+
+  return result.sent;
+}

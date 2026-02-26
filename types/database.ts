@@ -27,6 +27,11 @@ export interface UserProfile {
   role: UserRole;
   created_at: string;
   updated_at: string;
+  // Presence fields (for all users)
+  is_online?: boolean;
+  last_seen?: string | null;
+  in_session?: boolean;
+  expo_push_token?: string | null;
 }
 
 // Client-specific profile data
@@ -35,6 +40,7 @@ export interface ClientProfile extends UserProfile {
   subscription_tier: SubscriptionTier | null;
   subscription_status: SubscriptionStatus | null;
   subscription_expires_at: string | null;
+  subscription_started_at: string | null;
   favorite_supporters: string[];
   sessions_remaining: {
     chat: number;
@@ -107,7 +113,23 @@ export interface SupporterProfile extends UserProfile {
   verification_submitted_at: string | null;
   verification_reviewed_at: string | null;
   verification_rejection_reason: string | null;
+  // Live support presence fields
+  is_online: boolean;
+  last_seen: string | null;
+  in_session: boolean;
+  available_for_live_support: boolean;
+  expo_push_token: string | null;
 }
+
+// Live Support Request Status
+export type LiveSupportRequestStatus =
+  | 'pending'
+  | 'accepted'
+  | 'declined'
+  | 'expired'
+  | 'cancelled'
+  | 'completed'
+  | 'no_supporters';
 
 // Payout schedule type
 export type PayoutSchedule = 'manual' | 'daily' | 'weekly' | 'monthly';

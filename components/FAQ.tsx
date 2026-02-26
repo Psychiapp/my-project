@@ -46,6 +46,10 @@ const faqItems = [
     answer: 'We offer three formats: Chat sessions for text-based support, Phone calls for voice conversations, and Video chats for face-to-face connection. You can mix and match based on your comfort level.',
   },
   {
+    question: 'Can I get support anytime?',
+    answer: 'Yes! You can schedule sessions in advance or request live support anytime an available supporter is online. With live support, simply tap "Request Live Support" to connect with a supporter within minutes. Supporters have 15 minutes to accept, and if unavailable, your request automatically routes to another supporter.',
+  },
+  {
     question: 'Is my information private?',
     answer: 'Absolutely. All conversations are confidential and protected with end-to-end encryption.',
   },

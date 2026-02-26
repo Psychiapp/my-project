@@ -10,6 +10,8 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Modal,
+  Alert,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -28,6 +30,11 @@ import {
 } from '@/components/icons';
 import DashboardTutorial from '@/components/DashboardTutorial';
 import SupporterOnboardingChecklist from '@/components/SupporterOnboardingChecklist';
+import LiveSupportAvailabilityToggle from '@/components/LiveSupportAvailabilityToggle';
+import LiveSupportRequestCard from '@/components/LiveSupportRequestCard';
+import LiveSupportInfoSection from '@/components/LiveSupportInfoSection';
+import { usePresence } from '@/hooks/usePresence';
+import { useLiveSupportRequest } from '@/hooks/useLiveSupportRequest';
 import { Divider } from '@/components/ui/PremiumCard';
 
 const TUTORIAL_COMPLETED_KEY = '@psychi_supporter_tutorial_completed';
@@ -38,6 +45,47 @@ export default function SupporterHomeScreen() {
 
   // Dashboard tutorial state
   const [showTutorial, setShowTutorial] = useState(false);
+
+  // Live support hooks
+  const {
+    presence,
+    isLoading: isPresenceLoading,
+    setAvailableForLiveSupport,
+    setInSession,
+  } = usePresence(user?.id || null);
+
+  const {
+    pendingRequests,
+    acceptRequest,
+    declineRequest,
+  } = useLiveSupportRequest(user?.id || null, 'supporter', {
+    onRequestAccepted: (request) => {
+      // Navigate to session
+      router.push(`/session/${request.id}` as any);
+    },
+    onError: (error) => {
+      Alert.alert('Error', error);
+    },
+  });
+
+  // Handle live support availability toggle
+  const handleAvailabilityToggle = async (available: boolean) => {
+    await setAvailableForLiveSupport(available);
+  };
+
+  // Handle accept request
+  const handleAcceptRequest = async (requestId: string): Promise<boolean> => {
+    const success = await acceptRequest(requestId);
+    if (success) {
+      await setInSession(true);
+    }
+    return success;
+  };
+
+  // Handle decline request
+  const handleDeclineRequest = async (requestId: string): Promise<boolean> => {
+    return await declineRequest(requestId);
+  };
 
   // Check if tutorial has been completed on mount
   useEffect(() => {
@@ -103,6 +151,30 @@ export default function SupporterHomeScreen() {
 
         {/* Onboarding Checklist - Shows required steps before receiving clients */}
         <SupporterOnboardingChecklist />
+
+        {/* Live Support Availability Toggle */}
+        <View style={styles.liveSupportSection}>
+          <LiveSupportAvailabilityToggle
+            presence={presence}
+            onToggle={handleAvailabilityToggle}
+            disabled={isPresenceLoading}
+          />
+        </View>
+
+        {/* Pending Live Support Requests */}
+        {pendingRequests.length > 0 && (
+          <View style={styles.pendingRequestsSection}>
+            <Text style={styles.pendingRequestsLabel}>INCOMING REQUEST</Text>
+            {pendingRequests.map((request) => (
+              <LiveSupportRequestCard
+                key={request.id}
+                request={request}
+                onAccept={handleAcceptRequest}
+                onDecline={handleDeclineRequest}
+              />
+            ))}
+          </View>
+        )}
 
         {/* Launch Notice Card */}
         <View style={styles.launchCard}>
@@ -318,6 +390,11 @@ export default function SupporterHomeScreen() {
             <ChevronRightIcon size={18} color={PsychiColors.textMuted} />
           </TouchableOpacity>
         </View>
+
+        {/* Live Support Info Section */}
+        <View style={styles.section}>
+          <LiveSupportInfoSection userType="supporter" />
+        </View>
       </ScrollView>
 
       {/* Dashboard Tutorial */}
@@ -365,6 +442,23 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.base,
     color: PsychiColors.textSecondary,
     letterSpacing: Typography.letterSpacing.normal,
+  },
+
+  // Live Support Section
+  liveSupportSection: {
+    paddingHorizontal: Spacing['6'],
+    marginBottom: Spacing['6'],
+  },
+  pendingRequestsSection: {
+    paddingHorizontal: Spacing['6'],
+    marginBottom: Spacing['6'],
+  },
+  pendingRequestsLabel: {
+    fontSize: Typography.fontSize.xs,
+    fontWeight: Typography.fontWeight.semibold,
+    color: PsychiColors.success,
+    letterSpacing: Typography.letterSpacing.widest,
+    marginBottom: Spacing['3'],
   },
 
   // Launch Notice Card

@@ -44,6 +44,7 @@ export default function NotificationSettingsScreen() {
     promotions: false,
     newBookings: true,
     availabilityReminders: true,
+    liveSupportRequests: true,
   });
   const [isLoading, setIsLoading] = useState(true);
 

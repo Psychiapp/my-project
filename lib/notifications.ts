@@ -10,6 +10,7 @@ import {
   NOTIFICATION_CHANNELS,
   REMINDER_TIMES,
 } from '@/constants/notifications';
+import { saveExpoPushToken } from '@/lib/database';
 
 // Configure notification behavior
 Notifications.setNotificationHandler({
@@ -30,6 +31,7 @@ export interface NotificationSettings {
   // Supporter-specific
   newBookings: boolean;
   availabilityReminders: boolean;
+  liveSupportRequests: boolean;
 }
 
 const DEFAULT_SETTINGS: NotificationSettings = {
@@ -39,6 +41,7 @@ const DEFAULT_SETTINGS: NotificationSettings = {
   promotions: false,
   newBookings: true,
   availabilityReminders: true,
+  liveSupportRequests: true,
 };
 
 const STORAGE_KEYS = {
@@ -101,6 +104,23 @@ export async function registerForPushNotifications(): Promise<string | null> {
 }
 
 /**
+ * Register for push notifications and save token to database
+ * Call this when user logs in or app starts for authenticated user
+ */
+export async function registerAndSavePushToken(userId: string): Promise<string | null> {
+  const token = await registerForPushNotifications();
+
+  if (token && userId) {
+    const saved = await saveExpoPushToken(userId, token);
+    if (!saved) {
+      console.warn('Failed to save push token to database');
+    }
+  }
+
+  return token;
+}
+
+/**
  * Set up Android notification channels
  */
 async function setupAndroidChannels() {
@@ -141,6 +161,14 @@ async function setupAndroidChannels() {
     importance: Notifications.AndroidImportance.DEFAULT,
     vibrationPattern: [0, 250],
     lightColor: '#4A90E2',
+  });
+
+  await Notifications.setNotificationChannelAsync(NOTIFICATION_CHANNELS.LIVE_SUPPORT, {
+    name: 'Live Support',
+    description: 'Live support request notifications',
+    importance: Notifications.AndroidImportance.MAX,
+    vibrationPattern: [0, 500, 200, 500],
+    lightColor: '#FF9500',
   });
 }
 
@@ -669,6 +697,135 @@ export async function sendRefundNotification(params: {
 }
 
 // ============================================
+// Live Support Notifications
+// ============================================
+
+/**
+ * Send live support request notification to supporter
+ */
+export async function sendLiveSupportRequestNotification(params: {
+  requestId: string;
+  clientId: string;
+  clientName: string;
+  sessionType: 'chat' | 'phone' | 'video';
+}): Promise<void> {
+  const settings = await getNotificationSettings();
+  if (!settings.liveSupportRequests) return;
+
+  const content = getNotificationContent('live_support_request', {
+    requestId: params.requestId,
+    clientId: params.clientId,
+    clientName: params.clientName,
+    sessionType: params.sessionType,
+  });
+
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: content.title,
+      body: content.body,
+      data: content.data,
+      sound: true,
+      priority: Notifications.AndroidNotificationPriority.MAX,
+      categoryIdentifier: NOTIFICATION_CHANNELS.LIVE_SUPPORT,
+    },
+    trigger: null,
+  });
+}
+
+/**
+ * Send live support accepted notification to client
+ */
+export async function sendLiveSupportAcceptedNotification(params: {
+  requestId: string;
+  sessionId: string;
+  supporterName: string;
+  sessionType: 'chat' | 'phone' | 'video';
+}): Promise<void> {
+  const content = getNotificationContent('live_support_accepted', {
+    requestId: params.requestId,
+    sessionId: params.sessionId,
+    supporterName: params.supporterName,
+    sessionType: params.sessionType,
+  });
+
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: content.title,
+      body: content.body,
+      data: content.data,
+      sound: true,
+      priority: Notifications.AndroidNotificationPriority.MAX,
+    },
+    trigger: null,
+  });
+}
+
+/**
+ * Send live support declined notification to client (when routing to next supporter)
+ */
+export async function sendLiveSupportDeclinedNotification(params: {
+  requestId: string;
+}): Promise<void> {
+  const content = getNotificationContent('live_support_declined', {
+    requestId: params.requestId,
+  });
+
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: content.title,
+      body: content.body,
+      data: content.data,
+      sound: true,
+    },
+    trigger: null,
+  });
+}
+
+/**
+ * Send notification when no supporters are available
+ */
+export async function sendLiveSupportNoSupportersNotification(params: {
+  requestId: string;
+}): Promise<void> {
+  const content = getNotificationContent('live_support_no_supporters', {
+    requestId: params.requestId,
+  });
+
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: content.title,
+      body: content.body,
+      data: content.data,
+      sound: true,
+    },
+    trigger: null,
+  });
+}
+
+/**
+ * Send notification when live support request expires
+ */
+export async function sendLiveSupportExpiredNotification(params: {
+  requestId: string;
+  refundProcessed?: boolean;
+}): Promise<void> {
+  const content = getNotificationContent('live_support_expired', {
+    requestId: params.requestId,
+    refundProcessed: params.refundProcessed ? 'true' : 'false',
+  });
+
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: content.title,
+      body: content.body,
+      data: content.data,
+      sound: true,
+    },
+    trigger: null,
+  });
+}
+
+// ============================================
 // Utility Functions
 // ============================================
 
@@ -788,6 +945,7 @@ export function addNotificationReceivedListener(
 
 export default {
   registerForPushNotifications,
+  registerAndSavePushToken,
   getNotificationSettings,
   updateNotificationSettings,
   sendChatMessageNotification,
@@ -806,6 +964,12 @@ export default {
   cancelWeeklyAvailabilityReminder,
   sendAvailabilityReminderNow,
   sendRefundNotification,
+  // Live Support
+  sendLiveSupportRequestNotification,
+  sendLiveSupportAcceptedNotification,
+  sendLiveSupportDeclinedNotification,
+  sendLiveSupportNoSupportersNotification,
+  sendLiveSupportExpiredNotification,
   cancelSessionReminders,
   cancelNotification,
   cancelAllNotifications,

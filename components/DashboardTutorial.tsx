@@ -25,11 +25,12 @@ import {
   ClipboardIcon,
   LightbulbIcon,
   ChevronRightIcon,
+  LightningIcon,
 } from '@/components/icons';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-type IconName = 'home' | 'chart' | 'calendar' | 'video' | 'chat' | 'profile' | 'check' | 'heart' | 'users' | 'dollar' | 'bank' | 'book' | 'clipboard';
+type IconName = 'home' | 'chart' | 'calendar' | 'video' | 'chat' | 'profile' | 'check' | 'heart' | 'users' | 'dollar' | 'bank' | 'book' | 'clipboard' | 'lightning';
 
 const IconMap: Record<IconName, React.FC<{ size?: number; color?: string }>> = {
   home: HomeIcon,
@@ -45,6 +46,7 @@ const IconMap: Record<IconName, React.FC<{ size?: number; color?: string }>> = {
   bank: BankIcon,
   book: BookIcon,
   clipboard: ClipboardIcon,
+  lightning: LightningIcon,
 };
 
 interface TutorialStep {
@@ -80,6 +82,12 @@ const clientSteps: TutorialStep[] = [
     description: 'Ready to connect? Schedule chat, phone, or video sessions with your matched supporter at times that work for you.',
     icon: 'calendar',
     tip: 'Your supporter is matched to you based on your preferences and needs.',
+  },
+  {
+    title: 'Request Live Support',
+    description: 'Need immediate support? Tap "Request Live Support" to connect with an available supporter within minutes. Choose chat, phone, or video sessions.',
+    icon: 'lightning',
+    tip: 'Supporters have 15 minutes to respond. If unavailable, your request routes to another supporter automatically.',
   },
   {
     title: 'Your Sessions',
@@ -130,6 +138,12 @@ const supporterSteps: TutorialStep[] = [
     description: 'The Sessions tab shows all your upcoming and completed sessions. View session details, start sessions when it\'s time, and add private notes.',
     icon: 'video',
     tip: 'Session notes are private and only visible to you - use them to track client progress.',
+  },
+  {
+    title: 'Live Support Requests',
+    description: 'Enable "Available for Live Support" to receive instant session requests from clients. When a request comes in, you have 15 minutes to accept or decline.',
+    icon: 'lightning',
+    tip: 'You earn the same rate for live sessions as scheduled sessions. Toggle availability whenever you\'re ready to support.',
   },
   {
     title: 'Your Clients',

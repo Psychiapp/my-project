@@ -33,9 +33,17 @@ import {
   PlusIcon,
   ChevronRightIcon,
   AlertIcon,
+  LightningIcon,
 } from '@/components/icons';
 import DashboardTutorial from '@/components/DashboardTutorial';
+import SessionAllowanceDisplay from '@/components/SessionAllowanceDisplay';
+import LiveSupportRequestSheet from '@/components/LiveSupportRequestSheet';
+import LiveSupportInfoSection from '@/components/LiveSupportInfoSection';
+import { usePresence } from '@/hooks/usePresence';
+import { useSessionUsage } from '@/hooks/useSessionUsage';
+import { useLiveSupportRequest } from '@/hooks/useLiveSupportRequest';
 import { getClientCurrentAssignment, requestSupporterReassignment, getSupporterDetail, getClientProfile } from '@/lib/database';
+import type { SessionType } from '@/types/database';
 
 const TUTORIAL_COMPLETED_KEY = '@psychi_client_tutorial_completed';
 
@@ -74,6 +82,74 @@ export default function ClientHomeScreen() {
 
   // Subscription state
   const [subscriptionTier, setSubscriptionTier] = useState<string | null>(null);
+
+  // Live support state
+  const [showLiveSupportSheet, setShowLiveSupportSheet] = useState(false);
+
+  // Live support hooks
+  usePresence(user?.id || null);
+  const { usage, isLoading: isLoadingUsage, checkAllowance } = useSessionUsage(user?.id || null);
+  const {
+    activeRequest,
+    isSubmitting: isLiveSupportSubmitting,
+    countdown,
+    createRequest,
+    cancelRequest,
+  } = useLiveSupportRequest(user?.id || null, 'client', {
+    onRequestAccepted: (request) => {
+      setShowLiveSupportSheet(false);
+      Alert.alert(
+        'Request Accepted!',
+        'A supporter has accepted your request. Starting session...',
+        [{ text: 'OK', onPress: () => router.push(`/session/${request.id}` as any) }]
+      );
+    },
+    onNoSupportersAvailable: () => {
+      setShowLiveSupportSheet(false);
+      Alert.alert(
+        'No Supporters Available',
+        'Unfortunately, no supporters are available right now. Please try again later or schedule a session.',
+        [{ text: 'OK' }]
+      );
+    },
+    onRequestExpired: () => {
+      setShowLiveSupportSheet(false);
+      Alert.alert(
+        'Request Expired',
+        'Your request has expired. Please try again.',
+        [{ text: 'OK' }]
+      );
+    },
+  });
+
+  // Handle live support request submission
+  const handleLiveSupportSubmit = async (sessionType: SessionType) => {
+    const allowanceCheck = checkAllowance(sessionType);
+
+    const result = await createRequest(
+      sessionType,
+      allowanceCheck,
+      async () => {
+        // TODO: Integrate with Stripe payment
+        // For now, simulate payment success if PAYG is required
+        if (allowanceCheck.paygRequired) {
+          // In production, this would open Stripe payment sheet
+          return { success: true, paymentIntentId: 'mock_payment_intent' };
+        }
+        return { success: true };
+      }
+    );
+
+    return result;
+  };
+
+  // Handle cancel live support request
+  const handleCancelRequest = async () => {
+    if (activeRequest) {
+      await cancelRequest(activeRequest.id);
+      setShowLiveSupportSheet(false);
+    }
+  };
 
   // Function to fetch subscription (used for refetching on focus)
   const fetchSubscription = useCallback(async () => {
@@ -318,6 +394,27 @@ export default function ClientHomeScreen() {
           </LinearGradient>
         </View>
 
+        {/* Live Support Button */}
+        <TouchableOpacity
+          style={styles.liveSupportButton}
+          onPress={() => setShowLiveSupportSheet(true)}
+          activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel="Request Live Support"
+          accessibilityHint="Request an immediate session with an available supporter"
+        >
+          <View style={styles.liveSupportButtonContent}>
+            <View style={styles.liveSupportIconContainer}>
+              <LightningIcon size={22} color={PsychiColors.white} weight="fill" />
+            </View>
+            <View style={styles.liveSupportTextContainer}>
+              <Text style={styles.liveSupportTitle}>Request Live Support</Text>
+              <Text style={styles.liveSupportSubtitle}>Connect with a supporter now</Text>
+            </View>
+            <ArrowRightIcon size={18} color={PsychiColors.success} />
+          </View>
+        </TouchableOpacity>
+
         {/* Stats Section */}
         <View style={styles.statsSection}>
           <Text style={styles.sectionLabel}>YOUR PROGRESS</Text>
@@ -349,6 +446,13 @@ export default function ClientHomeScreen() {
               <Text style={styles.statLabel}>Plan</Text>
             </TouchableOpacity>
           </View>
+
+          {/* Session Allowance Display */}
+          {usage && (
+            <View style={styles.allowanceContainer}>
+              <SessionAllowanceDisplay usage={usage} isLoading={isLoadingUsage} />
+            </View>
+          )}
         </View>
 
         {/* Divider */}
@@ -475,7 +579,32 @@ export default function ClientHomeScreen() {
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* Live Support Info Section */}
+        <View style={styles.section}>
+          <LiveSupportInfoSection userType="client" />
+        </View>
       </ScrollView>
+
+      {/* Live Support Request Sheet */}
+      <LiveSupportRequestSheet
+        visible={showLiveSupportSheet}
+        onClose={() => {
+          if (activeRequest) {
+            handleCancelRequest();
+          } else {
+            setShowLiveSupportSheet(false);
+          }
+        }}
+        onSubmit={handleLiveSupportSubmit}
+        usage={usage}
+        checkAllowance={checkAllowance}
+        isSubmitting={isLiveSupportSubmitting}
+        activeRequest={activeRequest ? {
+          sessionType: activeRequest.sessionType,
+          countdown: countdown || 0,
+        } : null}
+      />
 
       {/* Dashboard Tutorial */}
       <DashboardTutorial
@@ -588,6 +717,45 @@ const styles = StyleSheet.create({
     fontWeight: Typography.fontWeight.semibold,
   },
 
+  // Live Support Button
+  liveSupportButton: {
+    marginHorizontal: Spacing['5'],
+    marginBottom: Spacing['6'],
+    backgroundColor: PsychiColors.cloud,
+    borderRadius: 18,
+    borderWidth: 2,
+    borderColor: PsychiColors.success,
+    overflow: 'hidden',
+    ...Shadows.soft,
+  },
+  liveSupportButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing['4'],
+  },
+  liveSupportIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: PsychiColors.success,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: Spacing['3'],
+  },
+  liveSupportTextContainer: {
+    flex: 1,
+  },
+  liveSupportTitle: {
+    fontSize: Typography.fontSize.base,
+    fontWeight: Typography.fontWeight.semibold,
+    color: PsychiColors.textPrimary,
+  },
+  liveSupportSubtitle: {
+    fontSize: Typography.fontSize.sm,
+    color: PsychiColors.success,
+    marginTop: 2,
+  },
+
   // Stats Section
   statsSection: {
     paddingHorizontal: Spacing['5'],
@@ -624,6 +792,9 @@ const styles = StyleSheet.create({
     fontWeight: Typography.fontWeight.medium,
     letterSpacing: Typography.letterSpacing.wide,
     marginTop: Spacing['0.5'],
+  },
+  allowanceContainer: {
+    marginTop: Spacing['4'],
   },
 
   // Divider
