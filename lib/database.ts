@@ -45,7 +45,7 @@ import type {
 
 /**
  * Profile completion status for clients
- * Required: first_name, last_name, email
+ * Required: full_name, email
  */
 export interface ClientProfileCompletion {
   isComplete: boolean;
@@ -57,7 +57,7 @@ export interface ClientProfileCompletion {
 
 /**
  * Profile completion status for supporters
- * Required: first_name, last_name, bio, avatar_url, specialties, availability, email
+ * Required: full_name, email (in profiles); bio, avatar_url, specialties, availability (in supporter_details)
  */
 export interface SupporterProfileCompletion {
   isComplete: boolean;
@@ -73,7 +73,7 @@ export interface SupporterProfileCompletion {
 
 /**
  * Check if a client's profile is complete
- * Required fields: first name, last name, email
+ * Required fields: full_name (parsed as first/last), email
  */
 export async function checkClientProfileCompletion(
   userId: string,
@@ -142,7 +142,7 @@ export async function checkClientProfileCompletion(
 
 /**
  * Check if a supporter's profile is complete
- * Required fields: first name, last name, bio, profile photo, specialties, availability, email
+ * Required: full_name, email (in profiles); bio, avatar_url, specialties, availability (in supporter_details)
  */
 export async function checkSupporterProfileCompletion(
   userId: string,

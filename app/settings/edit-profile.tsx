@@ -29,8 +29,6 @@ export default function EditProfileScreen() {
   const [firstName, setFirstName] = useState(profile?.firstName || '');
   const [lastName, setLastName] = useState(profile?.lastName || '');
   const [email, setEmail] = useState(profile?.email || '');
-  const [phone, setPhone] = useState('');
-  const [bio, setBio] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [avatarUri, setAvatarUri] = useState<string | null>(profile?.avatarUrl || null);
@@ -47,29 +45,21 @@ export default function EditProfileScreen() {
       try {
         const { data, error } = await supabase
           .from('profiles')
-          .select('first_name, last_name, full_name, email, phone, bio, avatar_url')
+          .select('full_name, email, avatar_url')
           .eq('id', user.id)
           .single();
 
         if (error) {
           console.error('Error loading profile:', error);
         } else if (data) {
-          // Use first_name/last_name if available, otherwise parse full_name
-          if (data.first_name) setFirstName(data.first_name);
-          else if (data.full_name) {
+          // Parse full_name into first/last for display
+          if (data.full_name) {
             const parts = data.full_name.split(' ');
             setFirstName(parts[0] || '');
-          }
-
-          if (data.last_name) setLastName(data.last_name);
-          else if (data.full_name) {
-            const parts = data.full_name.split(' ');
             setLastName(parts.slice(1).join(' ') || '');
           }
 
           if (data.email) setEmail(data.email);
-          if (data.phone) setPhone(data.phone);
-          if (data.bio) setBio(data.bio);
           if (data.avatar_url) setAvatarUri(data.avatar_url);
         }
       } catch (error) {
@@ -253,11 +243,7 @@ export default function EditProfileScreen() {
         const updateData: Record<string, unknown> = {
           id: user.id,
           full_name: fullName,
-          first_name: firstName.trim(),
-          last_name: lastName.trim(),
           email: email.trim().toLowerCase(),
-          phone: phone.trim() || null,
-          bio: bio.trim() || null,
           updated_at: now,
           created_at: now, // For INSERT case
           role: profile?.role || 'client',
@@ -430,35 +416,6 @@ export default function EditProfileScreen() {
               />
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel} nativeID="phoneLabel">Phone Number</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter phone number (optional)"
-                placeholderTextColor={PsychiColors.textMuted}
-                value={phone}
-                onChangeText={setPhone}
-                keyboardType="phone-pad"
-                accessibilityLabel="Phone number, optional"
-                accessibilityLabelledBy="phoneLabel"
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel} nativeID="bioLabel">Bio</Text>
-              <TextInput
-                style={[styles.input, styles.inputMultiline]}
-                placeholder="Tell us about yourself (optional)"
-                placeholderTextColor={PsychiColors.textMuted}
-                value={bio}
-                onChangeText={setBio}
-                multiline
-                numberOfLines={4}
-                textAlignVertical="top"
-                accessibilityLabel="Bio, optional"
-                accessibilityLabelledBy="bioLabel"
-              />
-            </View>
           </View>
 
           {/* Save Button */}

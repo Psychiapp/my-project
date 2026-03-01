@@ -230,14 +230,10 @@ export default function SupporterEditProfileScreen() {
       });
 
       if (supabase) {
-        // Parse displayName into first and last name
-        const nameParts = displayName.trim().split(' ').filter(Boolean);
-        const firstName = nameParts[0] || '';
-        const lastName = nameParts.slice(1).join(' ') || '';
         const now = new Date().toISOString();
 
         console.log('Saving supporter profile for user:', user.id);
-        console.log('Profile data:', { displayName, firstName, lastName });
+        console.log('Profile data:', { displayName });
 
         // First verify user session is valid
         const { data: sessionData } = await supabase.auth.getSession();
@@ -247,13 +243,12 @@ export default function SupporterEditProfileScreen() {
         console.log('Session verified for user:', sessionData.session.user.id);
 
         // Use upsert instead of update to handle edge cases
+        // Note: profiles table only has full_name, not first_name/last_name
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .upsert({
             id: user.id,
             full_name: displayName.trim(),
-            first_name: firstName,
-            last_name: lastName,
             updated_at: now,
             created_at: now, // For INSERT case
             role: 'supporter',
