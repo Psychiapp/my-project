@@ -252,49 +252,80 @@ export default function ProfileSetupScreen() {
 
     try {
       if (supabase) {
-        // Update profiles table using upsert to handle case where profile doesn't exist
+        // Verify session is valid before attempting save
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError || !sessionData?.session) {
+          console.error('Session error:', sessionError);
+          throw new Error('Your session has expired. Please sign in again.');
+        }
+
         const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
         const now = new Date().toISOString();
-
-        // Determine role - use param or default based on context
         const userRole = role || (isSupporter ? 'supporter' : 'client');
 
+        console.log('Attempting profile save for user:', user.id);
+        console.log('Session user:', sessionData.session.user.id);
+
+        // First check if profile exists
+        const { data: existingProfile, error: checkError } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('id', user.id)
+          .single();
+
+        if (checkError && checkError.code !== 'PGRST116') {
+          // PGRST116 = "not found" which is OK, other errors are problems
+          console.error('Error checking for existing profile:', checkError);
+        }
+
         const profileData: Record<string, unknown> = {
-          id: user.id,
-          role: userRole,
+          full_name: fullName || null,
+          email: email.trim().toLowerCase(),
           updated_at: now,
-          created_at: now, // Required for INSERT part of upsert
         };
 
-        // Only full_name column exists in profiles table (not first_name/last_name)
-        if (fullName) {
-          profileData.full_name = fullName;
+        let saveResult;
+        let saveError;
+
+        if (existingProfile) {
+          // Profile exists - use UPDATE
+          console.log('Profile exists, updating...');
+          const { data, error } = await supabase
+            .from('profiles')
+            .update(profileData)
+            .eq('id', user.id)
+            .select();
+          saveResult = data;
+          saveError = error;
+        } else {
+          // Profile doesn't exist - use INSERT
+          console.log('Profile does not exist, creating...');
+          const { data, error } = await supabase
+            .from('profiles')
+            .insert({
+              id: user.id,
+              ...profileData,
+              role: userRole,
+              created_at: now,
+            })
+            .select();
+          saveResult = data;
+          saveError = error;
         }
-        if (email.trim()) {
-          profileData.email = email.trim().toLowerCase();
+
+        console.log('Profile save result:', saveResult);
+
+        if (saveError) {
+          console.error('Profile save error:', saveError);
+          if (saveError.message?.includes('row-level security')) {
+            throw new Error('Permission denied. Please try signing out and signing back in.');
+          }
+          throw saveError;
         }
 
-        console.log('Attempting profile upsert for user:', user.id);
-        console.log('Profile data:', JSON.stringify(profileData, null, 2));
-
-        const { data: upsertResult, error: profileError } = await supabase
-          .from('profiles')
-          .upsert(profileData, {
-            onConflict: 'id',
-            ignoreDuplicates: false
-          })
-          .select();
-
-        console.log('Profile upsert result:', upsertResult);
-
-        if (profileError) {
-          console.error('Profile upsert error:', profileError);
-          throw profileError;
-        }
-
-        if (!upsertResult || upsertResult.length === 0) {
-          console.error('Profile upsert returned no data - possible RLS issue');
-          throw new Error('Profile save failed - please check your permissions');
+        if (!saveResult || saveResult.length === 0) {
+          console.error('Profile save returned no data');
+          throw new Error('Profile save failed - please try again');
         }
 
         // For supporters, update supporter_details
