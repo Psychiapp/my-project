@@ -235,12 +235,10 @@ export default function SupporterEditProfileScreen() {
         console.log('Saving supporter profile for user:', user.id);
         console.log('Profile data:', { displayName });
 
-        // First verify user session is valid
-        const { data: sessionData } = await supabase.auth.getSession();
-        if (!sessionData?.session) {
-          throw new Error('Session expired. Please sign in again.');
-        }
-        console.log('Session verified for user:', sessionData.session.user.id);
+        // NOTE: Do NOT block on getSession() here - it can return null even when
+        // the session exists in memory (e.g., right after signup when storage write
+        // is still async). Just proceed with the database operation.
+        // The Supabase client will use the in-memory session.
 
         // Use upsert instead of update to handle edge cases
         // Note: profiles table only has full_name, not first_name/last_name

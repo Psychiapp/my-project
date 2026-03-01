@@ -252,22 +252,11 @@ export default function ProfileSetupScreen() {
 
     try {
       if (supabase) {
-        // Try to get or refresh the session
-        let { data: sessionData } = await supabase.auth.getSession();
-
-        // If no session, try refreshing it (handles race condition after signup)
-        if (!sessionData?.session) {
-          console.log('No session found, attempting refresh...');
-          const { data: refreshData } = await supabase.auth.refreshSession();
-          sessionData = refreshData;
-        }
-
-        // Log session status but don't block - we have user from AuthContext
-        if (sessionData?.session) {
-          console.log('Session verified for user:', sessionData.session.user.id);
-        } else {
-          console.log('No session available, proceeding with user from AuthContext:', user.id);
-        }
+        // NOTE: Do NOT call getSession() or refreshSession() here!
+        // After signup, the Supabase client has the session in memory.
+        // Calling getSession() reads from async storage which may not be ready yet.
+        // Calling refreshSession() can fail and invalidate the in-memory session.
+        // Just proceed with the database operation - it will use the in-memory session.
 
         const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
         const now = new Date().toISOString();
@@ -327,7 +316,9 @@ export default function ProfileSetupScreen() {
         if (saveError) {
           console.error('Profile save error:', saveError);
           if (saveError.message?.includes('row-level security')) {
-            throw new Error('Permission denied. Please try signing out and signing back in.');
+            // RLS error means the session isn't being recognized
+            // This can happen if the user's session truly expired or was never established
+            throw new Error('Unable to save profile. Please sign out and sign in again.');
           }
           throw saveError;
         }

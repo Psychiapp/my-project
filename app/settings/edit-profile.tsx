@@ -231,11 +231,10 @@ export default function EditProfileScreen() {
 
     try {
       if (supabase) {
-        // First verify session is valid
-        const { data: sessionData } = await supabase.auth.getSession();
-        if (!sessionData?.session) {
-          throw new Error('Session expired. Please sign in again.');
-        }
+        // NOTE: Do NOT block on getSession() here - it can return null even when
+        // the session exists in memory (e.g., right after signup when storage write
+        // is still async). Just proceed with the database operation.
+        // The Supabase client will use the in-memory session.
 
         // Use upsert to handle edge cases where profile might not exist
         const fullName = `${firstName.trim()} ${lastName.trim()}`;
