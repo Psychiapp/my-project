@@ -392,23 +392,35 @@ export default function ProfileSetupScreen() {
         <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.title}>Complete Your Profile</Text>
+            <Text style={styles.title}>
+              {profileNotFound ? 'Welcome to Psychi' : 'Complete Your Profile'}
+            </Text>
             <Text style={styles.subtitle}>
-              {isSupporter
-                ? 'Please complete your profile before you can start supporting clients.'
-                : 'Please complete your profile to continue.'}
+              {profileNotFound
+                ? "Let's set up your account to get started."
+                : isSupporter
+                  ? 'Please complete your profile before you can start supporting clients.'
+                  : 'Please complete your profile to continue.'}
             </Text>
           </View>
 
           {/* Missing fields indicator */}
           <View style={styles.missingFieldsCard}>
-            <Text style={styles.missingFieldsTitle}>Required Information</Text>
-            {missingFields.map((field) => (
-              <View key={field} style={styles.missingFieldRow}>
-                <View style={styles.missingFieldDot} />
-                <Text style={styles.missingFieldText}>{field}</Text>
-              </View>
-            ))}
+            <Text style={styles.missingFieldsTitle}>
+              {profileNotFound ? 'Create Account' : 'Required Information'}
+            </Text>
+            {profileNotFound ? (
+              <Text style={styles.missingFieldText}>
+                Please fill in your details to get started.
+              </Text>
+            ) : (
+              missingFields.map((field) => (
+                <View key={field} style={styles.missingFieldRow}>
+                  <View style={styles.missingFieldDot} />
+                  <Text style={styles.missingFieldText}>{field}</Text>
+                </View>
+              ))
+            )}
           </View>
 
           {/* Profile Photo (Supporters only) */}
