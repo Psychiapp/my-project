@@ -238,6 +238,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (data.user) {
+        // Small delay to allow the session to be fully established
+        // The signUp() call returns before the internal session state is fully set
+        await new Promise(resolve => setTimeout(resolve, 500));
+
         // Create profile in database using upsert to handle any existing partial profile
         const now = new Date().toISOString();
         const { data: profileData, error: profileError } = await supabase

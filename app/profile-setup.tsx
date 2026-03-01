@@ -252,80 +252,81 @@ export default function ProfileSetupScreen() {
 
     try {
       if (supabase) {
-        // NOTE: Do NOT call getSession() or refreshSession() here!
-        // After signup, the Supabase client has the session in memory.
-        // Calling getSession() reads from async storage which may not be ready yet.
-        // Calling refreshSession() can fail and invalidate the in-memory session.
-        // Just proceed with the database operation - it will use the in-memory session.
-
+        // Capture supabase in a local const so TypeScript knows it's non-null in the helper
+        const db = supabase;
         const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
         const now = new Date().toISOString();
         const userRole = role || (isSupporter ? 'supporter' : 'client');
 
         console.log('Attempting profile save for user:', user.id);
 
-        // First check if profile exists
-        const { data: existingProfile, error: checkError } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('id', user.id)
-          .single();
+        // Helper function to attempt the save
+        const attemptSave = async (): Promise<{ data: any; error: any }> => {
+          // First check if profile exists
+          const { data: existingProfile, error: checkError } = await db
+            .from('profiles')
+            .select('id')
+            .eq('id', user.id)
+            .single();
 
-        if (checkError && checkError.code !== 'PGRST116') {
-          // PGRST116 = "not found" which is OK, other errors are problems
-          console.error('Error checking for existing profile:', checkError);
-        }
+          if (checkError && checkError.code !== 'PGRST116') {
+            console.error('Error checking for existing profile:', checkError);
+          }
 
-        const profileData: Record<string, unknown> = {
-          full_name: fullName || null,
-          email: email.trim().toLowerCase(),
-          updated_at: now,
+          const profileData: Record<string, unknown> = {
+            full_name: fullName || null,
+            email: email.trim().toLowerCase(),
+            updated_at: now,
+          };
+
+          if (existingProfile) {
+            console.log('Profile exists, updating...');
+            return await db
+              .from('profiles')
+              .update(profileData)
+              .eq('id', user.id)
+              .select();
+          } else {
+            console.log('Profile does not exist, creating...');
+            return await db
+              .from('profiles')
+              .insert({
+                id: user.id,
+                ...profileData,
+                role: userRole,
+                created_at: now,
+              })
+              .select();
+          }
         };
 
-        let saveResult;
-        let saveError;
+        // First attempt
+        let { data: saveResult, error: saveError } = await attemptSave();
+        console.log('First attempt result:', saveResult, 'error:', saveError);
 
-        if (existingProfile) {
-          // Profile exists - use UPDATE
-          console.log('Profile exists, updating...');
-          const { data, error } = await supabase
-            .from('profiles')
-            .update(profileData)
-            .eq('id', user.id)
-            .select();
-          saveResult = data;
-          saveError = error;
-        } else {
-          // Profile doesn't exist - use INSERT
-          console.log('Profile does not exist, creating...');
-          const { data, error } = await supabase
-            .from('profiles')
-            .insert({
-              id: user.id,
-              ...profileData,
-              role: userRole,
-              created_at: now,
-            })
-            .select();
-          saveResult = data;
-          saveError = error;
+        // If first attempt returned no data (RLS silent block), wait and retry
+        // This handles the race condition where session isn't fully established yet
+        if ((!saveResult || saveResult.length === 0) && !saveError) {
+          console.log('First attempt returned no data, waiting 1s and retrying...');
+          await new Promise(resolve => setTimeout(resolve, 1000));
+
+          const retryResult = await attemptSave();
+          saveResult = retryResult.data;
+          saveError = retryResult.error;
+          console.log('Retry result:', saveResult, 'error:', saveError);
         }
-
-        console.log('Profile save result:', saveResult);
 
         if (saveError) {
           console.error('Profile save error:', saveError);
           if (saveError.message?.includes('row-level security')) {
-            // RLS error means the session isn't being recognized
-            // This can happen if the user's session truly expired or was never established
             throw new Error('Unable to save profile. Please sign out and sign in again.');
           }
           throw saveError;
         }
 
         if (!saveResult || saveResult.length === 0) {
-          console.error('Profile save returned no data');
-          throw new Error('Profile save failed - please try again');
+          console.error('Profile save returned no data after retry');
+          throw new Error('Unable to save profile. Please sign out and sign in again.');
         }
 
         // For supporters, update supporter_details
