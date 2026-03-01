@@ -20,6 +20,7 @@ import { CameraIcon, CheckIcon, ChevronRightIcon } from '@/components/icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { uploadAvatar, saveSupporterSchedule, checkClientProfileCompletion, checkSupporterProfileCompletion } from '@/lib/database';
+import { logDiagnostic, sendDiagnosticReport, captureErrorWithDiagnostics } from '@/lib/diagnosticLogger';
 
 const SPECIALTIES = [
   'Anxiety',
@@ -254,80 +255,109 @@ export default function ProfileSetupScreen() {
       if (supabase) {
         // Capture supabase in a local const so TypeScript knows it's non-null in the helper
         const db = supabase;
+
+        // Log profile save attempt
+        logDiagnostic('PROFILE_SAVE', 'Starting profile save', { userId: user.id, email: user.email });
+
+        // Trust AuthContext - if user exists, session should be valid
+        // The session was explicitly set via setSession() after signup
         const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
         const now = new Date().toISOString();
         const userRole = role || (isSupporter ? 'supporter' : 'client');
 
-        console.log('Attempting profile save for user:', user.id);
-
-        // Helper function to attempt the save
-        const attemptSave = async (): Promise<{ data: any; error: any }> => {
-          // First check if profile exists
-          const { data: existingProfile, error: checkError } = await db
-            .from('profiles')
-            .select('id')
-            .eq('id', user.id)
-            .single();
-
-          if (checkError && checkError.code !== 'PGRST116') {
-            console.error('Error checking for existing profile:', checkError);
-          }
-
-          const profileData: Record<string, unknown> = {
-            full_name: fullName || null,
-            email: email.trim().toLowerCase(),
-            updated_at: now,
-          };
-
-          if (existingProfile) {
-            console.log('Profile exists, updating...');
-            return await db
-              .from('profiles')
-              .update(profileData)
-              .eq('id', user.id)
-              .select();
-          } else {
-            console.log('Profile does not exist, creating...');
-            return await db
-              .from('profiles')
-              .insert({
-                id: user.id,
-                ...profileData,
-                role: userRole,
-                created_at: now,
-              })
-              .select();
-          }
+        // Log the exact payload
+        const insertPayload = {
+          id: user.id,
+          full_name: fullName || null,
+          email: email.trim().toLowerCase(),
+          role: userRole,
+          created_at: now,
+          updated_at: now,
         };
 
-        // First attempt
-        let { data: saveResult, error: saveError } = await attemptSave();
-        console.log('First attempt result:', saveResult, 'error:', saveError);
+        const updatePayload = {
+          full_name: fullName || null,
+          email: email.trim().toLowerCase(),
+          updated_at: now,
+        };
 
-        // If first attempt returned no data (RLS silent block), wait and retry
-        // This handles the race condition where session isn't fully established yet
-        if ((!saveResult || saveResult.length === 0) && !saveError) {
-          console.log('First attempt returned no data, waiting 1s and retrying...');
-          await new Promise(resolve => setTimeout(resolve, 1000));
+        logDiagnostic('PROFILE_SAVE', 'Prepared payloads', {
+          insertPayload,
+          updatePayload,
+        });
 
-          const retryResult = await attemptSave();
-          saveResult = retryResult.data;
-          saveError = retryResult.error;
-          console.log('Retry result:', saveResult, 'error:', saveError);
+        // First check if profile exists
+        logDiagnostic('PROFILE_SAVE', 'Step 1: Checking if profile exists');
+        const { data: existingProfile, error: checkError } = await db
+          .from('profiles')
+          .select('id')
+          .eq('id', user.id)
+          .single();
+
+        logDiagnostic('PROFILE_SAVE', 'Profile check result', {
+          existingProfile,
+          checkError: checkError ? {
+            message: checkError.message,
+            code: checkError.code,
+            details: checkError.details,
+            hint: checkError.hint,
+          } : null,
+        });
+
+        let saveResult;
+        let saveError;
+        let operationType: string;
+
+        if (existingProfile) {
+          operationType = 'UPDATE';
+          logDiagnostic('PROFILE_SAVE', 'Step 2: Profile exists, attempting UPDATE');
+          const result = await db
+            .from('profiles')
+            .update(updatePayload)
+            .eq('id', user.id)
+            .select();
+          saveResult = result.data;
+          saveError = result.error;
+        } else {
+          operationType = 'INSERT';
+          logDiagnostic('PROFILE_SAVE', 'Step 2: Profile does not exist, attempting INSERT');
+          const result = await db
+            .from('profiles')
+            .insert(insertPayload)
+            .select();
+          saveResult = result.data;
+          saveError = result.error;
         }
 
+        // Log result
+        logDiagnostic('PROFILE_SAVE', 'Save attempt completed', {
+          operationType,
+          hasResult: !!saveResult,
+          resultCount: saveResult?.length || 0,
+          error: saveError ? saveError.message : null,
+        });
+
         if (saveError) {
-          console.error('Profile save error:', saveError);
+          logDiagnostic('PROFILE_SAVE', 'Save failed with error', {
+            message: saveError.message,
+            code: saveError.code,
+            details: saveError.details,
+            hint: saveError.hint,
+            operationType,
+          });
+
           if (saveError.message?.includes('row-level security')) {
-            throw new Error('Unable to save profile. Please sign out and sign in again.');
+            throw new Error('RLS_ERROR: ' + saveError.message);
           }
-          throw saveError;
+          throw new Error('DB_ERROR: ' + saveError.message + ' | Code: ' + saveError.code + ' | Details: ' + saveError.details);
         }
 
         if (!saveResult || saveResult.length === 0) {
-          console.error('Profile save returned no data after retry');
-          throw new Error('Unable to save profile. Please sign out and sign in again.');
+          logDiagnostic('PROFILE_SAVE', 'Empty result from database', { operationType });
+          throw new Error('EMPTY_RESULT: Database returned no data');
         }
+
+        logDiagnostic('PROFILE_SAVE', 'Profile saved successfully', { saveResult });
 
         // For supporters, update supporter_details
         if (isSupporter) {
@@ -389,9 +419,20 @@ export default function ProfileSetupScreen() {
         }
       }
     } catch (error: any) {
-      console.error('Error saving profile:', error);
       const errorMessage = error?.message || error?.details || 'Unknown error';
-      console.error('Profile save error details:', errorMessage);
+
+      // Capture error with full context to Sentry
+      captureErrorWithDiagnostics(error instanceof Error ? error : new Error(errorMessage), {
+        userId: user?.id,
+        userEmail: user?.email,
+        role: role || (isSupporter ? 'supporter' : 'client'),
+        firstName,
+        lastName,
+        email,
+        profileNotFound,
+        errorMessage,
+      });
+
       Alert.alert('Error', `Failed to save profile: ${errorMessage}`);
     } finally {
       setIsSaving(false);

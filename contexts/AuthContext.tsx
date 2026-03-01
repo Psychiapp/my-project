@@ -8,6 +8,7 @@ import {
   isDemoLogin,
   getDemoProfile,
 } from '@/constants/demo';
+import { logDiagnostic, sendDiagnosticReport } from '@/lib/diagnosticLogger';
 
 interface AuthContextType {
   user: { id: string; email: string } | null;
@@ -238,36 +239,99 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (data.user) {
-        // Small delay to allow the session to be fully established
-        // The signUp() call returns before the internal session state is fully set
-        await new Promise(resolve => setTimeout(resolve, 500));
+        logDiagnostic('SIGNUP', 'Signup successful, processing user', {
+          userId: data.user.id,
+          email: data.user.email,
+          hasSession: !!data.session,
+          sessionExpiresAt: data.session?.expires_at,
+        });
+
+        // CRITICAL FIX: Explicitly set the session in the Supabase client
+        // This ensures the session is available immediately for subsequent requests
+        // Without this, getSession() may return null because SecureStore write is async
+        if (data.session) {
+          logDiagnostic('SIGNUP', 'Explicitly setting session in Supabase client');
+          const { error: setSessionError } = await supabase.auth.setSession({
+            access_token: data.session.access_token,
+            refresh_token: data.session.refresh_token,
+          });
+
+          if (setSessionError) {
+            logDiagnostic('SIGNUP', 'setSession failed', {
+              error: setSessionError.message,
+            });
+          } else {
+            logDiagnostic('SIGNUP', 'Session explicitly set successfully');
+          }
+        }
+
+        // Verify session is now available
+        const { data: sessionCheck } = await supabase.auth.getSession();
+        logDiagnostic('SIGNUP', 'Session verification after setSession', {
+          hasSession: !!sessionCheck?.session,
+          sessionUserId: sessionCheck?.session?.user?.id || 'NO_SESSION',
+          matchesSignupUser: sessionCheck?.session?.user?.id === data.user.id,
+        });
 
         // Create profile in database using upsert to handle any existing partial profile
         const now = new Date().toISOString();
+        const upsertPayload = {
+          id: data.user.id,
+          email: data.user.email,
+          full_name: '',
+          role: role,
+          avatar_url: null,
+          created_at: now,
+          updated_at: now,
+        };
+
+        logDiagnostic('SIGNUP', 'Attempting profile upsert', { upsertPayload });
+
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
-          .upsert({
-            id: data.user.id,
-            email: data.user.email,
-            full_name: '',
-            role: role,
-            avatar_url: null,
-            created_at: now,
-            updated_at: now,
-          }, {
+          .upsert(upsertPayload, {
             onConflict: 'id',
             ignoreDuplicates: false
           })
           .select();
 
+        // Send comprehensive signup diagnostic report to Sentry
+        sendDiagnosticReport('Signup Profile Creation Diagnostic', {
+          signupUser: {
+            id: data.user.id,
+            email: data.user.email,
+          },
+          signupSession: {
+            exists: !!data.session,
+            expiresAt: data.session?.expires_at,
+            accessTokenExists: !!data.session?.access_token,
+          },
+          sessionAfterDelay: {
+            exists: !!sessionCheck?.session,
+            userId: sessionCheck?.session?.user?.id || 'NO_SESSION',
+            matchesSignupUser: sessionCheck?.session?.user?.id === data.user.id,
+          },
+          profileUpsert: {
+            payload: upsertPayload,
+            result: profileData,
+            error: profileError ? {
+              message: profileError.message,
+              code: profileError.code,
+              details: profileError.details,
+              hint: profileError.hint,
+            } : null,
+            success: !profileError && !!profileData,
+          },
+        });
+
         if (profileError) {
-          console.error('Error creating profile:', profileError);
-          console.error('Profile error code:', profileError.code);
-          console.error('Profile error details:', profileError.details);
-          console.error('Profile error hint:', profileError.hint);
+          logDiagnostic('SIGNUP', 'Profile upsert failed - will retry in profile-setup', {
+            error: profileError.message,
+            code: profileError.code,
+          });
           // Continue - profile-setup will handle creation if this fails
         } else {
-          console.log('Profile created successfully:', profileData);
+          logDiagnostic('SIGNUP', 'Profile created successfully', { profileData });
         }
 
         const authUser = { id: data.user.id, email: data.user.email || '' };
