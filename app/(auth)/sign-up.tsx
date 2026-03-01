@@ -17,12 +17,14 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '@/contexts/AuthContext';
 import { PsychiColors, Gradients, Spacing, BorderRadius, Shadows, Typography } from '@/constants/theme';
 import { UserRole } from '@/types';
 import { ChevronLeftIcon, HeartIcon, BookIcon, EyeIcon, CheckIcon, VideoIcon, MicIcon, AlertTriangleIcon, PhoneIcon } from '@/components/icons';
 import { saveClientPreferences } from '@/lib/database';
 import OnboardingModal from '@/components/OnboardingModal';
+import { PENDING_QUIZ_PREFERENCES_KEY } from './welcome';
 
 export default function SignUpScreen() {
   const insets = useSafeAreaInsets();
@@ -134,8 +136,26 @@ export default function SignUpScreen() {
 
     setIsLoading(false);
 
-    // Show matching quiz for clients after account creation
+    // For clients: check if they already took the quiz before signing up
     if (selectedRole === 'client' && user) {
+      try {
+        const savedPreferences = await AsyncStorage.getItem(PENDING_QUIZ_PREFERENCES_KEY);
+        if (savedPreferences) {
+          // User already took the quiz - save their preferences and go to dashboard
+          const preferences = JSON.parse(savedPreferences);
+          await saveClientPreferences(user.id, preferences);
+          // Clear the saved preferences from AsyncStorage
+          await AsyncStorage.removeItem(PENDING_QUIZ_PREFERENCES_KEY);
+          // Navigate directly to dashboard - no need to show quiz again
+          router.replace('/(client)');
+          return;
+        }
+      } catch (error) {
+        console.error('Error checking for saved preferences:', error);
+        // If there's an error, fall through to show the quiz modal
+      }
+
+      // No saved preferences found - show the quiz modal
       setNewUserId(user.id);
       setShowOnboardingModal(true);
     }
