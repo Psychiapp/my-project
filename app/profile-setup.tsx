@@ -252,11 +252,21 @@ export default function ProfileSetupScreen() {
 
     try {
       if (supabase) {
-        // Verify session is valid before attempting save
-        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError || !sessionData?.session) {
-          console.error('Session error:', sessionError);
-          throw new Error('Your session has expired. Please sign in again.');
+        // Try to get or refresh the session
+        let { data: sessionData } = await supabase.auth.getSession();
+
+        // If no session, try refreshing it (handles race condition after signup)
+        if (!sessionData?.session) {
+          console.log('No session found, attempting refresh...');
+          const { data: refreshData } = await supabase.auth.refreshSession();
+          sessionData = refreshData;
+        }
+
+        // Log session status but don't block - we have user from AuthContext
+        if (sessionData?.session) {
+          console.log('Session verified for user:', sessionData.session.user.id);
+        } else {
+          console.log('No session available, proceeding with user from AuthContext:', user.id);
         }
 
         const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
@@ -264,7 +274,6 @@ export default function ProfileSetupScreen() {
         const userRole = role || (isSupporter ? 'supporter' : 'client');
 
         console.log('Attempting profile save for user:', user.id);
-        console.log('Session user:', sessionData.session.user.id);
 
         // First check if profile exists
         const { data: existingProfile, error: checkError } = await supabase
