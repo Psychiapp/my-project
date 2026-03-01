@@ -266,12 +266,7 @@ export default function ProfileSetupScreen() {
           created_at: now, // Required for INSERT part of upsert
         };
 
-        if (firstName.trim()) {
-          profileData.first_name = firstName.trim();
-        }
-        if (lastName.trim()) {
-          profileData.last_name = lastName.trim();
-        }
+        // Only full_name column exists in profiles table (not first_name/last_name)
         if (fullName) {
           profileData.full_name = fullName;
         }

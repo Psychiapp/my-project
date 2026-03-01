@@ -96,7 +96,7 @@ export async function checkClientProfileCompletion(
   for (let attempt = 0; attempt < retryCount; attempt++) {
     const result = await supabase
       .from('profiles')
-      .select('full_name, first_name, last_name, email')
+      .select('full_name, email')
       .eq('id', userId)
       .single();
 
@@ -121,15 +121,10 @@ export async function checkClientProfileCompletion(
     };
   }
 
-  // Parse name - prefer separate fields, fallback to full_name
-  let firstName = data.first_name;
-  let lastName = data.last_name;
-
-  if (!firstName || !lastName) {
-    const nameParts = (data.full_name || '').trim().split(' ');
-    firstName = firstName || nameParts[0] || null;
-    lastName = lastName || nameParts.slice(1).join(' ') || null;
-  }
+  // Parse name from full_name
+  const nameParts = (data.full_name || '').trim().split(' ');
+  const firstName = nameParts[0] || null;
+  const lastName = nameParts.slice(1).join(' ') || null;
 
   const missingFields: string[] = [];
   if (!firstName?.trim()) missingFields.push('First Name');
@@ -174,7 +169,7 @@ export async function checkSupporterProfileCompletion(
   for (let attempt = 0; attempt < retryCount; attempt++) {
     const result = await supabase
       .from('profiles')
-      .select('full_name, first_name, last_name, email, avatar_url')
+      .select('full_name, email, avatar_url')
       .eq('id', userId)
       .single();
 
@@ -210,15 +205,10 @@ export async function checkSupporterProfileCompletion(
     };
   }
 
-  // Parse name
-  let firstName = profileData.first_name;
-  let lastName = profileData.last_name;
-
-  if (!firstName || !lastName) {
-    const nameParts = (profileData.full_name || '').trim().split(' ');
-    firstName = firstName || nameParts[0] || null;
-    lastName = lastName || nameParts.slice(1).join(' ') || null;
-  }
+  // Parse name from full_name
+  const nameParts = (profileData.full_name || '').trim().split(' ');
+  const firstName = nameParts[0] || null;
+  const lastName = nameParts.slice(1).join(' ') || null;
 
   const bio = detailsData?.bio || null;
   const specialties = detailsData?.specialties || null;
