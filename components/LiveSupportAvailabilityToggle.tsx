@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   Switch,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
 import { LightningIcon, ClockIcon } from '@/components/icons';
@@ -37,6 +38,13 @@ export default function LiveSupportAvailabilityToggle({
     setIsUpdating(true);
     try {
       await onToggle(!presence.availableForLiveSupport);
+    } catch (error) {
+      // Show error to user if toggle fails
+      Alert.alert(
+        'Update Failed',
+        'Unable to update your availability. Please try again.',
+        [{ text: 'OK' }]
+      );
     } finally {
       setIsUpdating(false);
     }

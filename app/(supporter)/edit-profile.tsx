@@ -242,10 +242,12 @@ export default function SupporterEditProfileScreen() {
 
         // Use upsert instead of update to handle edge cases
         // Note: profiles table only has full_name, not first_name/last_name
+        // IMPORTANT: email is required (NOT NULL) - must include it in upsert
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .upsert({
             id: user.id,
+            email: user.email, // Required: NOT NULL constraint
             full_name: displayName.trim(),
             updated_at: now,
             created_at: now, // For INSERT case

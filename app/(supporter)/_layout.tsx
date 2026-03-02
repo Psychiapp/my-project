@@ -62,7 +62,7 @@ export default function SupporterLayout() {
     checkFirstLaunch();
   }, []);
 
-  // Check profile completion
+  // Check profile completion - runs in parallel with permission check
   useEffect(() => {
     const checkProfileCompletion = async () => {
       if (!user?.id) {
@@ -83,7 +83,7 @@ export default function SupporterLayout() {
         if (completedAt) {
           const completedTime = parseInt(completedAt, 10);
           const now = Date.now();
-          // If completed within last 10 seconds, skip the check
+          // If completed within last 10 seconds, skip the check entirely
           if (now - completedTime < 10000) {
             // Clear the flag so future visits will check normally
             await AsyncStorage.removeItem(PROFILE_SETUP_COMPLETED_KEY);
@@ -95,9 +95,7 @@ export default function SupporterLayout() {
         // Ignore AsyncStorage errors
       }
 
-      // Small delay to allow database to sync after signup/profile save
-      await new Promise(resolve => setTimeout(resolve, 300));
-
+      // No artificial delay - trust the database has synced
       const completion = await checkSupporterProfileCompletion(user.id);
 
       // Only redirect if profile truly not found or has missing fields (not just a sync issue)
@@ -115,10 +113,9 @@ export default function SupporterLayout() {
       setIsCheckingProfile(false);
     };
 
-    if (!isCheckingPermissions) {
-      checkProfileCompletion();
-    }
-  }, [user?.id, isDemoMode, isCheckingPermissions]);
+    // Run profile check immediately, don't wait for permission check
+    checkProfileCompletion();
+  }, [user?.id, isDemoMode]);
 
   if (isCheckingPermissions || isCheckingProfile) {
     return (

@@ -80,8 +80,15 @@ export function usePresence(
   }, [userId]);
 
   // Toggle live support availability (for supporters)
+  // Uses optimistic UI: update local state immediately, revert on failure
   const setAvailableForLiveSupport = useCallback(async (available: boolean) => {
     if (!userId || !supabase) return;
+
+    // Store previous state for rollback
+    const previousState = presence.availableForLiveSupport;
+
+    // Optimistic update - set state immediately for responsive UI
+    setPresence(prev => ({ ...prev, availableForLiveSupport: available }));
 
     try {
       const { error } = await supabase
@@ -89,15 +96,19 @@ export function usePresence(
         .update({ available_for_live_support: available })
         .eq('id', userId);
 
-      if (!error) {
-        setPresence(prev => ({ ...prev, availableForLiveSupport: available }));
-      } else {
-        console.warn('Failed to update live support availability:', error);
+      if (error) {
+        // Revert on failure
+        console.error('Failed to update live support availability:', error);
+        setPresence(prev => ({ ...prev, availableForLiveSupport: previousState }));
+        throw new Error(error.message || 'Failed to update availability');
       }
     } catch (err) {
-      console.warn('Failed to update live support availability:', err);
+      // Revert on any error
+      console.error('Failed to update live support availability:', err);
+      setPresence(prev => ({ ...prev, availableForLiveSupport: previousState }));
+      throw err;
     }
-  }, [userId]);
+  }, [userId, presence.availableForLiveSupport]);
 
   // Set in_session status
   const setInSession = useCallback(async (inSession: boolean) => {

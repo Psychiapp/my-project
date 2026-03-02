@@ -127,15 +127,8 @@ export default function PayoutSettingsScreen() {
   };
 
   const handleSetupPayouts = async () => {
-    // Check if Stripe is available
-    if (!stripeAvailable) {
-      Alert.alert(
-        'Setup Unavailable',
-        'Payout setup is temporarily unavailable. Please try again later or contact support at psychiapp@outlook.com.',
-        [{ text: 'OK' }]
-      );
-      return;
-    }
+    // Note: stripeAvailable checks for native Stripe SDK, but Connect onboarding
+    // only needs to open a URL in the browser, so we don't need to check it here.
 
     // Check for demo mode
     if (isDemoMode) {

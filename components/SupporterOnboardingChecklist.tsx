@@ -21,6 +21,7 @@ import {
   BookIcon,
   ChevronRightIcon,
   AlertIcon,
+  ProfileIcon,
 } from '@/components/icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
@@ -30,6 +31,7 @@ interface OnboardingStatus {
   stripe_payouts_enabled: boolean;
   training_complete: boolean;
   onboarding_complete: boolean;
+  verification_submitted: boolean; // true if status is 'pending_review' or 'approved'
 }
 
 interface ChecklistItemProps {
@@ -80,6 +82,7 @@ export default function SupporterOnboardingChecklist({ onComplete }: SupporterOn
     stripe_payouts_enabled: false,
     training_complete: false,
     onboarding_complete: false,
+    verification_submitted: false,
   });
 
   useEffect(() => {
@@ -95,16 +98,21 @@ export default function SupporterOnboardingChecklist({ onComplete }: SupporterOn
     try {
       const { data: profile } = await supabase
         .from('profiles')
-        .select('w9_completed, stripe_payouts_enabled, training_complete, onboarding_complete')
+        .select('w9_completed, stripe_payouts_enabled, training_complete, onboarding_complete, verification_status')
         .eq('id', user.id)
         .single();
 
       if (profile) {
+        // Verification is considered submitted if status is 'pending_review' or 'approved'
+        const verificationSubmitted = profile.verification_status === 'pending_review' ||
+                                       profile.verification_status === 'approved';
+
         setStatus({
           w9_completed: profile.w9_completed || false,
           stripe_payouts_enabled: profile.stripe_payouts_enabled || false,
           training_complete: profile.training_complete || false,
           onboarding_complete: profile.onboarding_complete || false,
+          verification_submitted: verificationSubmitted,
         });
 
         // Call onComplete if all steps are done
@@ -121,11 +129,12 @@ export default function SupporterOnboardingChecklist({ onComplete }: SupporterOn
 
   // Calculate progress
   const completedSteps = [
+    status.verification_submitted,
     status.w9_completed,
     status.stripe_payouts_enabled,
     status.training_complete,
   ].filter(Boolean).length;
-  const totalSteps = 3;
+  const totalSteps = 4;
   const progress = completedSteps / totalSteps;
 
   // Don't show if onboarding is complete
@@ -174,6 +183,14 @@ export default function SupporterOnboardingChecklist({ onComplete }: SupporterOn
 
         {/* Checklist Items */}
         <View style={styles.checklist}>
+          <ChecklistItem
+            icon={ProfileIcon}
+            title="Verify Your Identity"
+            subtitle="Upload transcript and government ID"
+            completed={status.verification_submitted}
+            onPress={() => router.push('/(supporter)/verification')}
+          />
+
           <ChecklistItem
             icon={DocumentIcon}
             title="Complete W-9 Form"
