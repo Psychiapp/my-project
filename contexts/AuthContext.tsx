@@ -274,6 +274,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
 
         // Create profile in database using upsert to handle any existing partial profile
+        // Use a timeout to prevent hanging if the database is slow or RLS blocks
         const now = new Date().toISOString();
         const upsertPayload = {
           id: data.user.id,
@@ -287,15 +288,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         logDiagnostic('SIGNUP', 'Attempting profile upsert', { upsertPayload });
 
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .upsert(upsertPayload, {
-            onConflict: 'id',
-            ignoreDuplicates: false
-          })
-          .select();
+        // Profile creation with timeout (10 seconds) - don't let it block signup
+        const PROFILE_TIMEOUT_MS = 10000;
+        let profileData = null;
+        let profileError = null;
+
+        try {
+          const profilePromise = supabase
+            .from('profiles')
+            .upsert(upsertPayload, {
+              onConflict: 'id',
+              ignoreDuplicates: false
+            })
+            .select();
+
+          const timeoutPromise = new Promise<{ data: null; error: { message: string } }>((resolve) => {
+            setTimeout(() => {
+              resolve({ data: null, error: { message: 'Profile creation timed out' } });
+            }, PROFILE_TIMEOUT_MS);
+          });
+
+          const result = await Promise.race([profilePromise, timeoutPromise]);
+          profileData = result.data;
+          profileError = result.error;
+        } catch (err) {
+          profileError = { message: 'Profile creation failed unexpectedly' };
+          logDiagnostic('SIGNUP', 'Profile upsert threw exception', { error: err });
+        }
 
         // Send comprehensive signup diagnostic report to Sentry
+        // Type-safe access to error properties (may be Supabase error or timeout error)
+        const errorInfo = profileError ? {
+          message: profileError.message,
+          code: (profileError as { code?: string }).code,
+          details: (profileError as { details?: string }).details,
+          hint: (profileError as { hint?: string }).hint,
+        } : null;
+
         sendDiagnosticReport('Signup Profile Creation Diagnostic', {
           signupUser: {
             id: data.user.id,
@@ -314,12 +343,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           profileUpsert: {
             payload: upsertPayload,
             result: profileData,
-            error: profileError ? {
-              message: profileError.message,
-              code: profileError.code,
-              details: profileError.details,
-              hint: profileError.hint,
-            } : null,
+            error: errorInfo,
             success: !profileError && !!profileData,
           },
         });
@@ -327,7 +351,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (profileError) {
           logDiagnostic('SIGNUP', 'Profile upsert failed - will retry in profile-setup', {
             error: profileError.message,
-            code: profileError.code,
+            code: errorInfo?.code,
           });
           // Continue - profile-setup will handle creation if this fails
         } else {

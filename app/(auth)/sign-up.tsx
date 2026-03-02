@@ -140,43 +140,101 @@ export default function SignUpScreen() {
     }
 
     setIsLoading(true);
-    const { error, user } = await signUp(email, password, selectedRole);
 
-    if (error) {
-      setIsLoading(false);
-      Alert.alert('Error', error.message);
-      return;
-    }
+    // Timeout wrapper to prevent infinite loading
+    const SIGNUP_TIMEOUT_MS = 30000; // 30 seconds
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let didTimeout = false;
 
-    setIsLoading(false);
+    const timeoutPromise = new Promise<{ error: Error; user: null }>((resolve) => {
+      timeoutId = setTimeout(() => {
+        didTimeout = true;
+        resolve({
+          error: new Error('Account creation is taking longer than expected. Please try again or check your internet connection.'),
+          user: null,
+        });
+      }, SIGNUP_TIMEOUT_MS);
+    });
 
-    // For clients: check if they already took the quiz before signing up
-    if (selectedRole === 'client' && user) {
-      try {
-        const savedPreferences = await AsyncStorage.getItem(PENDING_QUIZ_PREFERENCES_KEY);
-        if (savedPreferences) {
-          // User already took the quiz - save their preferences and go to dashboard
-          const preferences = JSON.parse(savedPreferences);
-          await saveClientPreferences(user.id, preferences);
-          // Clear the saved preferences from AsyncStorage
-          await AsyncStorage.removeItem(PENDING_QUIZ_PREFERENCES_KEY);
-          // Navigate directly to dashboard - no need to show quiz again
-          router.replace('/(client)');
-          return;
-        }
-      } catch (error) {
-        console.error('Error checking for saved preferences:', error);
-        // If there's an error, fall through to show the quiz modal
+    try {
+      // Race between signUp and timeout
+      const result = await Promise.race([
+        signUp(email, password, selectedRole),
+        timeoutPromise,
+      ]);
+
+      // Clear timeout if signUp completed first
+      if (timeoutId) {
+        clearTimeout(timeoutId);
       }
 
-      // No saved preferences found - show the quiz modal
-      setNewUserId(user.id);
-      setShowOnboardingModal(true);
-    }
+      const { error, user } = result;
 
-    // Show equipment requirements modal for supporters after account creation
-    if (selectedRole === 'supporter' && user) {
-      setShowEquipmentModal(true);
+      if (error) {
+        setIsLoading(false);
+        Alert.alert('Error', error.message);
+        return;
+      }
+
+      // If we timed out but account might have been created, handle gracefully
+      if (didTimeout) {
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(false);
+
+      // Handle case where signup succeeded but no user returned (edge case)
+      if (!user) {
+        console.warn('Signup succeeded but no user returned - navigating to dashboard');
+        if (selectedRole === 'supporter') {
+          router.replace('/(supporter)');
+        } else {
+          router.replace('/(client)');
+        }
+        return;
+      }
+
+      // For clients: check if they already took the quiz before signing up
+      if (selectedRole === 'client' && user) {
+        try {
+          const savedPreferences = await AsyncStorage.getItem(PENDING_QUIZ_PREFERENCES_KEY);
+          if (savedPreferences) {
+            // User already took the quiz - save their preferences and go to dashboard
+            const preferences = JSON.parse(savedPreferences);
+            // Don't await - let it save in background, navigate immediately
+            saveClientPreferences(user.id, preferences).catch((err) => {
+              console.error('Error saving preferences (non-blocking):', err);
+            });
+            // Clear the saved preferences from AsyncStorage
+            AsyncStorage.removeItem(PENDING_QUIZ_PREFERENCES_KEY).catch(() => {});
+            // Navigate directly to dashboard - no need to show quiz again
+            router.replace('/(client)');
+            return;
+          }
+        } catch (error) {
+          console.error('Error checking for saved preferences:', error);
+          // If there's an error, fall through to show the quiz modal
+        }
+
+        // No saved preferences found - show the quiz modal
+        setNewUserId(user.id);
+        setShowOnboardingModal(true);
+      }
+
+      // Show equipment requirements modal for supporters after account creation
+      if (selectedRole === 'supporter' && user) {
+        setShowEquipmentModal(true);
+      }
+    } catch (unexpectedError) {
+      // Catch any unexpected errors to ensure loading state is cleared
+      console.error('Unexpected error during signup:', unexpectedError);
+      setIsLoading(false);
+      Alert.alert(
+        'Account Creation Issue',
+        'There was an issue creating your account. Please try again.',
+        [{ text: 'OK' }]
+      );
     }
   };
 
