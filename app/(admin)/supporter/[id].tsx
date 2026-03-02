@@ -21,6 +21,10 @@ import {
   reactivateUser,
   updateVerificationStatus,
 } from '@/lib/database';
+import {
+  sendVerificationApprovedNotification,
+  sendVerificationRejectedNotification,
+} from '@/lib/notifications';
 import type { SupporterApplication, SessionWithDetails } from '@/types/database';
 
 interface SupporterStats {
@@ -155,11 +159,20 @@ export default function AdminSupporterDetailScreen() {
           onPress: async () => {
             setVerificationLoading(true);
             const success = await updateVerificationStatus(supporter.id, 'approved');
-            setVerificationLoading(false);
+
             if (success) {
-              Alert.alert('Success', 'Verification documents approved.');
+              // Send push notification to supporter
+              const notifResult = await sendVerificationApprovedNotification(supporter.id);
+              console.log('Verification approved notification:', notifResult);
+
+              setVerificationLoading(false);
+              Alert.alert(
+                'Success',
+                `Verification approved.${notifResult.sent ? ' Notification sent to supporter.' : ''}`
+              );
               loadSupporterData();
             } else {
+              setVerificationLoading(false);
               Alert.alert('Error', 'Failed to approve verification.');
             }
           },
@@ -181,16 +194,29 @@ export default function AdminSupporterDetailScreen() {
           style: 'destructive',
           onPress: async (reason?: string) => {
             setVerificationLoading(true);
+            const rejectionReason = reason || 'Documents did not meet requirements.';
             const success = await updateVerificationStatus(
               supporter.id,
               'rejected',
-              reason || 'Documents did not meet requirements.'
+              rejectionReason
             );
-            setVerificationLoading(false);
+
             if (success) {
-              Alert.alert('Success', 'Verification rejected. Supporter will be notified.');
+              // Send push notification to supporter
+              const notifResult = await sendVerificationRejectedNotification(
+                supporter.id,
+                rejectionReason
+              );
+              console.log('Verification rejected notification:', notifResult);
+
+              setVerificationLoading(false);
+              Alert.alert(
+                'Success',
+                `Verification rejected.${notifResult.sent ? ' Notification sent to supporter.' : ''}`
+              );
               loadSupporterData();
             } else {
+              setVerificationLoading(false);
               Alert.alert('Error', 'Failed to reject verification.');
             }
           },

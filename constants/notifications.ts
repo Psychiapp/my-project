@@ -16,6 +16,8 @@ export type NotificationType =
   | 'live_support_declined'
   | 'live_support_no_supporters'
   | 'live_support_expired'
+  | 'verification_approved'
+  | 'verification_rejected'
   | 'system';
 
 export interface NotificationTemplate {
@@ -227,6 +229,31 @@ export function getNotificationContent(
         data: {
           type: 'live_support_expired',
           requestId: params.requestId,
+        },
+      };
+
+    // Verification Approved - sent to supporter when admin approves their documents
+    case 'verification_approved':
+      return {
+        title: 'Account Verified! ✓',
+        body: `Congratulations! Your verification documents have been approved. You can now start receiving client sessions.`,
+        data: {
+          type: 'verification_approved',
+          action: 'open_dashboard',
+        },
+      };
+
+    // Verification Rejected - sent to supporter when admin rejects their documents
+    case 'verification_rejected':
+      return {
+        title: 'Verification Update',
+        body: params.reason
+          ? `Your verification documents were not approved: ${params.reason}. Please resubmit with valid documents.`
+          : `Your verification documents were not approved. Please resubmit with valid documents.`,
+        data: {
+          type: 'verification_rejected',
+          reason: params.reason || '',
+          action: 'open_verification',
         },
       };
 

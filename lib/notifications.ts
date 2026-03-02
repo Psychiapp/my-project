@@ -826,6 +826,84 @@ export async function sendLiveSupportExpiredNotification(params: {
 }
 
 // ============================================
+// Verification Notifications
+// ============================================
+
+/**
+ * Send verification approved notification to supporter via push notification
+ * This uses the Edge Function to send even when app is closed
+ */
+export async function sendVerificationApprovedNotification(
+  supporterId: string
+): Promise<{ sent: boolean; error?: string }> {
+  const content = getNotificationContent('verification_approved', {});
+
+  return sendPushNotificationViaEdgeFunction({
+    userId: supporterId,
+    title: content.title,
+    body: content.body,
+    data: content.data as Record<string, unknown>,
+  });
+}
+
+/**
+ * Send verification rejected notification to supporter via push notification
+ */
+export async function sendVerificationRejectedNotification(
+  supporterId: string,
+  reason?: string
+): Promise<{ sent: boolean; error?: string }> {
+  const content = getNotificationContent('verification_rejected', {
+    reason: reason || '',
+  });
+
+  return sendPushNotificationViaEdgeFunction({
+    userId: supporterId,
+    title: content.title,
+    body: content.body,
+    data: content.data as Record<string, unknown>,
+  });
+}
+
+/**
+ * Helper to send push notification via Supabase Edge Function
+ * This ensures notifications are delivered even when the app is closed
+ */
+async function sendPushNotificationViaEdgeFunction(params: {
+  userId: string;
+  title: string;
+  body: string;
+  data?: Record<string, unknown>;
+}): Promise<{ sent: boolean; error?: string }> {
+  try {
+    const { supabase } = await import('@/lib/supabase');
+    if (!supabase) {
+      return { sent: false, error: 'Supabase not configured' };
+    }
+
+    const { data, error } = await supabase.functions.invoke('send-live-support-notification', {
+      body: {
+        userId: params.userId,
+        title: params.title,
+        body: params.body,
+        data: params.data || {},
+        priority: 'high',
+      },
+    });
+
+    if (error) {
+      console.error('Error sending push notification:', error);
+      return { sent: false, error: error.message };
+    }
+
+    return { sent: data?.sent ?? false, error: data?.error };
+  } catch (error) {
+    console.error('Error calling edge function:', error);
+    return { sent: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
+
+// ============================================
 // Utility Functions
 // ============================================
 
@@ -970,6 +1048,9 @@ export default {
   sendLiveSupportDeclinedNotification,
   sendLiveSupportNoSupportersNotification,
   sendLiveSupportExpiredNotification,
+  // Verification
+  sendVerificationApprovedNotification,
+  sendVerificationRejectedNotification,
   cancelSessionReminders,
   cancelNotification,
   cancelAllNotifications,
