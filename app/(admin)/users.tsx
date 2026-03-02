@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,74 +7,124 @@ import {
   TouchableOpacity,
   TextInput,
   Alert,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
+import { getAllUsers } from '@/lib/database';
+import type { AdminUserListing } from '@/types/database';
 
-type UserType = 'all' | 'clients' | 'supporters' | 'pending';
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  type: 'client' | 'supporter';
-  status: 'active' | 'pending' | 'suspended';
-  joinDate: string;
-  sessions: number;
-  w9Completed?: boolean;
-}
+type UserFilter = 'all' | 'clients' | 'supporters' | 'pending';
 
 export default function AdminUsersScreen() {
-  const [userFilter, setUserFilter] = useState<UserType>('all');
+  const router = useRouter();
+  const [userFilter, setUserFilter] = useState<UserFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [users, setUsers] = useState<AdminUserListing[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Empty array - would be populated from database
-  const users: User[] = [];
+  const fetchUsers = async (showRefresh = false) => {
+    if (showRefresh) {
+      setIsRefreshing(true);
+    } else {
+      setIsLoading(true);
+    }
 
-  const stats = {
-    total: users.length,
-    clients: users.filter(u => u.type === 'client').length,
-    supporters: users.filter(u => u.type === 'supporter').length,
-    pending: users.filter(u => u.status === 'pending').length,
-  };
-
-  const filteredUsers = users.filter(user => {
-    const matchesFilter =
-      userFilter === 'all' ||
-      (userFilter === 'clients' && user.type === 'client') ||
-      (userFilter === 'supporters' && user.type === 'supporter') ||
-      (userFilter === 'pending' && user.status === 'pending');
-
-    const matchesSearch =
-      user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchQuery.toLowerCase());
-
-    return matchesFilter && matchesSearch;
-  });
-
-  const handleUserAction = (user: User, action: string) => {
-    Alert.alert(
-      `${action} User`,
-      `Are you sure you want to ${action.toLowerCase()} ${user.name}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: action, onPress: () => Alert.alert('Success', `User ${action.toLowerCase()}ed successfully`) },
-      ]
-    );
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active': return PsychiColors.success;
-      case 'pending': return '#F59E0B';
-      case 'suspended': return PsychiColors.error;
-      default: return PsychiColors.textMuted;
+    try {
+      const data = await getAllUsers(userFilter);
+      setUsers(data);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      Alert.alert('Error', 'Failed to load users');
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
     }
   };
 
+  useEffect(() => {
+    fetchUsers();
+  }, [userFilter]);
+
+  const stats = {
+    total: users.length,
+    clients: users.filter(u => u.role === 'client').length,
+    supporters: users.filter(u => u.role === 'supporter').length,
+    pending: users.filter(u => u.role === 'supporter' && !u.is_verified).length,
+  };
+
+  const filteredUsers = users.filter(user => {
+    const matchesSearch =
+      !searchQuery ||
+      user.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.email.toLowerCase().includes(searchQuery.toLowerCase());
+
+    return matchesSearch;
+  });
+
+  const handleViewUser = (user: AdminUserListing) => {
+    if (user.role === 'supporter') {
+      router.push(`/(admin)/supporter/${user.id}`);
+    } else {
+      // For clients, show a simple alert for now
+      Alert.alert(
+        user.full_name,
+        `Email: ${user.email}\nRole: ${user.role}\nJoined: ${formatDate(user.created_at)}`
+      );
+    }
+  };
+
+  const getStatusColor = (user: AdminUserListing) => {
+    if (user.role === 'supporter') {
+      if (user.is_verified) return PsychiColors.success;
+      return '#F59E0B'; // pending
+    }
+    return PsychiColors.success; // clients are always "active"
+  };
+
+  const getStatusText = (user: AdminUserListing) => {
+    if (user.role === 'supporter') {
+      if (user.is_verified) return 'Verified';
+      return 'Pending';
+    }
+    return 'Active';
+  };
+
+  const formatDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={PsychiColors.azure} />
+          <Text style={styles.loadingText}>Loading users...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={() => fetchUsers(true)}
+            tintColor={PsychiColors.azure}
+          />
+        }
+      >
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>User Management</Text>
@@ -103,7 +153,7 @@ export default function AdminUsersScreen() {
             <TouchableOpacity
               key={filter.key}
               style={[styles.filterButton, userFilter === filter.key && styles.filterButtonActive]}
-              onPress={() => setUserFilter(filter.key as UserType)}
+              onPress={() => setUserFilter(filter.key as UserFilter)}
             >
               <Text style={[styles.filterText, userFilter === filter.key && styles.filterTextActive]}>
                 {filter.label}
@@ -121,21 +171,33 @@ export default function AdminUsersScreen() {
         <View style={styles.section}>
           {filteredUsers.length === 0 ? (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyStateText}>No users found</Text>
+              <Text style={styles.emptyStateText}>
+                {searchQuery ? 'No users match your search' : 'No users found'}
+              </Text>
             </View>
           ) : (
             filteredUsers.map((user) => (
-              <View key={user.id} style={styles.userCard}>
+              <TouchableOpacity
+                key={user.id}
+                style={styles.userCard}
+                onPress={() => handleViewUser(user)}
+                activeOpacity={0.7}
+              >
                 <View style={styles.userHeader}>
-                  <View style={styles.userAvatar}>
-                    <Text style={styles.userAvatarText}>{user.name.charAt(0)}</Text>
+                  <View style={[
+                    styles.userAvatar,
+                    user.role === 'supporter' && styles.supporterAvatar
+                  ]}>
+                    <Text style={styles.userAvatarText}>
+                      {user.full_name ? user.full_name.charAt(0).toUpperCase() : '?'}
+                    </Text>
                   </View>
                   <View style={styles.userInfo}>
                     <View style={styles.userNameRow}>
-                      <Text style={styles.userName}>{user.name}</Text>
-                      <View style={[styles.typeBadge, user.type === 'supporter' && styles.supporterBadge]}>
-                        <Text style={[styles.typeBadgeText, user.type === 'supporter' && styles.supporterBadgeText]}>
-                          {user.type}
+                      <Text style={styles.userName}>{user.full_name || 'No Name'}</Text>
+                      <View style={[styles.typeBadge, user.role === 'supporter' && styles.supporterBadge]}>
+                        <Text style={[styles.typeBadgeText, user.role === 'supporter' && styles.supporterBadgeText]}>
+                          {user.role}
                         </Text>
                       </View>
                     </View>
@@ -147,67 +209,46 @@ export default function AdminUsersScreen() {
                   <View style={styles.userStat}>
                     <Text style={styles.userStatLabel}>Status</Text>
                     <View style={styles.statusRow}>
-                      <View style={[styles.statusDot, { backgroundColor: getStatusColor(user.status) }]} />
-                      <Text style={[styles.userStatValue, { color: getStatusColor(user.status) }]}>
-                        {user.status.charAt(0).toUpperCase() + user.status.slice(1)}
+                      <View style={[styles.statusDot, { backgroundColor: getStatusColor(user) }]} />
+                      <Text style={[styles.userStatValue, { color: getStatusColor(user) }]}>
+                        {getStatusText(user)}
                       </Text>
                     </View>
                   </View>
                   <View style={styles.userStat}>
                     <Text style={styles.userStatLabel}>Joined</Text>
-                    <Text style={styles.userStatValue}>{user.joinDate}</Text>
+                    <Text style={styles.userStatValue}>{formatDate(user.created_at)}</Text>
                   </View>
-                  {user.type === 'supporter' ? (
+                  {user.role === 'supporter' ? (
                     <View style={styles.userStat}>
-                      <Text style={styles.userStatLabel}>W-9</Text>
+                      <Text style={styles.userStatLabel}>Training</Text>
                       <View style={styles.statusRow}>
-                        <View style={[styles.statusDot, { backgroundColor: user.w9Completed ? PsychiColors.success : '#F59E0B' }]} />
-                        <Text style={[styles.userStatValue, { color: user.w9Completed ? PsychiColors.success : '#F59E0B' }]}>
-                          {user.w9Completed ? 'Complete' : 'Pending'}
+                        <View style={[
+                          styles.statusDot,
+                          { backgroundColor: user.training_complete ? PsychiColors.success : '#F59E0B' }
+                        ]} />
+                        <Text style={[
+                          styles.userStatValue,
+                          { color: user.training_complete ? PsychiColors.success : '#F59E0B' }
+                        ]}>
+                          {user.training_complete ? 'Done' : 'Pending'}
                         </Text>
                       </View>
                     </View>
                   ) : (
                     <View style={styles.userStat}>
                       <Text style={styles.userStatLabel}>Sessions</Text>
-                      <Text style={styles.userStatValue}>{user.sessions}</Text>
+                      <Text style={styles.userStatValue}>{user.total_sessions_completed || 0}</Text>
                     </View>
                   )}
                 </View>
 
-                <View style={styles.userActions}>
-                  {user.status === 'pending' && (
-                    <TouchableOpacity
-                      style={[styles.actionButton, styles.approveButton]}
-                      onPress={() => handleUserAction(user, 'Approve')}
-                    >
-                      <Text style={styles.approveButtonText}>Approve</Text>
-                    </TouchableOpacity>
-                  )}
-                  <TouchableOpacity
-                    style={styles.actionButton}
-                    onPress={() => Alert.alert('View Profile', `${user.name}\n\nType: ${user.type}\nStatus: ${user.status}\nJoined: ${user.joinDate}`)}
-                  >
-                    <Text style={styles.actionButtonText}>View</Text>
-                  </TouchableOpacity>
-                  {user.status === 'active' && (
-                    <TouchableOpacity
-                      style={[styles.actionButton, styles.suspendButton]}
-                      onPress={() => handleUserAction(user, 'Suspend')}
-                    >
-                      <Text style={styles.suspendButtonText}>Suspend</Text>
-                    </TouchableOpacity>
-                  )}
-                  {user.status === 'suspended' && (
-                    <TouchableOpacity
-                      style={[styles.actionButton, styles.reactivateButton]}
-                      onPress={() => handleUserAction(user, 'Reactivate')}
-                    >
-                      <Text style={styles.reactivateButtonText}>Reactivate</Text>
-                    </TouchableOpacity>
-                  )}
+                <View style={styles.viewPrompt}>
+                  <Text style={styles.viewPromptText}>
+                    {user.role === 'supporter' ? 'Tap to view details & verify' : 'Tap to view'}
+                  </Text>
                 </View>
-              </View>
+              </TouchableOpacity>
             ))
           )}
         </View>
@@ -225,6 +266,16 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: Spacing.md,
+    fontSize: 16,
+    color: PsychiColors.textSecondary,
   },
   header: {
     paddingHorizontal: Spacing.lg,
@@ -335,6 +386,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: Spacing.md,
   },
+  supporterAvatar: {
+    backgroundColor: PsychiColors.coral,
+  },
   userAvatarText: {
     fontSize: 20,
     fontWeight: '600',
@@ -406,44 +460,15 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
   },
-  userActions: {
-    flexDirection: 'row',
-    gap: Spacing.sm,
-  },
-  actionButton: {
-    flex: 1,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.md,
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+  viewPrompt: {
+    paddingTop: Spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0, 0, 0, 0.05)',
     alignItems: 'center',
   },
-  actionButtonText: {
+  viewPromptText: {
     fontSize: 13,
-    fontWeight: '600',
-    color: PsychiColors.textSecondary,
-  },
-  approveButton: {
-    backgroundColor: 'rgba(34, 197, 94, 0.1)',
-  },
-  approveButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: PsychiColors.success,
-  },
-  suspendButton: {
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-  },
-  suspendButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: PsychiColors.error,
-  },
-  reactivateButton: {
-    backgroundColor: 'rgba(74, 144, 226, 0.1)',
-  },
-  reactivateButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
     color: PsychiColors.azure,
+    fontWeight: '500',
   },
 });
