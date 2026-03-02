@@ -2,7 +2,7 @@ import { Tabs, router } from 'expo-router';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { PsychiColors, Shadows, Typography, BorderRadius, Spacing } from '@/constants/theme';
-import { HomeIcon, ProfileIcon, ChatIcon, DollarIcon, LogoutIcon } from '@/components/icons';
+import { HomeIcon, ProfileIcon, CheckIcon, DollarIcon, LogoutIcon } from '@/components/icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -17,8 +17,8 @@ function TabIcon({ name, focused }: { name: string; focused: boolean }) {
         return <HomeIcon size={iconSize} color={iconColor} />;
       case 'users':
         return <ProfileIcon size={iconSize} color={iconColor} />;
-      case 'sessions':
-        return <ChatIcon size={iconSize} color={iconColor} />;
+      case 'verification':
+        return <CheckIcon size={iconSize} color={iconColor} />;
       case 'revenue':
         return <DollarIcon size={iconSize} color={iconColor} />;
       default:
@@ -123,7 +123,7 @@ export default function AdminLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Dashboard',
+          title: 'Overview',
         }}
       />
       <Tabs.Screen
@@ -133,9 +133,9 @@ export default function AdminLayout() {
         }}
       />
       <Tabs.Screen
-        name="sessions"
+        name="verification"
         options={{
-          title: 'Sessions',
+          title: 'Verify',
         }}
       />
       <Tabs.Screen

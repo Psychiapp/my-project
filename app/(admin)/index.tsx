@@ -1,204 +1,219 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
-import { UsersIcon, CheckIcon, ChartIcon, CreditCardIcon } from '@/components/icons';
+import { UsersIcon, CheckIcon, DollarIcon, ChartIcon } from '@/components/icons';
+import { getAdminStats, getPendingSupporters } from '@/lib/database';
+import { useAuth } from '@/contexts/AuthContext';
+import type { AdminStats } from '@/types/database';
 
-export default function AdminDashboard() {
+export default function AdminOverview() {
   const router = useRouter();
+  const { isDemoMode } = useAuth();
+  const [stats, setStats] = useState<AdminStats | null>(null);
+  const [pendingCount, setPendingCount] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Real stats would come from database - showing zeros for now
-  const stats = {
-    totalUsers: 0,
-    activeClients: 0,
-    activeSupporters: 0,
-    pendingVerification: 0,
-    todaySessions: 0,
-    weekSessions: 0,
-    monthRevenue: 0,
-    weekRevenue: 0,
+  const fetchData = async (showRefresh = false) => {
+    if (showRefresh) {
+      setIsRefreshing(true);
+    } else {
+      setIsLoading(true);
+    }
+
+    try {
+      if (isDemoMode) {
+        // Demo mode: show sample data
+        setStats({
+          totalUsers: 156,
+          totalClients: 142,
+          totalSupporters: 14,
+          activeSupporters: 12,
+          pendingSupporters: 2,
+          totalSessions: 847,
+          activeSessions: 3,
+          completedSessions: 820,
+          totalRevenue: 28450,
+          monthlyRevenue: 4250,
+        });
+        setPendingCount(2);
+      } else {
+        const [adminStats, pendingSupporters] = await Promise.all([
+          getAdminStats(),
+          getPendingSupporters(),
+        ]);
+        setStats(adminStats);
+        setPendingCount(pendingSupporters.length);
+      }
+    } catch (error) {
+      console.error('Error fetching admin stats:', error);
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
   };
 
-  // Empty arrays - would be populated from database
-  const recentActivity: { type: string; text: string; time: string }[] = [];
-  const alerts: { type: string; text: string; action: string }[] = [];
+  useEffect(() => {
+    fetchData();
+  }, [isDemoMode]);
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={PsychiColors.azure} />
+          <Text style={styles.loadingText}>Loading dashboard...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={() => fetchData(true)}
+            tintColor={PsychiColors.azure}
+          />
+        }
+      >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Admin Dashboard</Text>
-          <Text style={styles.headerSubtitle}>Platform Overview</Text>
-        </View>
-
-        {/* Key Metrics */}
-        <View style={styles.metricsContainer}>
-          <View style={styles.metricCard}>
-            <LinearGradient
-              colors={[PsychiColors.azure, PsychiColors.deep]}
-              style={styles.metricGradient}
-            >
-              <Text style={styles.metricValue}>{stats.totalUsers.toLocaleString()}</Text>
-              <Text style={styles.metricLabel}>Total Users</Text>
-              <View style={styles.metricSubStats}>
-                <Text style={styles.metricSubText}>{stats.activeClients} clients</Text>
-                <Text style={styles.metricSubText}>{stats.activeSupporters} supporters</Text>
-              </View>
-            </LinearGradient>
-          </View>
-
-          <View style={styles.metricCard}>
-            <LinearGradient
-              colors={[PsychiColors.violet, PsychiColors.periwinkle]}
-              style={styles.metricGradient}
-            >
-              <Text style={styles.metricValue}>{stats.todaySessions}</Text>
-              <Text style={styles.metricLabel}>Today's Sessions</Text>
-              <Text style={styles.metricSubText}>{stats.weekSessions} this week</Text>
-            </LinearGradient>
-          </View>
-        </View>
-
-        {/* Revenue Card */}
-        <View style={styles.section}>
-          <View style={styles.revenueCard}>
-            <View style={styles.revenueHeader}>
-              <Text style={styles.revenueTitle}>Revenue</Text>
-              <TouchableOpacity onPress={() => router.push('/(admin)/revenue')}>
-                <Text style={styles.viewAllLink}>View Details</Text>
-              </TouchableOpacity>
+          <Text style={styles.headerTitle}>Overview</Text>
+          {isDemoMode && (
+            <View style={styles.demoBadge}>
+              <Text style={styles.demoBadgeText}>Demo Mode</Text>
             </View>
-            <View style={styles.revenueStats}>
-              <View style={styles.revenueStat}>
-                <Text style={styles.revenueValue}>${stats.monthRevenue.toLocaleString()}</Text>
-                <Text style={styles.revenueLabel}>This Month</Text>
-              </View>
-              <View style={styles.revenueDivider} />
-              <View style={styles.revenueStat}>
-                <Text style={styles.revenueValue}>${stats.weekRevenue.toLocaleString()}</Text>
-                <Text style={styles.revenueLabel}>This Week</Text>
-              </View>
+          )}
+        </View>
+
+        {/* Key Metrics Grid */}
+        <View style={styles.metricsGrid}>
+          {/* Total Users */}
+          <View style={styles.metricCard}>
+            <View style={[styles.metricIcon, { backgroundColor: 'rgba(74, 144, 226, 0.1)' }]}>
+              <UsersIcon size={24} color={PsychiColors.azure} />
+            </View>
+            <Text style={styles.metricValue}>{stats?.totalUsers || 0}</Text>
+            <Text style={styles.metricLabel}>Total Users</Text>
+            <View style={styles.metricSubRow}>
+              <Text style={styles.metricSub}>{stats?.totalClients || 0} clients</Text>
+              <Text style={styles.metricDot}>•</Text>
+              <Text style={styles.metricSub}>{stats?.totalSupporters || 0} supporters</Text>
             </View>
           </View>
+
+          {/* Pending Verifications */}
+          <TouchableOpacity
+            style={styles.metricCard}
+            onPress={() => router.push('/(admin)/verification' as any)}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.metricIcon, { backgroundColor: pendingCount > 0 ? 'rgba(245, 158, 11, 0.1)' : 'rgba(52, 199, 89, 0.1)' }]}>
+              <CheckIcon size={24} color={pendingCount > 0 ? '#F59E0B' : PsychiColors.success} />
+            </View>
+            <Text style={[styles.metricValue, pendingCount > 0 && { color: '#F59E0B' }]}>
+              {pendingCount}
+            </Text>
+            <Text style={styles.metricLabel}>Pending Verification</Text>
+            <Text style={[styles.metricAction, pendingCount > 0 && { color: '#F59E0B' }]}>
+              {pendingCount > 0 ? 'Review now →' : 'All caught up'}
+            </Text>
+          </TouchableOpacity>
+
+          {/* Sessions */}
+          <View style={styles.metricCard}>
+            <View style={[styles.metricIcon, { backgroundColor: 'rgba(138, 43, 226, 0.1)' }]}>
+              <ChartIcon size={24} color={PsychiColors.violet} />
+            </View>
+            <Text style={styles.metricValue}>{stats?.completedSessions || 0}</Text>
+            <Text style={styles.metricLabel}>Total Sessions</Text>
+            <View style={styles.metricSubRow}>
+              <Text style={styles.metricSub}>{stats?.activeSessions || 0} active</Text>
+            </View>
+          </View>
+
+          {/* Revenue */}
+          <TouchableOpacity
+            style={styles.metricCard}
+            onPress={() => router.push('/(admin)/revenue')}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.metricIcon, { backgroundColor: 'rgba(52, 199, 89, 0.1)' }]}>
+              <DollarIcon size={24} color={PsychiColors.success} />
+            </View>
+            <Text style={[styles.metricValue, { color: PsychiColors.success }]}>
+              ${(stats?.monthlyRevenue || 0).toLocaleString()}
+            </Text>
+            <Text style={styles.metricLabel}>This Month</Text>
+            <Text style={styles.metricAction}>View details →</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Alerts */}
+        {/* Quick Stats */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Alerts & Actions</Text>
-          {alerts.map((alert, index) => (
-            <TouchableOpacity key={index} style={styles.alertCard} activeOpacity={0.7}>
-              <View style={[
-                styles.alertIndicator,
-                alert.type === 'warning' && styles.alertWarning,
-                alert.type === 'info' && styles.alertInfo,
-                alert.type === 'success' && styles.alertSuccess,
-              ]} />
-              <Text style={styles.alertText}>{alert.text}</Text>
-              <Text style={styles.alertAction}>{alert.action}</Text>
-            </TouchableOpacity>
-          ))}
+          <Text style={styles.sectionTitle}>Platform Summary</Text>
+          <View style={styles.summaryCard}>
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Active Supporters</Text>
+              <Text style={styles.summaryValue}>{stats?.activeSupporters || 0}</Text>
+            </View>
+            <View style={styles.summaryDivider} />
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Total Revenue (All Time)</Text>
+              <Text style={[styles.summaryValue, { color: PsychiColors.success }]}>
+                ${(stats?.totalRevenue || 0).toLocaleString()}
+              </Text>
+            </View>
+            <View style={styles.summaryDivider} />
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Pending Supporters</Text>
+              <Text style={[styles.summaryValue, pendingCount > 0 && { color: '#F59E0B' }]}>
+                {stats?.pendingSupporters || 0}
+              </Text>
+            </View>
+          </View>
         </View>
 
         {/* Quick Actions */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <View style={styles.actionsGrid}>
+          <View style={styles.actionsRow}>
             <TouchableOpacity
-              style={styles.actionCard}
+              style={styles.actionButton}
               onPress={() => router.push('/(admin)/users')}
             >
-              <View style={styles.actionIconContainer}>
-                <UsersIcon size={28} color={PsychiColors.azure} />
-              </View>
-              <Text style={styles.actionLabel}>Manage Users</Text>
+              <UsersIcon size={20} color={PsychiColors.azure} />
+              <Text style={styles.actionText}>Manage Users</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.actionCard}>
-              <View style={styles.actionIconContainer}>
-                <CheckIcon size={28} color={PsychiColors.azure} />
-              </View>
-              <Text style={styles.actionLabel}>Verify Supporters</Text>
-              {stats.pendingVerification > 0 && (
+            <TouchableOpacity
+              style={[styles.actionButton, pendingCount > 0 && styles.actionButtonHighlight]}
+              onPress={() => router.push('/(admin)/verification' as any)}
+            >
+              <CheckIcon size={20} color={pendingCount > 0 ? '#F59E0B' : PsychiColors.azure} />
+              <Text style={[styles.actionText, pendingCount > 0 && { color: '#F59E0B' }]}>
+                Verify Supporters
+              </Text>
+              {pendingCount > 0 && (
                 <View style={styles.actionBadge}>
-                  <Text style={styles.actionBadgeText}>{stats.pendingVerification}</Text>
+                  <Text style={styles.actionBadgeText}>{pendingCount}</Text>
                 </View>
               )}
             </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.actionCard}
-              onPress={() => router.push('/(admin)/sessions')}
-            >
-              <View style={styles.actionIconContainer}>
-                <ChartIcon size={28} color={PsychiColors.azure} />
-              </View>
-              <Text style={styles.actionLabel}>View Sessions</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.actionCard}>
-              <View style={styles.actionIconContainer}>
-                <CreditCardIcon size={28} color={PsychiColors.azure} />
-              </View>
-              <Text style={styles.actionLabel}>Process Payouts</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Recent Activity */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Recent Activity</Text>
-          <View style={styles.activityCard}>
-            {recentActivity.map((activity, index) => (
-              <View
-                key={index}
-                style={[
-                  styles.activityItem,
-                  index < recentActivity.length - 1 && styles.activityItemBorder,
-                ]}
-              >
-                <View style={styles.activityDot} />
-                <View style={styles.activityContent}>
-                  <Text style={styles.activityText}>{activity.text}</Text>
-                  <Text style={styles.activityTime}>{activity.time}</Text>
-                </View>
-              </View>
-            ))}
-          </View>
-        </View>
-
-        {/* Platform Health */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Platform Health</Text>
-          <View style={styles.healthCard}>
-            <View style={styles.healthItem}>
-              <View style={[styles.healthIndicator, styles.healthGood]} />
-              <View style={styles.healthInfo}>
-                <Text style={styles.healthLabel}>API Status</Text>
-                <Text style={styles.healthValue}>Operational</Text>
-              </View>
-            </View>
-            <View style={styles.healthDivider} />
-            <View style={styles.healthItem}>
-              <View style={[styles.healthIndicator, styles.healthGood]} />
-              <View style={styles.healthInfo}>
-                <Text style={styles.healthLabel}>Video Calls</Text>
-                <Text style={styles.healthValue}>99.9% Uptime</Text>
-              </View>
-            </View>
-            <View style={styles.healthDivider} />
-            <View style={styles.healthItem}>
-              <View style={[styles.healthIndicator, styles.healthGood]} />
-              <View style={styles.healthInfo}>
-                <Text style={styles.healthLabel}>Payments</Text>
-                <Text style={styles.healthValue}>Processing</Text>
-              </View>
-            </View>
           </View>
         </View>
 
@@ -216,59 +231,95 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: Spacing.md,
+    fontSize: 16,
+    color: PsychiColors.textSecondary,
+  },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.md,
-    paddingBottom: Spacing.sm,
+    paddingBottom: Spacing.lg,
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: '700',
     color: '#2A2A2A',
     fontFamily: 'Georgia',
   },
-  headerSubtitle: {
-    fontSize: 14,
-    color: PsychiColors.textMuted,
-    marginTop: 4,
+  demoBadge: {
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.full,
   },
-  metricsContainer: {
+  demoBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#F59E0B',
+  },
+  metricsGrid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     paddingHorizontal: Spacing.lg,
     gap: Spacing.sm,
-    marginBottom: Spacing.md,
   },
   metricCard: {
-    flex: 1,
+    width: '48%',
+    backgroundColor: PsychiColors.white,
     borderRadius: BorderRadius.lg,
-    overflow: 'hidden',
-  },
-  metricGradient: {
     padding: Spacing.md,
+    ...Shadows.soft,
+  },
+  metricIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: Spacing.sm,
   },
   metricValue: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '700',
-    color: PsychiColors.white,
+    color: '#2A2A2A',
   },
   metricLabel: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 13,
+    color: PsychiColors.textMuted,
+    marginTop: 2,
+  },
+  metricSubRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginTop: 4,
   },
-  metricSubStats: {
-    flexDirection: 'row',
-    gap: Spacing.sm,
-    marginTop: Spacing.xs,
-  },
-  metricSubText: {
+  metricSub: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: PsychiColors.textMuted,
+  },
+  metricDot: {
+    fontSize: 12,
+    color: PsychiColors.textMuted,
+    marginHorizontal: 4,
+  },
+  metricAction: {
+    fontSize: 12,
+    color: PsychiColors.azure,
+    fontWeight: '500',
+    marginTop: 4,
   },
   section: {
     paddingHorizontal: Spacing.lg,
-    marginBottom: Spacing.lg,
+    marginTop: Spacing.lg,
   },
   sectionTitle: {
     fontSize: 18,
@@ -277,110 +328,58 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
     fontFamily: 'Georgia',
   },
-  revenueCard: {
+  summaryCard: {
     backgroundColor: PsychiColors.white,
     borderRadius: BorderRadius.lg,
     padding: Spacing.md,
-    ...Shadows.medium,
+    ...Shadows.soft,
   },
-  revenueHeader: {
+  summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: Spacing.md,
+    paddingVertical: Spacing.sm,
   },
-  revenueTitle: {
+  summaryLabel: {
+    fontSize: 14,
+    color: PsychiColors.textSecondary,
+  },
+  summaryValue: {
     fontSize: 16,
     fontWeight: '600',
     color: '#2A2A2A',
   },
-  viewAllLink: {
-    fontSize: 14,
-    color: PsychiColors.azure,
-    fontWeight: '500',
+  summaryDivider: {
+    height: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
   },
-  revenueStats: {
+  actionsRow: {
     flexDirection: 'row',
-  },
-  revenueStat: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  revenueValue: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: PsychiColors.success,
-  },
-  revenueLabel: {
-    fontSize: 13,
-    color: PsychiColors.textMuted,
-    marginTop: 4,
-  },
-  revenueDivider: {
-    width: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.1)',
-  },
-  alertCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: PsychiColors.white,
-    borderRadius: BorderRadius.md,
-    padding: Spacing.md,
-    marginBottom: Spacing.sm,
-    ...Shadows.soft,
-  },
-  alertIndicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: Spacing.sm,
-  },
-  alertWarning: {
-    backgroundColor: '#F59E0B',
-  },
-  alertInfo: {
-    backgroundColor: PsychiColors.azure,
-  },
-  alertSuccess: {
-    backgroundColor: PsychiColors.success,
-  },
-  alertText: {
-    flex: 1,
-    fontSize: 14,
-    color: '#2A2A2A',
-  },
-  alertAction: {
-    fontSize: 14,
-    color: PsychiColors.azure,
-    fontWeight: '600',
-  },
-  actionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: Spacing.sm,
   },
-  actionCard: {
-    width: '48%',
-    backgroundColor: PsychiColors.white,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: PsychiColors.white,
+    borderRadius: BorderRadius.md,
+    paddingVertical: Spacing.md,
+    gap: Spacing.sm,
     ...Shadows.soft,
   },
-  actionIconContainer: {
-    marginBottom: Spacing.xs,
+  actionButtonHighlight: {
+    backgroundColor: 'rgba(245, 158, 11, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.2)',
   },
-  actionLabel: {
+  actionText: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '600',
     color: '#2A2A2A',
-    textAlign: 'center',
   },
   actionBadge: {
-    position: 'absolute',
-    top: Spacing.sm,
-    right: Spacing.sm,
-    backgroundColor: PsychiColors.coral,
+    backgroundColor: '#F59E0B',
     borderRadius: 10,
     minWidth: 20,
     height: 20,
@@ -389,82 +388,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
   },
   actionBadgeText: {
-    color: PsychiColors.white,
     fontSize: 12,
     fontWeight: '700',
-  },
-  activityCard: {
-    backgroundColor: PsychiColors.white,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
-    ...Shadows.soft,
-  },
-  activityItem: {
-    flexDirection: 'row',
-    paddingVertical: Spacing.sm,
-  },
-  activityItemBorder: {
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 0, 0, 0.05)',
-  },
-  activityDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: PsychiColors.azure,
-    marginTop: 6,
-    marginRight: Spacing.sm,
-  },
-  activityContent: {
-    flex: 1,
-  },
-  activityText: {
-    fontSize: 14,
-    color: '#2A2A2A',
-    lineHeight: 20,
-  },
-  activityTime: {
-    fontSize: 12,
-    color: PsychiColors.textMuted,
-    marginTop: 4,
-  },
-  healthCard: {
-    backgroundColor: PsychiColors.white,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
-    ...Shadows.soft,
-  },
-  healthItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: Spacing.sm,
-  },
-  healthDivider: {
-    height: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
-  },
-  healthIndicator: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginRight: Spacing.sm,
-  },
-  healthGood: {
-    backgroundColor: PsychiColors.success,
-  },
-  healthInfo: {
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  healthLabel: {
-    fontSize: 14,
-    color: '#2A2A2A',
-  },
-  healthValue: {
-    fontSize: 14,
-    color: PsychiColors.success,
-    fontWeight: '500',
+    color: PsychiColors.white,
   },
 });
