@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -28,8 +28,22 @@ import { PENDING_QUIZ_PREFERENCES_KEY } from './welcome';
 
 export default function SignUpScreen() {
   const insets = useSafeAreaInsets();
-  const { signUp } = useAuth();
+  const { signUp, isAuthenticated, profile } = useAuth();
   const { role: roleParam } = useLocalSearchParams<{ role?: string }>();
+
+  // Redirect already authenticated users to their dashboard
+  // This prevents confusion when users access sign-up while already logged in
+  useEffect(() => {
+    if (isAuthenticated && profile) {
+      if (profile.role === 'supporter') {
+        router.replace('/(supporter)');
+      } else if (profile.role === 'admin') {
+        router.replace('/(admin)');
+      } else {
+        router.replace('/(client)');
+      }
+    }
+  }, [isAuthenticated, profile]);
 
   // Pre-select role and skip to credentials if role is passed via URL
   const initialRole = roleParam === 'client' ? 'client' : roleParam === 'supporter' ? 'supporter' : null;

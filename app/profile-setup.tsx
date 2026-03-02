@@ -261,14 +261,31 @@ export default function ProfileSetupScreen() {
         // Log profile save attempt
         logDiagnostic('PROFILE_SAVE', 'Starting profile save', { userId: user.id, email: user.email });
 
-        // Trust AuthContext - if user exists, session should be valid
-        // The session was explicitly set via setSession() after signup
+        // Ensure session is valid before attempting database operations
+        // This handles edge cases where session might not be fully established after signup
+        const { data: sessionData, error: sessionError } = await db.auth.getSession();
+        if (!sessionData?.session) {
+          // Try to refresh the session
+          logDiagnostic('PROFILE_SAVE', 'No session found, attempting refresh');
+          const { error: refreshError } = await db.auth.refreshSession();
+          if (refreshError) {
+            logDiagnostic('PROFILE_SAVE', 'Session refresh failed', { error: refreshError.message });
+            // If we can't get a session, the user needs to sign in again
+            Alert.alert(
+              'Session Expired',
+              'Your session has expired. Please sign in again.',
+              [{ text: 'OK', onPress: () => router.replace('/(auth)/sign-in') }]
+            );
+            return;
+          }
+        }
+
         const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
         const now = new Date().toISOString();
         const userRole = role || (isSupporter ? 'supporter' : 'client');
 
-        // Log the exact payload
-        const insertPayload = {
+        // Log the exact payload - include avatar_url if we have one
+        const insertPayload: Record<string, unknown> = {
           id: user.id,
           full_name: fullName || null,
           email: email.trim().toLowerCase(),
@@ -277,11 +294,17 @@ export default function ProfileSetupScreen() {
           updated_at: now,
         };
 
-        const updatePayload = {
+        const updatePayload: Record<string, unknown> = {
           full_name: fullName || null,
           email: email.trim().toLowerCase(),
           updated_at: now,
         };
+
+        // Include avatar_url if photo was uploaded (avatarUri will be the public URL after upload)
+        if (avatarUri && avatarUri.startsWith('http')) {
+          insertPayload.avatar_url = avatarUri;
+          updatePayload.avatar_url = avatarUri;
+        }
 
         logDiagnostic('PROFILE_SAVE', 'Prepared payloads', {
           insertPayload,

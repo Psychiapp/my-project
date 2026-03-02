@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -21,7 +21,21 @@ import { ChevronLeftIcon, EyeIcon } from '@/components/icons';
 
 export default function SignInScreen() {
   const insets = useSafeAreaInsets();
-  const { signIn } = useAuth();
+  const { signIn, isAuthenticated, profile } = useAuth();
+
+  // Redirect already authenticated users to their dashboard
+  // This prevents confusion when users access sign-in while already logged in
+  useEffect(() => {
+    if (isAuthenticated && profile) {
+      if (profile.role === 'supporter') {
+        router.replace('/(supporter)');
+      } else if (profile.role === 'admin') {
+        router.replace('/(admin)');
+      } else {
+        router.replace('/(client)');
+      }
+    }
+  }, [isAuthenticated, profile]);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
