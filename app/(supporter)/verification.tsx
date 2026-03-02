@@ -76,39 +76,89 @@ export default function VerificationScreen() {
     uri: string,
     fileName: string,
     folder: string
-  ): Promise<string | null> => {
-    if (!supabase || !user?.id) return null;
+  ): Promise<{ url: string | null; error: string | null }> => {
+    if (!supabase) {
+      return { url: null, error: 'Supabase not configured' };
+    }
+    if (!user?.id) {
+      return { url: null, error: 'Not authenticated. Please sign in again.' };
+    }
 
     try {
-      // Fetch the file as a blob
-      const response = await fetch(uri);
-      const blob = await response.blob();
+      // Verify we have a valid session before uploading
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData?.session) {
+        return { url: null, error: 'Session expired. Please sign in again.' };
+      }
 
-      // Generate unique file path
-      const extension = fileName.split('.').pop() || 'jpg';
+      // Fetch the file as a blob (required for React Native)
+      let blob: Blob;
+      try {
+        const response = await fetch(uri);
+        if (!response.ok) {
+          return { url: null, error: 'Failed to read selected file. Please try selecting it again.' };
+        }
+        blob = await response.blob();
+      } catch (fetchError) {
+        console.error('Error reading file:', fetchError);
+        return { url: null, error: 'Failed to read file. The file may be corrupted or inaccessible.' };
+      }
+
+      // Validate file size (50MB max)
+      const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+      if (blob.size > MAX_FILE_SIZE) {
+        return { url: null, error: `File is too large (${Math.round(blob.size / 1024 / 1024)}MB). Maximum size is 50MB.` };
+      }
+
+      // Generate unique file path: folder/userId/timestamp.extension
+      const extension = fileName.split('.').pop()?.toLowerCase() || 'jpg';
       const filePath = `${folder}/${user.id}/${Date.now()}.${extension}`;
+
+      console.log('Uploading to storage:', { bucket: 'verification-documents', filePath, blobSize: blob.size });
 
       const { data, error } = await supabase.storage
         .from('verification-documents')
         .upload(filePath, blob, {
           cacheControl: '3600',
           upsert: true,
+          contentType: blob.type || (extension === 'pdf' ? 'application/pdf' : `image/${extension}`),
         });
 
       if (error) {
         console.error('Storage upload error:', error);
-        return null;
+        // Provide specific error messages based on common issues
+        if (error.message?.includes('Bucket not found')) {
+          return { url: null, error: 'Storage not configured. Please contact support.' };
+        }
+        if (error.message?.includes('row-level security') || error.message?.includes('policy')) {
+          return { url: null, error: 'Permission denied. Please sign out and sign in again.' };
+        }
+        if (error.message?.includes('exceeded') || error.message?.includes('size')) {
+          return { url: null, error: 'File is too large. Please use a smaller file.' };
+        }
+        if (error.message?.includes('mime') || error.message?.includes('type')) {
+          return { url: null, error: 'Invalid file type. Please upload a PDF or image (JPG, PNG).' };
+        }
+        return { url: null, error: error.message || 'Upload failed. Please try again.' };
       }
 
-      // Get public URL
-      const { data: urlData } = supabase.storage
+      // Get signed URL for private bucket (valid for 1 year)
+      const { data: urlData, error: urlError } = await supabase.storage
         .from('verification-documents')
-        .getPublicUrl(filePath);
+        .createSignedUrl(filePath, 60 * 60 * 24 * 365); // 1 year
 
-      return urlData.publicUrl;
+      if (urlError || !urlData?.signedUrl) {
+        console.error('Error getting signed URL:', urlError);
+        // File was uploaded but URL generation failed - still usable
+        // Return the path so it can be stored and URL generated later
+        return { url: filePath, error: null };
+      }
+
+      return { url: urlData.signedUrl, error: null };
     } catch (error) {
       console.error('Error uploading file:', error);
-      return null;
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      return { url: null, error: `Upload failed: ${errorMessage}` };
     }
   };
 
@@ -193,43 +243,52 @@ export default function VerificationScreen() {
       return;
     }
 
-    if (!user?.id) return;
+    if (!user?.id) {
+      Alert.alert('Error', 'Not authenticated. Please sign out and sign in again.');
+      return;
+    }
 
     setIsSubmitting(true);
 
     try {
       // Upload transcript
       setTranscriptUploading(true);
-      const transcriptUrl = await uploadFileToStorage(
+      const transcriptResult = await uploadFileToStorage(
         transcriptFile.uri,
         transcriptFile.name,
         'transcripts'
       );
       setTranscriptUploading(false);
 
-      if (!transcriptUrl) {
-        Alert.alert('Upload Error', 'Failed to upload transcript. Please try again.');
+      if (transcriptResult.error || !transcriptResult.url) {
+        Alert.alert(
+          'Transcript Upload Failed',
+          transcriptResult.error || 'Failed to upload transcript. Please try again.'
+        );
         setIsSubmitting(false);
         return;
       }
 
       // Upload ID
       setIdUploading(true);
-      const idUrl = await uploadFileToStorage(
+      const idResult = await uploadFileToStorage(
         idDocumentFile.uri,
         idDocumentFile.name,
         'ids'
       );
       setIdUploading(false);
 
-      if (!idUrl) {
-        Alert.alert('Upload Error', 'Failed to upload ID document. Please try again.');
+      if (idResult.error || !idResult.url) {
+        Alert.alert(
+          'ID Upload Failed',
+          idResult.error || 'Failed to upload ID document. Please try again.'
+        );
         setIsSubmitting(false);
         return;
       }
 
       // Submit to database
-      const success = await submitVerificationDocuments(user.id, transcriptUrl, idUrl);
+      const success = await submitVerificationDocuments(user.id, transcriptResult.url, idResult.url);
 
       if (success) {
         Alert.alert(
@@ -240,11 +299,15 @@ export default function VerificationScreen() {
         setTranscriptFile(null);
         setIdDocumentFile(null);
       } else {
-        Alert.alert('Error', 'Failed to submit documents. Please try again.');
+        Alert.alert(
+          'Database Error',
+          'Files uploaded but failed to save to database. Please try again or contact support.'
+        );
       }
     } catch (error) {
       console.error('Error submitting verification:', error);
-      Alert.alert('Error', 'An unexpected error occurred. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      Alert.alert('Error', `An unexpected error occurred: ${errorMessage}`);
     } finally {
       setIsSubmitting(false);
       setTranscriptUploading(false);
