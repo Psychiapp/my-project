@@ -374,7 +374,13 @@ export default function ClientHomeScreen() {
               </Text>
               <TouchableOpacity
                 style={styles.heroCta}
-                onPress={() => router.push('/(client)/book')}
+                onPress={() => {
+                  if (assignedSupporter) {
+                    router.push(`/(client)/book?supporterId=${assignedSupporter.id}&supporterName=${encodeURIComponent(assignedSupporter.name)}`);
+                  } else {
+                    router.push('/(client)/book');
+                  }
+                }}
                 activeOpacity={0.8}
                 accessibilityRole="button"
                 accessibilityLabel="Book a Session"
@@ -526,7 +532,13 @@ export default function ClientHomeScreen() {
           <View style={styles.actionsContainer} accessibilityRole="menu">
             <TouchableOpacity
               style={styles.actionCard}
-              onPress={() => router.push('/(client)/book')}
+              onPress={() => {
+                if (assignedSupporter) {
+                  router.push(`/(client)/book?supporterId=${assignedSupporter.id}&supporterName=${encodeURIComponent(assignedSupporter.name)}`);
+                } else {
+                  router.push('/(client)/book');
+                }
+              }}
               activeOpacity={0.7}
               accessibilityRole="menuitem"
               accessibilityLabel="Book Session"

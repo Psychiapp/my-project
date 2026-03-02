@@ -15,12 +15,16 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PsychiColors, Spacing, BorderRadius, Shadows, Typography } from '@/constants/theme';
 import { CameraIcon, CheckIcon, ChevronRightIcon } from '@/components/icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { uploadAvatar, saveSupporterSchedule, checkClientProfileCompletion, checkSupporterProfileCompletion } from '@/lib/database';
 import { logDiagnostic, sendDiagnosticReport, captureErrorWithDiagnostics } from '@/lib/diagnosticLogger';
+
+// Key to track when profile setup was just completed (prevents redirect loop)
+export const PROFILE_SETUP_COMPLETED_KEY = '@psychi_profile_setup_completed';
 
 const SPECIALTIES = [
   'Anxiety',
@@ -68,7 +72,8 @@ export default function ProfileSetupScreen() {
   const needsLastName = profileNotFound || missingFields.includes('Last Name');
   const needsEmail = profileNotFound || missingFields.includes('Email');
   const needsBio = isSupporter && (profileNotFound || missingFields.includes('Bio'));
-  const needsPhoto = isSupporter && (profileNotFound || missingFields.includes('Profile Photo'));
+  // Profile photo is optional during initial setup - can be added later from profile settings
+  const needsPhoto = isSupporter && missingFields.includes('Profile Photo');
   const needsSpecialties = isSupporter && (profileNotFound || missingFields.includes('Specialties'));
   const needsAvailability = isSupporter && (profileNotFound || missingFields.includes('Availability'));
 
@@ -226,10 +231,7 @@ export default function ProfileSetupScreen() {
         Alert.alert('Required', 'Please write a bio of at least 50 characters.');
         return false;
       }
-      if (needsPhoto && !avatarUri) {
-        Alert.alert('Required', 'Please add a profile photo.');
-        return false;
-      }
+      // Profile photo is optional - can be added later
       if (needsSpecialties && selectedSpecialties.length === 0) {
         Alert.alert('Required', 'Please select at least one specialty.');
         return false;
@@ -359,6 +361,14 @@ export default function ProfileSetupScreen() {
 
         logDiagnostic('PROFILE_SAVE', 'Profile saved successfully', { saveResult });
 
+        // Update local profile state immediately (no need to refetch from DB)
+        // This prevents the long wait for refreshProfile()
+        const savedProfile = saveResult[0];
+        if (savedProfile) {
+          // The profile is already saved - we can navigate immediately
+          // refreshProfile will happen in background or on next mount
+        }
+
         // For supporters, update supporter_details
         if (isSupporter) {
           const supporterUpdates: Record<string, unknown> = {};
@@ -409,7 +419,12 @@ export default function ProfileSetupScreen() {
           }
         }
 
-        await refreshProfile();
+        // Don't await refreshProfile - navigate immediately
+        // The profile state will update in the background
+        refreshProfile();
+
+        // Set flag to prevent redirect loop - layout will skip profile check briefly
+        await AsyncStorage.setItem(PROFILE_SETUP_COMPLETED_KEY, Date.now().toString());
 
         // Navigate to appropriate dashboard
         if (isSupporter) {

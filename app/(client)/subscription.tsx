@@ -86,7 +86,6 @@ export default function SubscriptionScreen() {
     { label: 'E2E Encryption', basic: true, standard: true, premium: true },
     { label: 'Priority Matching', basic: true, standard: true, premium: true },
     { label: 'Saved Supporters', basic: true, standard: true, premium: true },
-    { label: 'Session History', basic: '30 days', standard: '90 days', premium: 'Unlimited' },
     { label: 'Cancel Anytime', basic: true, standard: true, premium: true },
   ];
 

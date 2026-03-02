@@ -1,6 +1,6 @@
-import { useEffect, ReactNode, useState } from 'react';
+import { useEffect, ReactNode } from 'react';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack, router, useRootNavigationState } from 'expo-router';
+import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Platform } from 'react-native';
 import 'react-native-reanimated';
@@ -87,19 +87,6 @@ const PsychiDarkTheme = {
 
 function RootLayout() {
   const colorScheme = useColorScheme();
-  const rootNavigationState = useRootNavigationState();
-  const [hasNavigatedToWelcome, setHasNavigatedToWelcome] = useState(false);
-
-  // Navigate to welcome screen once navigation is ready
-  useEffect(() => {
-    if (rootNavigationState?.key && !hasNavigatedToWelcome) {
-      setHasNavigatedToWelcome(true);
-      // Small delay to ensure navigation is fully ready
-      setTimeout(() => {
-        router.replace('/(auth)/welcome');
-      }, 100);
-    }
-  }, [rootNavigationState?.key, hasNavigatedToWelcome]);
 
   // Set up deep linking and notification listeners
   useEffect(() => {

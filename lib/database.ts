@@ -220,7 +220,8 @@ export async function checkSupporterProfileCompletion(
   if (!lastName?.trim()) missingFields.push('Last Name');
   if (!profileData.email?.trim()) missingFields.push('Email');
   if (!bio?.trim()) missingFields.push('Bio');
-  if (!profileData.avatar_url) missingFields.push('Profile Photo');
+  // Profile photo is optional during initial setup - can be added later
+  // This prevents redirect loops if photo upload fails
   if (!specialties || specialties.length === 0) missingFields.push('Specialties');
   if (!hasAvailability) missingFields.push('Availability');
 

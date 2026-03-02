@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Tabs, router } from 'expo-router';
 import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   PsychiColors,
   Shadows,
@@ -12,6 +13,7 @@ import { HomeIcon, ChatIcon, DollarIcon, ProfileIcon } from '@/components/icons'
 import { hasRequestedPermissions } from '@/lib/permissions';
 import { useAuth } from '@/contexts/AuthContext';
 import { checkSupporterProfileCompletion } from '@/lib/database';
+import { PROFILE_SETUP_COMPLETED_KEY } from '@/app/profile-setup';
 
 // Premium tab bar icon with subtle active indicator
 function TabIcon({ name, focused }: { name: string; focused: boolean }) {
@@ -72,6 +74,25 @@ export default function SupporterLayout() {
       if (isDemoMode) {
         setIsCheckingProfile(false);
         return;
+      }
+
+      // Check if profile setup was just completed (within last 10 seconds)
+      // This prevents redirect loops when navigating from profile-setup
+      try {
+        const completedAt = await AsyncStorage.getItem(PROFILE_SETUP_COMPLETED_KEY);
+        if (completedAt) {
+          const completedTime = parseInt(completedAt, 10);
+          const now = Date.now();
+          // If completed within last 10 seconds, skip the check
+          if (now - completedTime < 10000) {
+            // Clear the flag so future visits will check normally
+            await AsyncStorage.removeItem(PROFILE_SETUP_COMPLETED_KEY);
+            setIsCheckingProfile(false);
+            return;
+          }
+        }
+      } catch (error) {
+        // Ignore AsyncStorage errors
       }
 
       // Small delay to allow database to sync after signup/profile save

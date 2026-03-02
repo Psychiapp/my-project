@@ -140,7 +140,6 @@ export default function BookSessionScreen() {
   const [isBooking, setIsBooking] = useState(false);
   const [supporterAvailability, setSupporterAvailability] = useState<Record<string, string[]>>({});
   const [isLoadingAvailability, setIsLoadingAvailability] = useState(true);
-  const [showOnboardingModal, setShowOnboardingModal] = useState(false);
 
   // Get supporter from route params
   const supporter = params.supporterId ? {
@@ -148,13 +147,6 @@ export default function BookSessionScreen() {
     name: params.supporterName || 'Your Supporter',
     specialty: 'Peer Support',
   } : null;
-
-  // Show onboarding modal if no supporter assigned
-  React.useEffect(() => {
-    if (!params.supporterId) {
-      setShowOnboardingModal(true);
-    }
-  }, [params.supporterId]);
 
   // Handle onboarding completion - save preferences and go to dashboard
   const handleOnboardingComplete = async (preferences: any) => {
@@ -165,7 +157,6 @@ export default function BookSessionScreen() {
         console.error('Error saving preferences:', error);
       }
     }
-    setShowOnboardingModal(false);
     // Navigate to dashboard where they'll be matched with a supporter
     router.replace('/(client)');
   };
@@ -363,9 +354,8 @@ export default function BookSessionScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <OnboardingModal
-          visible={showOnboardingModal}
+          visible={true}
           onClose={() => {
-            setShowOnboardingModal(false);
             // Use replace instead of back() to avoid navigation errors
             // when there's no previous screen in the stack
             router.replace('/(client)');
