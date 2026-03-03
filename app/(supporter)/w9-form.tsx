@@ -433,19 +433,22 @@ export default function W9FormScreen() {
                 />
               </View>
 
-              <View style={[styles.inputGroup, { flex: 1 }]}>
+              <View style={[styles.inputGroup, { flex: 1, minWidth: 90 }]}>
                 <Text style={styles.label}>
                   State <Text style={styles.required}>*</Text>
                 </Text>
                 <TouchableOpacity
                   style={styles.statePickerButton}
-                  onPress={() => setShowStatePicker(!showStatePicker)}
+                  onPress={() => {
+                    // Close other picker if open
+                    setShowClassificationPicker(false);
+                    setShowStatePicker(!showStatePicker);
+                  }}
                   activeOpacity={0.7}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
                   <Text style={[
-                    styles.pickerButtonText,
-                    !formData.state && { color: PsychiColors.textMuted }
+                    styles.statePickerButtonText,
+                    !formData.state && styles.statePickerPlaceholder
                   ]}>
                     {formData.state || 'Select'}
                   </Text>
@@ -726,11 +729,20 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.03)',
     borderRadius: BorderRadius.md,
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
+    paddingVertical: Spacing.md,
     borderWidth: 1,
     borderColor: 'rgba(0,0,0,0.08)',
-    minHeight: 44,
+    minHeight: 48,
     justifyContent: 'center',
+    alignItems: 'center',
+  },
+  statePickerButtonText: {
+    fontSize: 16,
+    color: PsychiColors.midnight,
+    textAlign: 'center',
+  },
+  statePickerPlaceholder: {
+    color: PsychiColors.textMuted,
   },
   pickerButtonText: {
     fontSize: 16,
