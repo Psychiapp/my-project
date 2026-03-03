@@ -1958,6 +1958,37 @@ export async function suspendUser(userId: string): Promise<boolean> {
 }
 
 /**
+ * Delete a user account (admin only)
+ */
+export async function deleteUser(userId: string): Promise<boolean> {
+  if (!supabase) return false;
+
+  try {
+    // Delete supporter_details if exists
+    await supabase
+      .from('supporter_details')
+      .delete()
+      .eq('supporter_id', userId);
+
+    // Delete the profile
+    const { error } = await supabase
+      .from('profiles')
+      .delete()
+      .eq('id', userId);
+
+    if (error) {
+      console.error('Error deleting user:', error);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    return false;
+  }
+}
+
+/**
  * Reactivate a user
  */
 export async function reactivateUser(userId: string): Promise<boolean> {
