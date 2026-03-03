@@ -584,8 +584,9 @@ export default function OnboardingModal({
             style={styles.closeButton}
             onPress={onClose}
             activeOpacity={0.7}
+            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
           >
-            <CloseIcon size={20} color={PsychiColors.textPrimary} />
+            <CloseIcon size={24} color={PsychiColors.textPrimary} />
           </TouchableOpacity>
 
           <View style={styles.headerContent}>
@@ -635,12 +636,12 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   closeButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: PsychiColors.cloud,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.5)',
+    borderColor: PsychiColors.borderLight,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: Spacing.md,
