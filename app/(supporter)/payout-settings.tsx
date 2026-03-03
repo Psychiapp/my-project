@@ -166,7 +166,10 @@ export default function PayoutSettingsScreen() {
       }
     } catch (error: unknown) {
       console.error('Setup error:', error);
-      Alert.alert('Error', error instanceof Error ? error.message : 'Failed to set up payouts');
+      const errorMessage = error instanceof Error
+        ? error.message
+        : 'Failed to set up payouts. Please try again.';
+      Alert.alert('Setup Error', errorMessage);
     } finally {
       setIsSettingUp(false);
     }

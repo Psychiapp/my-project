@@ -388,24 +388,43 @@ export async function createConnectAccount(
   fullName: string
 ): Promise<ConnectAccountResponse> {
   if (!SupabaseConfig.url || !SupabaseConfig.anonKey) {
-    throw new Error('Supabase configuration missing');
+    throw new Error('App configuration missing. Please restart the app.');
   }
 
-  const response = await fetch(`${SupabaseConfig.url}/functions/v1/create-connect-account`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${SupabaseConfig.anonKey}`,
-    },
-    body: JSON.stringify({ supporterId, email, fullName }),
-  });
+  try {
+    const response = await fetch(`${SupabaseConfig.url}/functions/v1/create-connect-account`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SupabaseConfig.anonKey}`,
+      },
+      body: JSON.stringify({ supporterId, email, fullName }),
+    });
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to create Connect account');
+    if (!response.ok) {
+      let errorMessage = 'Failed to create payout account';
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorMessage;
+      } catch {
+        // Response wasn't JSON
+        if (response.status === 404) {
+          errorMessage = 'Payout service not available. Please try again later.';
+        } else if (response.status === 500) {
+          errorMessage = 'Payout service error. Please try again later.';
+        }
+      }
+      throw new Error(errorMessage);
+    }
+
+    return response.json();
+  } catch (error) {
+    // Handle network errors
+    if (error instanceof TypeError && error.message.includes('Network request failed')) {
+      throw new Error('Unable to connect. Please check your internet connection.');
+    }
+    throw error;
   }
-
-  return response.json();
 }
 
 /**
@@ -417,24 +436,41 @@ export async function getConnectOnboardingLink(
   returnUrl?: string
 ): Promise<AccountLinkResponse> {
   if (!SupabaseConfig.url || !SupabaseConfig.anonKey) {
-    throw new Error('Supabase configuration missing');
+    throw new Error('App configuration missing. Please restart the app.');
   }
 
-  const response = await fetch(`${SupabaseConfig.url}/functions/v1/create-account-link`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${SupabaseConfig.anonKey}`,
-    },
-    body: JSON.stringify({ accountId, refreshUrl, returnUrl }),
-  });
+  try {
+    const response = await fetch(`${SupabaseConfig.url}/functions/v1/create-account-link`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SupabaseConfig.anonKey}`,
+      },
+      body: JSON.stringify({ accountId, refreshUrl, returnUrl }),
+    });
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to create account link');
+    if (!response.ok) {
+      let errorMessage = 'Failed to start account setup';
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorMessage;
+      } catch {
+        if (response.status === 404) {
+          errorMessage = 'Payout service not available. Please try again later.';
+        } else if (response.status === 500) {
+          errorMessage = 'Payout service error. Please try again later.';
+        }
+      }
+      throw new Error(errorMessage);
+    }
+
+    return response.json();
+  } catch (error) {
+    if (error instanceof TypeError && error.message.includes('Network request failed')) {
+      throw new Error('Unable to connect. Please check your internet connection.');
+    }
+    throw error;
   }
-
-  return response.json();
 }
 
 /**
@@ -454,7 +490,8 @@ export async function openConnectOnboarding(accountId: string): Promise<boolean>
     }
   } catch (error) {
     console.error('Onboarding error:', error);
-    Alert.alert('Error', 'Failed to start account setup. Please try again.');
+    const errorMessage = error instanceof Error ? error.message : 'Failed to start account setup. Please try again.';
+    Alert.alert('Error', errorMessage);
     return false;
   }
 }
