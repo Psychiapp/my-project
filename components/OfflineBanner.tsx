@@ -5,10 +5,11 @@ import { PsychiColors, Spacing } from '@/constants/theme';
 import { WifiOffIcon } from '@/components/icons';
 
 export default function OfflineBanner() {
-  const { isConnected, isInternetReachable } = useNetwork();
-  const isOffline = isConnected === false || isInternetReachable === false;
+  const { isConnected } = useNetwork();
 
-  if (!isOffline) return null;
+  // Only show banner when definitely disconnected
+  // isInternetReachable can be unreliable (returns null/false incorrectly on iOS)
+  if (isConnected !== false) return null;
 
   return (
     <View style={styles.container}>
