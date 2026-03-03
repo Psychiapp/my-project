@@ -281,7 +281,6 @@ export default function SupporterEditProfileScreen() {
             bio,
             specialties: selectedSpecialties,
             availability,
-            updated_at: now,
           }, {
             onConflict: 'supporter_id'
           })
