@@ -6,6 +6,9 @@ const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') as string, {
   httpClient: Stripe.createFetchHttpClient(),
 });
 
+// Use Supabase URL for redirects (goes through stripe-redirect Edge Function)
+const supabaseUrl = Deno.env.get('SUPABASE_URL') as string;
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -27,11 +30,17 @@ serve(async (req) => {
       );
     }
 
+    // Use HTTPS redirect URLs that go through our stripe-redirect Edge Function
+    // This function then redirects to the app using deep links
+    const baseRedirectUrl = `${supabaseUrl}/functions/v1/stripe-redirect`;
+    const defaultRefreshUrl = `${baseRedirectUrl}?type=refresh`;
+    const defaultReturnUrl = `${baseRedirectUrl}?type=success`;
+
     // Create account link for onboarding
     const accountLink = await stripe.accountLinks.create({
       account: accountId,
-      refresh_url: refreshUrl || 'psychi://payout-settings?refresh=true',
-      return_url: returnUrl || 'psychi://payout-settings?success=true',
+      refresh_url: refreshUrl || defaultRefreshUrl,
+      return_url: returnUrl || defaultReturnUrl,
       type: 'account_onboarding',
     });
 
