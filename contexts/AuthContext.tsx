@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { getUserProfile } from '@/lib/database';
@@ -55,6 +55,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isDemoMode, setIsDemoMode] = useState(false);
 
+  // Ref to track when signup is in progress - prevents onAuthStateChange from
+  // overwriting profile state during the signup flow race condition
+  const isSigningUpRef = useRef(false);
+
   // Fetch user profile from database
   const fetchProfile = async (userId: string): Promise<UserProfile | null> => {
     const dbProfile = await getUserProfile(userId);
@@ -109,6 +113,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.log('Auth state changed:', event);
 
           if (event === 'SIGNED_IN' && session?.user) {
+            // Skip profile fetch during signup - signUp() handles state directly
+            // This prevents race condition where onAuthStateChange overwrites profile
+            if (isSigningUpRef.current) {
+              console.log('Skipping profile fetch during signup');
+              return;
+            }
+
             const authUser = { id: session.user.id, email: session.user.email || '' };
             setUser(authUser);
             setIsDemoMode(false);
@@ -218,8 +229,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signUp = async (email: string, password: string, role: UserRole) => {
     try {
       setIsLoading(true);
+      // Set flag to prevent onAuthStateChange from interfering with signup flow
+      isSigningUpRef.current = true;
 
       if (!supabase) {
+        isSigningUpRef.current = false;
         return { error: new Error('Supabase not configured. Cannot create account.') };
       }
 
@@ -371,11 +385,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           onboardingCompleted: false,
         });
 
+        // Clear signup flag - state is now set correctly
+        isSigningUpRef.current = false;
+
         return { error: null, user: authUser };
       }
 
+      isSigningUpRef.current = false;
       return { error: null, user: null };
     } catch (error) {
+      isSigningUpRef.current = false;
       return { error: error as Error };
     } finally {
       setIsLoading(false);

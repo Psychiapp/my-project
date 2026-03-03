@@ -33,8 +33,16 @@ export default function SignUpScreen() {
 
   // Redirect already authenticated users to their dashboard
   // This prevents confusion when users access sign-up while already logged in
+  // Skip redirect if we're currently in signup flow (loading, showing modal, etc.)
   useEffect(() => {
-    if (isAuthenticated && profile) {
+    // Don't redirect if signup is in progress or modals are showing
+    if (isLoading || showOnboardingModal || showEquipmentModal) {
+      return;
+    }
+
+    // Only redirect if user was already authenticated before visiting this screen
+    // (not as a result of just signing up - that's handled by handleSignUp)
+    if (isAuthenticated && profile && profile.onboardingCompleted) {
       if (profile.role === 'supporter') {
         router.replace('/(supporter)');
       } else if (profile.role === 'admin') {
@@ -43,7 +51,7 @@ export default function SignUpScreen() {
         router.replace('/(client)');
       }
     }
-  }, [isAuthenticated, profile]);
+  }, [isAuthenticated, profile, isLoading, showOnboardingModal, showEquipmentModal]);
 
   // Pre-select role and skip to credentials if role is passed via URL
   const initialRole = roleParam === 'client' ? 'client' : roleParam === 'supporter' ? 'supporter' : null;

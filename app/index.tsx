@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Redirect } from 'expo-router';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
@@ -11,11 +11,41 @@ export default function Index() {
   const { isAuthenticated, isLoading, profile, user } = useAuth();
   const [userMetadataRole, setUserMetadataRole] = useState<UserRole | null>(null);
   const [isCheckingMetadata, setIsCheckingMetadata] = useState(false);
+  // Track if we should wait for profile to settle after auth state change
+  const [isWaitingForProfile, setIsWaitingForProfile] = useState(false);
+  const waitTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // If authenticated but no profile, try to get role from user metadata
+  // If authenticated but no profile, wait briefly for profile state to settle
+  // This handles the race condition where user is set before profile during signup
+  useEffect(() => {
+    if (isAuthenticated && user && !profile && !isWaitingForProfile && !isCheckingMetadata) {
+      setIsWaitingForProfile(true);
+
+      // Wait 500ms for profile state to propagate before checking metadata
+      waitTimeoutRef.current = setTimeout(() => {
+        setIsWaitingForProfile(false);
+      }, 500);
+    }
+
+    // If profile becomes available, cancel the wait
+    if (profile && waitTimeoutRef.current) {
+      clearTimeout(waitTimeoutRef.current);
+      waitTimeoutRef.current = null;
+      setIsWaitingForProfile(false);
+    }
+
+    return () => {
+      if (waitTimeoutRef.current) {
+        clearTimeout(waitTimeoutRef.current);
+      }
+    };
+  }, [isAuthenticated, user, profile, isWaitingForProfile, isCheckingMetadata]);
+
+  // If still no profile after waiting, try to get role from user metadata
   useEffect(() => {
     const getRoleFromMetadata = async () => {
-      if (isAuthenticated && user && !profile && supabase) {
+      // Only check metadata if we've waited and still have no profile
+      if (isAuthenticated && user && !profile && !isWaitingForProfile && supabase) {
         setIsCheckingMetadata(true);
         try {
           const { data } = await supabase.auth.getUser();
@@ -31,10 +61,10 @@ export default function Index() {
     };
 
     getRoleFromMetadata();
-  }, [isAuthenticated, user, profile]);
+  }, [isAuthenticated, user, profile, isWaitingForProfile]);
 
-  // Show loading while checking auth state or metadata
-  if (isLoading || isCheckingMetadata) {
+  // Show loading while checking auth state, waiting for profile, or checking metadata
+  if (isLoading || isWaitingForProfile || isCheckingMetadata) {
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" color={PsychiColors.azure} />
