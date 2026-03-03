@@ -192,19 +192,19 @@ export default function AdminOverview() {
         {/* Quick Actions */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <View style={styles.actionsRow}>
+          <View style={styles.actionsGrid}>
             <TouchableOpacity
-              style={styles.actionButton}
+              style={styles.actionCard}
               onPress={() => router.push('/(admin)/users')}
             >
-              <UsersIcon size={20} color={PsychiColors.azure} />
+              <UsersIcon size={24} color={PsychiColors.azure} />
               <Text style={styles.actionText}>Manage Users</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.actionButton, pendingCount > 0 && styles.actionButtonHighlight]}
+              style={[styles.actionCard, pendingCount > 0 && styles.actionCardHighlight]}
               onPress={() => router.push('/(admin)/verification' as any)}
             >
-              <CheckIcon size={20} color={pendingCount > 0 ? '#F59E0B' : PsychiColors.azure} />
+              <CheckIcon size={24} color={pendingCount > 0 ? '#F59E0B' : PsychiColors.azure} />
               <Text style={[styles.actionText, pendingCount > 0 && { color: '#F59E0B' }]}>
                 Verify Supporters
               </Text>
@@ -213,6 +213,20 @@ export default function AdminOverview() {
                   <Text style={styles.actionBadgeText}>{pendingCount}</Text>
                 </View>
               )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.actionCard}
+              onPress={() => router.push('/(admin)/revenue')}
+            >
+              <ChartIcon size={24} color={PsychiColors.azure} />
+              <Text style={styles.actionText}>View Revenue</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.actionCard}
+              onPress={() => router.push('/(admin)/revenue')}
+            >
+              <DollarIcon size={24} color={PsychiColors.azure} />
+              <Text style={styles.actionText}>Process Payouts</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -353,30 +367,30 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.05)',
   },
-  actionsRow: {
+  actionsGrid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: Spacing.sm,
   },
-  actionButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+  actionCard: {
+    width: '48%',
     backgroundColor: PsychiColors.white,
-    borderRadius: BorderRadius.md,
-    paddingVertical: Spacing.md,
-    gap: Spacing.sm,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.md,
+    alignItems: 'center',
     ...Shadows.soft,
   },
-  actionButtonHighlight: {
+  actionCardHighlight: {
     backgroundColor: 'rgba(245, 158, 11, 0.08)',
     borderWidth: 1,
     borderColor: 'rgba(245, 158, 11, 0.2)',
   },
   actionText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#2A2A2A',
+    marginTop: Spacing.xs,
+    textAlign: 'center',
   },
   actionBadge: {
     backgroundColor: '#F59E0B',
