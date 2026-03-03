@@ -56,9 +56,9 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
     );
   };
 
-  // Filter out hidden routes (supporter, transcript)
+  // Filter out hidden routes (supporter, transcript) - check for partial matches too
   const visibleRoutes = state.routes.filter(
-    route => !['supporter', 'transcript'].includes(route.name)
+    route => !route.name.includes('supporter') && !route.name.includes('transcript')
   );
 
   return (
