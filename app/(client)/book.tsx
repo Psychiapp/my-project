@@ -140,6 +140,7 @@ export default function BookSessionScreen() {
   const [isBooking, setIsBooking] = useState(false);
   const [supporterAvailability, setSupporterAvailability] = useState<Record<string, string[]>>({});
   const [isLoadingAvailability, setIsLoadingAvailability] = useState(true);
+  const [showOnboardingModal, setShowOnboardingModal] = useState(true);
 
   // Get supporter from route params
   const supporter = params.supporterId ? {
@@ -157,8 +158,11 @@ export default function BookSessionScreen() {
         console.error('Error saving preferences:', error);
       }
     }
-    // Navigate to dashboard where they'll be matched with a supporter
-    router.replace('/(client)');
+    // Close modal first, then navigate after a brief delay
+    setShowOnboardingModal(false);
+    setTimeout(() => {
+      router.replace('/(client)');
+    }, 100);
   };
 
   // Fetch supporter availability on mount
@@ -354,11 +358,13 @@ export default function BookSessionScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <OnboardingModal
-          visible={true}
+          visible={showOnboardingModal}
           onClose={() => {
-            // Use replace instead of back() to avoid navigation errors
-            // when there's no previous screen in the stack
-            router.replace('/(client)');
+            // Close modal first, then navigate
+            setShowOnboardingModal(false);
+            setTimeout(() => {
+              router.replace('/(client)');
+            }, 100);
           }}
           onComplete={handleOnboardingComplete}
         />
