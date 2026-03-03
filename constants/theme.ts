@@ -15,8 +15,8 @@ export const PsychiColors = {
   deep: '#2D3748',            // Deep charcoal accent
   sapphire: '#3D5A80',        // Muted sapphire
   royalBlue: '#4A6FA5',       // Primary blue - sophisticated, muted
-  azure: '#6B8CAE',           // Softer azure
-  sky: '#89A7C4',             // Light sky accent
+  azure: '#A3C4E4',           // Light periwinkle blue - primary accent
+  sky: '#B8D4F0',             // Lighter sky accent
 
   // Warm Accent Colors - Muted and elegant
   periwinkle: '#C4A69B',      // Muted peachy-brown
@@ -74,7 +74,7 @@ export const PsychiColors = {
   // Support Type Card Accents - Softer
   chatAccent: '#C4A69B',
   phoneAccent: '#B5A3BD',
-  videoAccent: '#89A7C4',
+  videoAccent: '#A3C4E4',
 
   // Legacy aliases for backwards compatibility
   pureWhite: '#FDFCFA',
@@ -87,10 +87,10 @@ export const PsychiColors = {
 // =============================================================================
 export const Gradients = {
   // Hero/Header gradients - Refined
-  hero: ['#6B8CAE', '#4A6FA5'] as [string, string],
+  hero: ['#A3C4E4', '#4A6FA5'] as [string, string],
   heroSoft: ['#FAF9F7', '#F5F4F1'] as [string, string],
-  heroBlue: ['#6B8CAE', '#4A6FA5'] as [string, string],
-  heroText: ['#4A6FA5', '#6B8CAE'] as [string, string],
+  heroBlue: ['#A3C4E4', '#4A6FA5'] as [string, string],
+  heroText: ['#4A6FA5', '#A3C4E4'] as [string, string],
 
   // Editorial page background - warm cream
   editorial: ['#FAF9F7', '#F5F4F1', '#EFEEEA'] as [string, string, string],
@@ -118,7 +118,7 @@ export const Gradients = {
 
   // Role gradients - Warm
   supporter: ['#C4A69B', '#B5A3BD'] as [string, string],
-  client: ['#89A7C4', '#6B8CAE'] as [string, string],
+  client: ['#B8D4F0', '#A3C4E4'] as [string, string],
 
   // Active indicator - Gold accent
   activeIndicator: ['#C5A572', '#B89860'] as [string, string],
@@ -130,7 +130,7 @@ export const Gradients = {
   // Support type cards
   chatCard: ['#C4A69B', '#B5A3BD'] as [string, string],
   phoneCard: ['#B5A3BD', '#8E7D99'] as [string, string],
-  videoCard: ['#89A7C4', '#6B8CAE'] as [string, string],
+  videoCard: ['#B8D4F0', '#A3C4E4'] as [string, string],
   supportTypes: ['#FAF9F7', '#EFEEEA'] as [string, string],
 
   // Premium accents
