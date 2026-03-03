@@ -249,26 +249,37 @@ export async function uploadAvatar(
   if (!supabase) return null;
 
   try {
-    // Convert image URI to blob
-    const response = await fetch(imageUri);
-    const blob = await response.blob();
+    // Import FileSystem dynamically to avoid issues
+    const FileSystem = require('expo-file-system');
+
+    // Read file as base64 (works reliably in React Native)
+    const base64Data = await FileSystem.readAsStringAsync(imageUri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+
+    // Convert base64 to Uint8Array
+    const binaryString = atob(base64Data);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
 
     // Generate unique filename
     const fileExt = imageUri.split('.').pop()?.toLowerCase() || 'jpg';
     const fileName = `${userId}-${Date.now()}.${fileExt}`;
-    const filePath = `avatars/${fileName}`;
+    const filePath = `${fileName}`;
+    const contentType = `image/${fileExt === 'jpg' ? 'jpeg' : fileExt}`;
 
     // Upload to Supabase storage
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('avatars')
-      .upload(filePath, blob, {
-        contentType: `image/${fileExt === 'jpg' ? 'jpeg' : fileExt}`,
+      .upload(filePath, bytes, {
+        contentType,
         upsert: true,
       });
 
     if (uploadError) {
       console.error('Error uploading avatar:', uploadError);
-      // If bucket doesn't exist, store as base64 in profile (fallback)
       return null;
     }
 
