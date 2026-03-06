@@ -330,39 +330,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           logDiagnostic('SIGNUP', 'Profile upsert threw exception', { error: err });
         }
 
-        // Send comprehensive signup diagnostic report to Sentry
-        // Type-safe access to error properties (may be Supabase error or timeout error)
-        const errorInfo = profileError ? {
-          message: profileError.message,
-          code: (profileError as { code?: string }).code,
-          details: (profileError as { details?: string }).details,
-          hint: (profileError as { hint?: string }).hint,
-        } : null;
-
-        sendDiagnosticReport('Signup Profile Creation Diagnostic', {
-          signupUser: {
-            id: data.user.id,
-            email: data.user.email,
-          },
-          signupSession: {
-            exists: !!data.session,
-            expiresAt: data.session?.expires_at,
-            accessTokenExists: !!data.session?.access_token,
-          },
-          sessionAfterDelay: {
-            exists: !!sessionCheck?.session,
-            userId: sessionCheck?.session?.user?.id || 'NO_SESSION',
-            matchesSignupUser: sessionCheck?.session?.user?.id === data.user.id,
-          },
-          profileUpsert: {
-            payload: upsertPayload,
-            result: profileData,
-            error: errorInfo,
-            success: !profileError && !!profileData,
-          },
-        });
-
         if (profileError) {
+          // Only send diagnostic report to Sentry when there's an actual error
+          // Type-safe access to error properties (may be Supabase error or timeout error)
+          const errorInfo = {
+            message: profileError.message,
+            code: (profileError as { code?: string }).code,
+            details: (profileError as { details?: string }).details,
+            hint: (profileError as { hint?: string }).hint,
+          };
+
+          sendDiagnosticReport('Signup Profile Creation Error', {
+            signupUser: {
+              id: data.user.id,
+              email: data.user.email,
+            },
+            signupSession: {
+              exists: !!data.session,
+              expiresAt: data.session?.expires_at,
+              accessTokenExists: !!data.session?.access_token,
+            },
+            sessionAfterDelay: {
+              exists: !!sessionCheck?.session,
+              userId: sessionCheck?.session?.user?.id || 'NO_SESSION',
+              matchesSignupUser: sessionCheck?.session?.user?.id === data.user.id,
+            },
+            profileUpsert: {
+              payload: upsertPayload,
+              error: errorInfo,
+            },
+          });
+
           logDiagnostic('SIGNUP', 'Profile upsert failed - will retry in profile-setup', {
             error: profileError.message,
             code: errorInfo?.code,
