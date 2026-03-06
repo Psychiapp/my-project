@@ -164,7 +164,7 @@ const MODULE_ICONS: Record<Module, React.FC<{ size?: number; color?: string }>> 
 const MODULES = [
   { id: 'confidentiality' as Module, title: 'Confidentiality', duration: '30 min' },
   { id: 'mindfulness' as Module, title: 'Mindfulness', duration: '25 min' },
-  { id: 'cbt' as Module, title: 'Cognitive Behavioral Therapy', duration: '30 min' },
+  { id: 'cbt' as Module, title: 'CBT-Informed Support Skills', duration: '30 min' },
   { id: 'validation' as Module, title: 'Validating Language', duration: '25 min' },
   { id: 'crisis' as Module, title: 'Crisis Recognition', duration: '35 min' },
   { id: 'platform' as Module, title: 'Supporting on Psychi', duration: '30 min' },
@@ -548,7 +548,7 @@ const LEARNING_OBJECTIVES: Record<Module, string[]> = {
     "Identify the six levels of validation according to DBT",
     "Recognize common invalidating responses and their impact on emotional well-being",
     "Apply validation techniques in real-time conversations with clients",
-    "Use validation as a foundation for building trust and therapeutic rapport",
+    "Use validation as a foundation for building trust and supportive connection",
   ],
   crisis: [
     "Recognize warning signs and risk factors for suicide and self-harm",
@@ -1018,8 +1018,10 @@ Key Takeaway: Mindfulness is a powerful and practical skill that helps you live 
   cbt: [
     {
       id: 'cbt-1',
-      title: 'Understanding Cognitive Behavioral Therapy (CBT)',
-      content: `Cognitive Behavioral Therapy (CBT) is one of the most widely researched and practiced forms of psychotherapy in the modern world. It is a structured, time-limited, and goal-oriented form of treatment that focuses on the interplay between thoughts, feelings, and behaviors.
+      title: 'Understanding CBT Principles',
+      content: `IMPORTANT: This module teaches CBT-informed communication techniques for peer support. You are NOT learning to practice therapy or provide clinical treatment.
+
+Cognitive Behavioral Therapy (CBT) is one of the most widely researched approaches in psychology. As a peer supporter, understanding its core principles helps you have more effective conversations—but you are providing support, not therapy.
 
 Originally developed in the 1960s by Dr. Aaron Beck for the treatment of depression, CBT has since evolved and is now used to treat a wide variety of mental health conditions, including anxiety disorders, PTSD, OCD, eating disorders, and substance use disorders.
 
@@ -2149,7 +2151,7 @@ export default function TrainingScreen() {
               <View style={styles.certificateModules}>
                 <Text style={styles.certificateModulesTitle}>Proficiency Demonstrated In:</Text>
                 <Text style={styles.certificateModuleItem}>• Mindfulness Techniques</Text>
-                <Text style={styles.certificateModuleItem}>• Cognitive Behavioral Therapy (CBT)</Text>
+                <Text style={styles.certificateModuleItem}>• CBT-Informed Support Skills</Text>
                 <Text style={styles.certificateModuleItem}>• Validating Language Skills</Text>
                 <Text style={styles.certificateModuleItem}>• Crisis Recognition & Response</Text>
                 <Text style={styles.certificateModuleItem}>• Supporting Clients on Psychi</Text>

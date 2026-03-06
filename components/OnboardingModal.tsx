@@ -43,16 +43,16 @@ interface OnboardingModalProps {
 
 // Data
 const topics = [
-  { id: 'anxiety', label: 'Anxiety' },
-  { id: 'stress', label: 'Stress' },
-  { id: 'depression', label: 'Depression' },
+  { id: 'stress_worry', label: 'Stress & Worry' },
+  { id: 'stress', label: 'Everyday Stress' },
+  { id: 'low_mood', label: 'Low Mood' },
   { id: 'relationships', label: 'Relationships' },
   { id: 'loneliness', label: 'Loneliness' },
   { id: 'work_career', label: 'Work/Career' },
   { id: 'academic', label: 'Academic Pressure' },
-  { id: 'self_esteem', label: 'Self-Esteem' },
-  { id: 'family', label: 'Family Issues' },
-  { id: 'grief', label: 'Grief/Loss' },
+  { id: 'self_confidence', label: 'Self-Confidence' },
+  { id: 'family', label: 'Family Dynamics' },
+  { id: 'grief', label: 'Loss & Grief' },
   { id: 'transitions', label: 'Life Transitions' },
   { id: 'identity', label: 'Identity/LGBTQ+' },
 ];

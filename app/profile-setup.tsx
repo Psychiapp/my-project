@@ -26,18 +26,18 @@ import { logDiagnostic, sendDiagnosticReport, captureErrorWithDiagnostics } from
 // Key to track when profile setup was just completed (prevents redirect loop)
 export const PROFILE_SETUP_COMPLETED_KEY = '@psychi_profile_setup_completed';
 
-const SPECIALTIES = [
-  'Anxiety',
-  'Depression',
-  'Stress',
+const FOCUS_AREAS = [
+  'Stress & Worry',
+  'Low Mood',
+  'Everyday Stress',
   'Relationships',
-  'Grief',
-  'Trauma',
-  'Self-Esteem',
+  'Loss & Grief',
+  'Difficult Experiences',
+  'Self-Confidence',
   'Life Transitions',
   'Work/Career',
-  'Family Issues',
-  'Addiction',
+  'Family Dynamics',
+  'Habit Change',
   'LGBTQ+',
 ];
 
@@ -633,13 +633,13 @@ export default function ProfileSetupScreen() {
             </View>
           )}
 
-          {/* Specialties (Supporters only) */}
+          {/* Areas of Focus (Supporters only) */}
           {isSupporter && needsSpecialties && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Specialties *</Text>
+              <Text style={styles.sectionTitle}>Areas of Focus *</Text>
               <Text style={styles.sectionSubtitle}>Select up to 6 areas you can help with</Text>
               <View style={styles.tagsContainer}>
-                {SPECIALTIES.map((specialty) => (
+                {FOCUS_AREAS.map((specialty) => (
                   <TouchableOpacity
                     key={specialty}
                     style={[

@@ -21,16 +21,19 @@ import type { ClientAssignment, ClientAssignmentStatus } from '@/types/database'
 
 // Display labels for quiz answers
 const topicLabels: Record<string, string> = {
-  anxiety: 'Anxiety',
-  stress: 'Stress',
-  depression: 'Depression',
+  stress_worry: 'Stress & Worry',
+  anxiety: 'Stress & Worry', // Legacy mapping
+  stress: 'Everyday Stress',
+  low_mood: 'Low Mood',
+  depression: 'Low Mood', // Legacy mapping
   relationships: 'Relationships',
   loneliness: 'Loneliness',
   work_career: 'Work/Career',
   academic: 'Academic Pressure',
-  self_esteem: 'Self-Esteem',
-  family: 'Family Issues',
-  grief: 'Grief/Loss',
+  self_confidence: 'Self-Confidence',
+  self_esteem: 'Self-Confidence', // Legacy mapping
+  family: 'Family Dynamics',
+  grief: 'Loss & Grief',
   transitions: 'Life Transitions',
   identity: 'Identity/LGBTQ+',
 };

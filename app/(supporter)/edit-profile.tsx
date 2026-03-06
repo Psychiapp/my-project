@@ -21,18 +21,18 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { getSupporterDetail, uploadAvatar } from '@/lib/database';
 
-const SPECIALTIES = [
-  'Anxiety',
-  'Depression',
-  'Stress',
+const FOCUS_AREAS = [
+  'Stress & Worry',
+  'Low Mood',
+  'Everyday Stress',
   'Relationships',
-  'Grief',
-  'Trauma',
-  'Self-Esteem',
+  'Loss & Grief',
+  'Difficult Experiences',
+  'Self-Confidence',
   'Life Transitions',
   'Work/Career',
-  'Family Issues',
-  'Addiction',
+  'Family Dynamics',
+  'Habit Change',
   'LGBTQ+',
 ];
 
@@ -415,14 +415,14 @@ export default function SupporterEditProfileScreen() {
             <Text style={styles.hint}>{bio.length}/500 characters (minimum 50)</Text>
           </View>
 
-          {/* Specialties */}
+          {/* Areas of Focus */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Specialties</Text>
+            <Text style={styles.sectionTitle}>Areas of Focus</Text>
             <Text style={styles.sectionSubtitle}>
               Select up to 6 areas you can help with
             </Text>
             <View style={styles.tagsContainer}>
-              {SPECIALTIES.map((specialty) => (
+              {FOCUS_AREAS.map((specialty) => (
                 <TouchableOpacity
                   key={specialty}
                   style={[

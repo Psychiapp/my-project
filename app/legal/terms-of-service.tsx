@@ -96,6 +96,16 @@ PRIVACY
 
 Your use of Psychi is subject to our Privacy Policy. By using the App, you consent to our collection and use of data as described therein.
 
+DATA PROTECTION NOTICE
+
+Psychi is committed to protecting your information. Please note:
+- Psychi is a peer support platform, not a healthcare provider
+- Psychi is not a "covered entity" under HIPAA (Health Insurance Portability and Accountability Act)
+- Your conversations with peer supporters are treated as confidential but are not protected health information (PHI) under HIPAA
+- We implement industry-standard security measures to protect your data
+- Peer supporters are bound by confidentiality agreements but are not healthcare professionals
+- For communications that require HIPAA protection, please consult a licensed healthcare provider
+
 SAFETY AND REPORTING
 
 Emergency Protocol:

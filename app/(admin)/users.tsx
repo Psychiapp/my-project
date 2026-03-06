@@ -66,7 +66,7 @@ export default function AdminUsers() {
           },
           {
             id: 'demo-supporter-1',
-            email: 'sarah.therapist@example.com',
+            email: 'sarah.supporter@example.com',
             full_name: 'Sarah Thompson',
             role: 'supporter',
             created_at: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(),
@@ -76,7 +76,7 @@ export default function AdminUsers() {
           },
           {
             id: 'demo-supporter-2',
-            email: 'mike.counselor@example.com',
+            email: 'mike.supporter@example.com',
             full_name: 'Michael Chen',
             role: 'supporter',
             created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
