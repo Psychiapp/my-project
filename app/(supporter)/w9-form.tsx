@@ -458,7 +458,11 @@ export default function W9FormScreen() {
 
             {showStatePicker && (
               <View style={styles.statePickerContainer}>
-                <ScrollView style={styles.statePickerScroll} nestedScrollEnabled>
+                <ScrollView
+                  style={styles.statePickerScroll}
+                  nestedScrollEnabled
+                  keyboardShouldPersistTaps="handled"
+                >
                   {US_STATES.map((state) => (
                     <TouchableOpacity
                       key={state}
@@ -470,6 +474,7 @@ export default function W9FormScreen() {
                         setFormData(prev => ({ ...prev, state }));
                         setShowStatePicker(false);
                       }}
+                      activeOpacity={0.7}
                     >
                       <Text style={[
                         styles.pickerOptionText,
@@ -783,6 +788,8 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
     borderWidth: 1,
     borderColor: 'rgba(0,0,0,0.1)',
+    zIndex: 1000,
+    elevation: 5,
     ...Shadows.soft,
   },
   statePickerScroll: {

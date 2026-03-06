@@ -33,6 +33,7 @@ export default function EditProfileScreen() {
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [avatarUri, setAvatarUri] = useState<string | null>(profile?.avatarUrl || null);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [avatarKey, setAvatarKey] = useState(Date.now()); // Key to force image refresh
 
   // Load existing profile data from database
   useEffect(() => {
@@ -156,6 +157,7 @@ export default function EditProfileScreen() {
       const uploadedUrl = await uploadAvatar(user.id, uri);
       if (uploadedUrl) {
         setAvatarUri(uploadedUrl);
+        setAvatarKey(Date.now()); // Force image refresh
         await refreshProfile();
         Alert.alert('Success', 'Profile photo updated successfully.');
       } else {
@@ -322,7 +324,8 @@ export default function EditProfileScreen() {
             <View style={styles.avatarContainer}>
               {avatarUri ? (
                 <Image
-                  source={{ uri: avatarUri }}
+                  key={`avatar-${avatarKey}`}
+                  source={{ uri: avatarUri, cache: 'reload' }}
                   style={styles.avatarImage}
                   accessibilityRole="image"
                   accessibilityLabel="Profile avatar"

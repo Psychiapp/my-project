@@ -546,11 +546,29 @@ export default function AdminSupporterDetailScreen() {
           <Text style={styles.sectionTitle}>Profile Information</Text>
           <View style={styles.infoCard}>
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Education</Text>
-              <Text style={styles.infoValue}>{supporter.education || 'Not provided'}</Text>
+              <Text style={styles.infoLabel}>School</Text>
+              <Text style={styles.infoValue}>{supporter.school_name || supporter.education || 'Not provided'}</Text>
             </View>
+            {supporter.major && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Major</Text>
+                <Text style={styles.infoValue}>{supporter.major}</Text>
+              </View>
+            )}
+            {(supporter.years_attending !== undefined && supporter.years_attending > 0) && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Years Attending</Text>
+                <Text style={styles.infoValue}>{supporter.years_attending} years</Text>
+              </View>
+            )}
+            {supporter.expected_graduation && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Expected Graduation</Text>
+                <Text style={styles.infoValue}>{supporter.expected_graduation}</Text>
+              </View>
+            )}
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Experience</Text>
+              <Text style={styles.infoLabel}>Support Experience</Text>
               <Text style={styles.infoValue}>{supporter.years_experience} years</Text>
             </View>
             <View style={styles.infoRow}>

@@ -255,6 +255,39 @@ export default function SubscriptionScreen() {
           </LinearGradient>
         </View>
 
+        {/* Pay As You Go Section - for users without subscription */}
+        {!currentPlan && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Book a Single Session</Text>
+            <View style={styles.paygCard}>
+              <Text style={styles.paygDescription}>
+                Don't want to commit to a subscription? Book individual sessions at regular prices.
+              </Text>
+              <View style={styles.paygPrices}>
+                <View style={styles.paygPriceItem}>
+                  <Text style={styles.paygPriceLabel}>Chat</Text>
+                  <Text style={styles.paygPriceValue}>{Config.pricing.chat.display}</Text>
+                </View>
+                <View style={styles.paygPriceItem}>
+                  <Text style={styles.paygPriceLabel}>Phone</Text>
+                  <Text style={styles.paygPriceValue}>{Config.pricing.phone.display}</Text>
+                </View>
+                <View style={styles.paygPriceItem}>
+                  <Text style={styles.paygPriceLabel}>Video</Text>
+                  <Text style={styles.paygPriceValue}>{Config.pricing.video.display}</Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                style={styles.paygButton}
+                onPress={() => router.push('/(client)/book')}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.paygButtonText}>Book a Session</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
         {/* Plan Cards */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Choose Your Plan</Text>
@@ -843,5 +876,53 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: PsychiColors.textMuted,
     lineHeight: 20,
+  },
+  paygCard: {
+    backgroundColor: PsychiColors.white,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.lg,
+    ...Shadows.soft,
+  },
+  paygDescription: {
+    fontSize: 14,
+    color: PsychiColors.textSecondary,
+    lineHeight: 20,
+    marginBottom: Spacing.md,
+    textAlign: 'center',
+  },
+  paygPrices: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  paygPriceItem: {
+    alignItems: 'center',
+  },
+  paygPriceLabel: {
+    fontSize: 12,
+    color: PsychiColors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  paygPriceValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: PsychiColors.azure,
+  },
+  paygButton: {
+    backgroundColor: PsychiColors.azure,
+    borderRadius: BorderRadius.md,
+    paddingVertical: Spacing.md,
+    alignItems: 'center',
+  },
+  paygButtonText: {
+    color: PsychiColors.white,
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

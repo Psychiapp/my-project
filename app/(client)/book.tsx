@@ -26,7 +26,7 @@ import {
   sendBookingConfirmedNotification,
   scheduleAllSessionReminders,
 } from '@/lib/notifications';
-import { createSession, getSupporterDetail, getSupporterAvailability, saveClientPreferences } from '@/lib/database';
+import { createSession, getSupporterDetail, getSupporterAvailability, saveClientPreferences, getClientCurrentAssignment } from '@/lib/database';
 import { processSessionPayment, stripeAvailable } from '@/lib/stripe';
 import OnboardingModal from '@/components/OnboardingModal';
 
@@ -141,13 +141,46 @@ export default function BookSessionScreen() {
   const [supporterAvailability, setSupporterAvailability] = useState<Record<string, string[]>>({});
   const [isLoadingAvailability, setIsLoadingAvailability] = useState(true);
   const [showOnboardingModal, setShowOnboardingModal] = useState(true);
+  const [isLoadingAssignment, setIsLoadingAssignment] = useState(!params.supporterId);
+  const [assignedSupporter, setAssignedSupporter] = useState<{ id: string; name: string; specialty: string } | null>(null);
 
-  // Get supporter from route params
+  // Fetch assigned supporter if no supporterId in params
+  React.useEffect(() => {
+    const fetchAssignedSupporter = async () => {
+      if (params.supporterId || !user?.id) {
+        setIsLoadingAssignment(false);
+        return;
+      }
+
+      try {
+        const assignment = await getClientCurrentAssignment(user.id);
+        if (assignment?.supporter_id) {
+          // Get supporter details
+          const supporterDetail = await getSupporterDetail(assignment.supporter_id);
+          if (supporterDetail) {
+            setAssignedSupporter({
+              id: assignment.supporter_id,
+              name: supporterDetail.full_name || 'Your Supporter',
+              specialty: 'Peer Support',
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching assigned supporter:', error);
+      } finally {
+        setIsLoadingAssignment(false);
+      }
+    };
+
+    fetchAssignedSupporter();
+  }, [user?.id, params.supporterId]);
+
+  // Get supporter from route params or fetched assignment
   const supporter = params.supporterId ? {
     id: params.supporterId,
     name: params.supporterName || 'Your Supporter',
     specialty: 'Peer Support',
-  } : null;
+  } : assignedSupporter;
 
   // Handle onboarding completion - save preferences and go to dashboard
   const handleOnboardingComplete = async (preferences: any) => {
@@ -165,11 +198,12 @@ export default function BookSessionScreen() {
     }, 100);
   };
 
-  // Fetch supporter availability on mount
+  // Fetch supporter availability when supporter is available
   React.useEffect(() => {
     const fetchAvailability = async () => {
-      if (params.supporterId) {
-        const data = await getSupporterAvailability(params.supporterId);
+      const supporterId = params.supporterId || assignedSupporter?.id;
+      if (supporterId) {
+        const data = await getSupporterAvailability(supporterId);
         if (data?.availability) {
           setSupporterAvailability(data.availability);
         }
@@ -177,7 +211,7 @@ export default function BookSessionScreen() {
       setIsLoadingAvailability(false);
     };
     fetchAvailability();
-  }, [params.supporterId]);
+  }, [params.supporterId, assignedSupporter?.id]);
 
   // Get client name for notifications
   const clientName = profile?.firstName
@@ -352,6 +386,18 @@ export default function BookSessionScreen() {
   };
 
   const stepIndex = ['type', 'date', 'time', 'confirm'].indexOf(step);
+
+  // Show loading while fetching assigned supporter
+  if (isLoadingAssignment) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={PsychiColors.azure} />
+          <Text style={styles.loadingText}>Loading...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   // Show matching quiz if no supporter assigned
   if (!supporter) {
@@ -693,6 +739,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: PsychiColors.cream,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: Spacing.md,
+    fontSize: 16,
+    color: PsychiColors.textSecondary,
   },
   header: {
     flexDirection: 'row',

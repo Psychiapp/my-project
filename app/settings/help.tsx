@@ -20,6 +20,7 @@ import {
   ChevronUpIcon,
 } from '@/components/icons';
 import { ExternalUrls, Config } from '@/constants/config';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface FAQItem {
   question: string;
@@ -28,7 +29,11 @@ interface FAQItem {
 
 export default function HelpSupportScreen() {
   const router = useRouter();
+  const { profile } = useAuth();
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
+
+  // Only show FAQ for clients, not supporters
+  const showFaq = profile?.role !== 'supporter';
 
   const faqItems: FAQItem[] = [
     {
@@ -120,39 +125,41 @@ export default function HelpSupportScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* FAQ Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle} accessibilityRole="header">Frequently Asked Questions</Text>
-          <View style={styles.faqContainer}>
-            {faqItems.map((item, index) => (
-              <TouchableOpacity
-                key={index}
-                style={[
-                  styles.faqCard,
-                  index < faqItems.length - 1 && styles.faqCardBorder,
-                ]}
-                onPress={() => toggleFaq(index)}
-                activeOpacity={0.7}
-                accessibilityRole="button"
-                accessibilityLabel={item.question}
-                accessibilityHint={expandedFaq === index ? 'Collapse answer' : 'Expand to see answer'}
-                accessibilityState={{ expanded: expandedFaq === index }}
-              >
-                <View style={styles.faqHeader}>
-                  <Text style={styles.faqQuestion}>{item.question}</Text>
-                  {expandedFaq === index ? (
-                    <ChevronUpIcon size={20} color={PsychiColors.azure} />
-                  ) : (
-                    <ChevronDownIcon size={20} color={PsychiColors.azure} />
+        {/* FAQ Section - Only shown for clients */}
+        {showFaq && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle} accessibilityRole="header">Frequently Asked Questions</Text>
+            <View style={styles.faqContainer}>
+              {faqItems.map((item, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.faqCard,
+                    index < faqItems.length - 1 && styles.faqCardBorder,
+                  ]}
+                  onPress={() => toggleFaq(index)}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel={item.question}
+                  accessibilityHint={expandedFaq === index ? 'Collapse answer' : 'Expand to see answer'}
+                  accessibilityState={{ expanded: expandedFaq === index }}
+                >
+                  <View style={styles.faqHeader}>
+                    <Text style={styles.faqQuestion}>{item.question}</Text>
+                    {expandedFaq === index ? (
+                      <ChevronUpIcon size={20} color={PsychiColors.azure} />
+                    ) : (
+                      <ChevronDownIcon size={20} color={PsychiColors.azure} />
+                    )}
+                  </View>
+                  {expandedFaq === index && (
+                    <Text style={styles.faqAnswer}>{item.answer}</Text>
                   )}
-                </View>
-                {expandedFaq === index && (
-                  <Text style={styles.faqAnswer}>{item.answer}</Text>
-                )}
-              </TouchableOpacity>
-            ))}
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
-        </View>
+        )}
 
         {/* App Info */}
         <View style={styles.section}>

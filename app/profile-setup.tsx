@@ -59,6 +59,11 @@ export default function ProfileSetupScreen() {
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
   const [selectedSpecialties, setSelectedSpecialties] = useState<string[]>([]);
   const [availableDays, setAvailableDays] = useState<string[]>([]);
+  // Education fields (supporters only)
+  const [schoolName, setSchoolName] = useState('');
+  const [major, setMajor] = useState('');
+  const [yearsAttending, setYearsAttending] = useState('');
+  const [expectedGraduation, setExpectedGraduation] = useState('');
 
   // Loading states
   const [isSaving, setIsSaving] = useState(false);
@@ -76,6 +81,8 @@ export default function ProfileSetupScreen() {
   const needsPhoto = isSupporter && missingFields.includes('Profile Photo');
   const needsSpecialties = isSupporter && (profileNotFound || missingFields.includes('Specialties'));
   const needsAvailability = isSupporter && (profileNotFound || missingFields.includes('Availability'));
+  // Education is always required for new supporters
+  const needsEducation = isSupporter && profileNotFound;
 
   // Load existing profile data to pre-fill form
   useEffect(() => {
@@ -232,6 +239,24 @@ export default function ProfileSetupScreen() {
         return false;
       }
       // Profile photo is optional - can be added later
+      if (needsEducation) {
+        if (!schoolName.trim()) {
+          Alert.alert('Required', 'Please enter your school name.');
+          return false;
+        }
+        if (!major.trim()) {
+          Alert.alert('Required', 'Please enter your major or field of study.');
+          return false;
+        }
+        if (!yearsAttending.trim()) {
+          Alert.alert('Required', 'Please enter how many years you have been attending.');
+          return false;
+        }
+        if (!expectedGraduation.trim()) {
+          Alert.alert('Required', 'Please enter your expected graduation date.');
+          return false;
+        }
+      }
       if (needsSpecialties && selectedSpecialties.length === 0) {
         Alert.alert('Required', 'Please select at least one specialty.');
         return false;
@@ -401,6 +426,19 @@ export default function ProfileSetupScreen() {
           }
           if (selectedSpecialties.length > 0) {
             supporterUpdates.specialties = selectedSpecialties;
+          }
+          // Add education data
+          if (schoolName.trim()) {
+            supporterUpdates.school_name = schoolName.trim();
+          }
+          if (major.trim()) {
+            supporterUpdates.major = major.trim();
+          }
+          if (yearsAttending.trim()) {
+            supporterUpdates.years_attending = parseInt(yearsAttending.trim(), 10) || 0;
+          }
+          if (expectedGraduation.trim()) {
+            supporterUpdates.expected_graduation = expectedGraduation.trim();
           }
 
           if (Object.keys(supporterUpdates).length > 0) {
@@ -579,6 +617,9 @@ export default function ProfileSetupScreen() {
                       placeholder="First Name"
                       placeholderTextColor={PsychiColors.textMuted}
                       autoCapitalize="words"
+                      autoComplete="off"
+                      textContentType="none"
+                      autoCorrect={false}
                     />
                   </View>
                 )}
@@ -591,6 +632,9 @@ export default function ProfileSetupScreen() {
                       placeholder="Last Name"
                       placeholderTextColor={PsychiColors.textMuted}
                       autoCapitalize="words"
+                      autoComplete="off"
+                      textContentType="none"
+                      autoCorrect={false}
                     />
                   </View>
                 )}
@@ -630,6 +674,68 @@ export default function ProfileSetupScreen() {
                 textAlignVertical="top"
               />
               <Text style={styles.hint}>{bio.length}/500 characters (minimum 50)</Text>
+            </View>
+          )}
+
+          {/* Education (Supporters only) */}
+          {isSupporter && needsEducation && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Education *</Text>
+              <Text style={styles.sectionSubtitle}>Tell us about your academic background</Text>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>School Name</Text>
+                <TextInput
+                  style={styles.input}
+                  value={schoolName}
+                  onChangeText={setSchoolName}
+                  placeholder="e.g., UCLA, Stanford University"
+                  placeholderTextColor={PsychiColors.textMuted}
+                  autoCapitalize="words"
+                  autoComplete="off"
+                  textContentType="none"
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Major / Field of Study</Text>
+                <TextInput
+                  style={styles.input}
+                  value={major}
+                  onChangeText={setMajor}
+                  placeholder="e.g., Psychology, Social Work"
+                  placeholderTextColor={PsychiColors.textMuted}
+                  autoCapitalize="words"
+                  autoComplete="off"
+                  textContentType="none"
+                />
+              </View>
+
+              <View style={styles.educationRow}>
+                <View style={[styles.inputGroup, { flex: 1 }]}>
+                  <Text style={styles.inputLabel}>Years Attending</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={yearsAttending}
+                    onChangeText={setYearsAttending}
+                    placeholder="e.g., 2"
+                    placeholderTextColor={PsychiColors.textMuted}
+                    keyboardType="number-pad"
+                    maxLength={2}
+                  />
+                </View>
+                <View style={[styles.inputGroup, { flex: 1.5 }]}>
+                  <Text style={styles.inputLabel}>Expected Graduation</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={expectedGraduation}
+                    onChangeText={setExpectedGraduation}
+                    placeholder="e.g., May 2026"
+                    placeholderTextColor={PsychiColors.textMuted}
+                    autoCapitalize="words"
+                  />
+                </View>
+              </View>
             </View>
           )}
 
@@ -865,6 +971,19 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.xs,
     color: PsychiColors.textMuted,
     marginTop: Spacing.xs,
+  },
+  inputGroup: {
+    marginBottom: Spacing.md,
+  },
+  inputLabel: {
+    fontSize: Typography.fontSize.sm,
+    fontWeight: Typography.fontWeight.medium,
+    color: PsychiColors.textSecondary,
+    marginBottom: Spacing.xs,
+  },
+  educationRow: {
+    flexDirection: 'row',
+    gap: Spacing.md,
   },
   tagsContainer: {
     flexDirection: 'row',

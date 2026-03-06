@@ -2266,6 +2266,11 @@ export async function getAdminSupporterDetail(supporterId: string): Promise<Supp
       w9_completed,
       w9_completed_at,
       w9_data,
+      verification_status,
+      verification_submitted_at,
+      verification_rejection_reason,
+      transcript_url,
+      id_document_url,
       supporter_details (
         bio,
         specialties,
@@ -2278,7 +2283,11 @@ export async function getAdminSupporterDetail(supporterId: string): Promise<Supp
         total_sessions,
         total_earnings,
         approach,
-        session_types
+        session_types,
+        school_name,
+        major,
+        years_attending,
+        expected_graduation
       )
     `)
     .eq('id', supporterId)
@@ -2309,6 +2318,15 @@ export async function getAdminSupporterDetail(supporterId: string): Promise<Supp
     w9_completed: data.w9_completed || false,
     w9_completed_at: data.w9_completed_at,
     w9_data: data.w9_data,
+    verification_status: data.verification_status || 'not_submitted',
+    verification_submitted_at: data.verification_submitted_at,
+    verification_rejection_reason: data.verification_rejection_reason,
+    transcript_url: data.transcript_url,
+    id_document_url: data.id_document_url,
+    school_name: details.school_name,
+    major: details.major,
+    years_attending: details.years_attending,
+    expected_graduation: details.expected_graduation,
   };
 }
 

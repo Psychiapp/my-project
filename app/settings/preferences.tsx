@@ -117,40 +117,63 @@ export default function PreferencesScreen() {
 
     // Save to database
     if (user?.id) {
-      const existingPrefs = await getClientPreferences(user.id);
-      await saveClientPreferences(user.id, {
-        mood: existingPrefs?.mood ?? 3,
-        topics: existingPrefs?.topics ?? [],
-        communication_style: existingPrefs?.communication_style ?? 'balanced',
-        preferred_session_types: newSessionTypes,
-        scheduling_preference: existingPrefs?.scheduling_preference ?? 'flexible',
-        preferred_times: existingPrefs?.preferred_times ?? ['morning', 'afternoon', 'evening'],
-        personality_preference: existingPrefs?.personality_preference ?? 'warm',
-        goals: existingPrefs?.goals ?? ['connection'],
-        urgency: existingPrefs?.urgency ?? 'moderate',
-        timezone: selectedTimezone,
-      });
+      try {
+        const existingPrefs = await getClientPreferences(user.id);
+        const success = await saveClientPreferences(user.id, {
+          mood: existingPrefs?.mood ?? 3,
+          topics: existingPrefs?.topics ?? [],
+          communication_style: existingPrefs?.communication_style ?? 'balanced',
+          preferred_session_types: newSessionTypes,
+          scheduling_preference: existingPrefs?.scheduling_preference ?? 'flexible',
+          preferred_times: existingPrefs?.preferred_times ?? ['morning', 'afternoon', 'evening'],
+          personality_preference: existingPrefs?.personality_preference ?? 'warm',
+          goals: existingPrefs?.goals ?? ['connection'],
+          urgency: existingPrefs?.urgency ?? 'moderate',
+          timezone: selectedTimezone,
+        });
+        if (!success) {
+          // Revert the local state if save failed
+          setSelectedSessionTypes(selectedSessionTypes);
+          Alert.alert('Error', 'Failed to save preferences. Please try again.');
+        }
+      } catch (error) {
+        console.error('Error saving session type preference:', error);
+        setSelectedSessionTypes(selectedSessionTypes);
+        Alert.alert('Error', 'Failed to save preferences. Please try again.');
+      }
     }
   };
 
   const handleTimezoneChange = async (tzId: string) => {
+    const previousTimezone = selectedTimezone;
     setSelectedTimezone(tzId);
 
     // Save to database
     if (user?.id) {
-      const existingPrefs = await getClientPreferences(user.id);
-      await saveClientPreferences(user.id, {
-        mood: existingPrefs?.mood ?? 3,
-        topics: existingPrefs?.topics ?? [],
-        communication_style: existingPrefs?.communication_style ?? 'balanced',
-        preferred_session_types: selectedSessionTypes,
-        scheduling_preference: existingPrefs?.scheduling_preference ?? 'flexible',
-        preferred_times: existingPrefs?.preferred_times ?? ['morning', 'afternoon', 'evening'],
-        personality_preference: existingPrefs?.personality_preference ?? 'warm',
-        goals: existingPrefs?.goals ?? ['connection'],
-        urgency: existingPrefs?.urgency ?? 'moderate',
-        timezone: tzId,
-      });
+      try {
+        const existingPrefs = await getClientPreferences(user.id);
+        const success = await saveClientPreferences(user.id, {
+          mood: existingPrefs?.mood ?? 3,
+          topics: existingPrefs?.topics ?? [],
+          communication_style: existingPrefs?.communication_style ?? 'balanced',
+          preferred_session_types: selectedSessionTypes,
+          scheduling_preference: existingPrefs?.scheduling_preference ?? 'flexible',
+          preferred_times: existingPrefs?.preferred_times ?? ['morning', 'afternoon', 'evening'],
+          personality_preference: existingPrefs?.personality_preference ?? 'warm',
+          goals: existingPrefs?.goals ?? ['connection'],
+          urgency: existingPrefs?.urgency ?? 'moderate',
+          timezone: tzId,
+        });
+        if (!success) {
+          // Revert the local state if save failed
+          setSelectedTimezone(previousTimezone);
+          Alert.alert('Error', 'Failed to save timezone. Please try again.');
+        }
+      } catch (error) {
+        console.error('Error saving timezone preference:', error);
+        setSelectedTimezone(previousTimezone);
+        Alert.alert('Error', 'Failed to save timezone. Please try again.');
+      }
     }
   };
 
