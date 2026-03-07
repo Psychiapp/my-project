@@ -15,7 +15,7 @@ import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme'
 import { ChevronLeftIcon, CheckIcon, MinusCircleIcon } from '@/components/icons';
 import { Config } from '@/constants/config';
 import { useAuth } from '@/contexts/AuthContext';
-import { getClientProfile, updateClientSubscription, cancelClientSubscription } from '@/lib/database';
+import { getClientProfile, updateClientSubscription, cancelClientSubscription, getClientCurrentAssignment, getSupporterDetail } from '@/lib/database';
 import { processSubscriptionPaymentSheet, stripeAvailable } from '@/lib/stripe';
 
 type PlanTier = 'basic' | 'standard' | 'premium';
@@ -34,19 +34,30 @@ export default function SubscriptionScreen() {
   const [selectedPlan, setSelectedPlan] = useState<PlanTier | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [assignedSupporterStripeId, setAssignedSupporterStripeId] = useState<string | null>(null);
 
-  // Fetch current subscription on mount
+  // Fetch current subscription and assigned supporter on mount
   useEffect(() => {
-    const fetchSubscription = async () => {
+    const fetchSubscriptionAndSupporter = async () => {
       if (!user?.id) {
         setIsLoading(false);
         return;
       }
 
       try {
+        // Fetch client profile for subscription info
         const profile = await getClientProfile(user.id);
         if (profile?.subscription_tier && profile?.subscription_status === 'active') {
           setCurrentPlan(profile.subscription_tier as PlanTier);
+        }
+
+        // Fetch assigned supporter for payment split
+        const assignment = await getClientCurrentAssignment(user.id);
+        if (assignment?.supporter_id) {
+          const supporterDetail = await getSupporterDetail(assignment.supporter_id);
+          if (supporterDetail?.stripe_connect_id) {
+            setAssignedSupporterStripeId(supporterDetail.stripe_connect_id);
+          }
         }
       } catch (error) {
         console.error('Error fetching subscription:', error);
@@ -55,7 +66,7 @@ export default function SubscriptionScreen() {
       }
     };
 
-    fetchSubscription();
+    fetchSubscriptionAndSupporter();
   }, [user?.id]);
 
   const plans: Record<PlanTier, { name: string; price: string; description: string; color: string }> = {
@@ -112,8 +123,12 @@ export default function SubscriptionScreen() {
             setSelectedPlan(plan);
             try {
               // Process payment first (if Stripe is available)
+              // If client has an assigned supporter, split payment 75/25 (supporter/platform)
               if (stripeAvailable) {
-                const paymentSuccess = await processSubscriptionPaymentSheet(plan);
+                const paymentSuccess = await processSubscriptionPaymentSheet(
+                  plan,
+                  assignedSupporterStripeId || undefined
+                );
 
                 if (!paymentSuccess) {
                   // Payment failed or was cancelled

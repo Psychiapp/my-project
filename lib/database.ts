@@ -566,34 +566,37 @@ export async function getAvailableSupporters(): Promise<SupporterListing[]> {
     .eq('role', 'supporter')
     .eq('onboarding_complete', true) // Must complete W9, bank, and training
     .eq('supporter_details.accepting_clients', true)
-    .eq('supporter_details.verification_status', 'approved'); // Must have verified documents
+    .eq('supporter_details.verification_status', 'approved') // Must have verified documents
+    .eq('stripe_payouts_enabled', true); // Must have Stripe Connect fully set up for payouts
 
   if (error) {
     console.error('Error fetching supporters:', error);
     return [];
   }
 
-  // Transform and flatten the data
-  return (data || []).map((supporter) => {
-    const details = supporter.supporter_details?.[0] || {};
-    return {
-      id: supporter.id,
-      full_name: supporter.full_name,
-      avatar_url: supporter.avatar_url,
-      bio: details.bio || '',
-      specialties: details.specialties || [],
-      education: details.education || '',
-      total_sessions: details.total_sessions || 0,
-      is_available: details.is_available || false,
-      accepting_clients: details.accepting_clients || false,
-      training_complete: details.training_complete || false,
-      onboarding_complete: supporter.onboarding_complete || false,
-      verification_status: details.verification_status || 'not_submitted',
-      stripe_connect_id: supporter.stripe_connect_id || null,
-      stripe_connect_status: supporter.stripe_connect_status || null,
-      stripe_payouts_enabled: supporter.stripe_payouts_enabled || false,
-    };
-  });
+  // Transform and flatten the data - only include supporters with active Stripe Connect
+  return (data || [])
+    .filter((supporter) => supporter.stripe_connect_id && supporter.stripe_payouts_enabled) // Verify Stripe Connect is active
+    .map((supporter) => {
+      const details = supporter.supporter_details?.[0] || {};
+      return {
+        id: supporter.id,
+        full_name: supporter.full_name,
+        avatar_url: supporter.avatar_url,
+        bio: details.bio || '',
+        specialties: details.specialties || [],
+        education: details.education || '',
+        total_sessions: details.total_sessions || 0,
+        is_available: details.is_available || false,
+        accepting_clients: details.accepting_clients || false,
+        training_complete: details.training_complete || false,
+        onboarding_complete: supporter.onboarding_complete || false,
+        verification_status: details.verification_status || 'not_submitted',
+        stripe_connect_id: supporter.stripe_connect_id,
+        stripe_connect_status: supporter.stripe_connect_status || null,
+        stripe_payouts_enabled: supporter.stripe_payouts_enabled || false,
+      };
+    });
 }
 
 /**
@@ -630,7 +633,8 @@ export async function searchSupporters(
     .eq('role', 'supporter')
     .eq('onboarding_complete', true) // Must complete W9, bank, and training
     .eq('supporter_details.accepting_clients', true)
-    .eq('supporter_details.verification_status', 'approved'); // Must have verified documents
+    .eq('supporter_details.verification_status', 'approved') // Must have verified documents
+    .eq('stripe_payouts_enabled', true); // Must have Stripe Connect fully set up for payouts
 
   // Add name search if query provided
   if (query) {
@@ -644,27 +648,29 @@ export async function searchSupporters(
     return [];
   }
 
-  // Filter by specialty in memory (JSON array filtering)
-  let results = (data || []).map((supporter) => {
-    const details = supporter.supporter_details?.[0] || {};
-    return {
-      id: supporter.id,
-      full_name: supporter.full_name,
-      avatar_url: supporter.avatar_url,
-      bio: details.bio || '',
-      specialties: details.specialties || [],
-      education: details.education || '',
-      total_sessions: details.total_sessions || 0,
-      is_available: details.is_available || false,
-      accepting_clients: details.accepting_clients || false,
-      training_complete: details.training_complete || false,
-      onboarding_complete: supporter.onboarding_complete || false,
-      verification_status: details.verification_status || 'not_submitted',
-      stripe_connect_id: supporter.stripe_connect_id || null,
-      stripe_connect_status: supporter.stripe_connect_status || null,
-      stripe_payouts_enabled: supporter.stripe_payouts_enabled || false,
-    };
-  });
+  // Filter by specialty in memory (JSON array filtering) - only include supporters with Stripe Connect
+  let results = (data || [])
+    .filter((supporter) => supporter.stripe_connect_id && supporter.stripe_payouts_enabled) // Verify Stripe Connect is active
+    .map((supporter) => {
+      const details = supporter.supporter_details?.[0] || {};
+      return {
+        id: supporter.id,
+        full_name: supporter.full_name,
+        avatar_url: supporter.avatar_url,
+        bio: details.bio || '',
+        specialties: details.specialties || [],
+        education: details.education || '',
+        total_sessions: details.total_sessions || 0,
+        is_available: details.is_available || false,
+        accepting_clients: details.accepting_clients || false,
+        training_complete: details.training_complete || false,
+        onboarding_complete: supporter.onboarding_complete || false,
+        verification_status: details.verification_status || 'not_submitted',
+        stripe_connect_id: supporter.stripe_connect_id,
+        stripe_connect_status: supporter.stripe_connect_status || null,
+        stripe_payouts_enabled: supporter.stripe_payouts_enabled || false,
+      };
+    });
 
   if (specialty && specialty !== 'All') {
     results = results.filter((s) => s.specialties.includes(specialty));
@@ -2455,7 +2461,8 @@ export async function matchSupportersToClient(
       )
     `)
     .eq('role', 'supporter')
-    .eq('onboarding_complete', true); // Must complete W9, bank, and training
+    .eq('onboarding_complete', true) // Must complete W9, bank, and training
+    .eq('stripe_payouts_enabled', true); // Must have Stripe Connect fully set up for payouts
 
   if (error) {
     console.error('Error fetching supporters for matching:', error);
@@ -2468,8 +2475,8 @@ export async function matchSupportersToClient(
   for (const supporter of data || []) {
     const details = supporter.supporter_details?.[0];
 
-    // Skip if not fully active (verified and accepting clients)
-    if (!details?.accepting_clients || !details?.is_verified) {
+    // Skip if not fully active (verified, accepting clients, and has Stripe Connect enabled)
+    if (!details?.accepting_clients || !details?.is_verified || !supporter.stripe_connect_id || !supporter.stripe_payouts_enabled) {
       continue;
     }
 
