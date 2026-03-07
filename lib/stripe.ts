@@ -40,11 +40,12 @@ interface CreatePaymentParams {
   currency?: string;
   customerId?: string;
   metadata?: Record<string, string>;
+  supporterStripeAccountId?: string; // For Connect split payments (75% to supporter, 25% platform fee)
 }
 
 // Create a payment intent via Supabase Edge Function
 export async function createPaymentIntent(params: CreatePaymentParams): Promise<PaymentIntentResponse> {
-  const { amount, currency = 'usd', customerId, metadata } = params;
+  const { amount, currency = 'usd', customerId, metadata, supporterStripeAccountId } = params;
 
   if (!SupabaseConfig.url || !SupabaseConfig.anonKey) {
     throw new Error('Supabase configuration missing');
@@ -57,7 +58,7 @@ export async function createPaymentIntent(params: CreatePaymentParams): Promise<
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${SupabaseConfig.anonKey}`,
       },
-      body: JSON.stringify({ amount, currency, customerId, metadata }),
+      body: JSON.stringify({ amount, currency, customerId, metadata, supporterStripeAccountId }),
     });
 
     if (!response.ok) {
@@ -239,11 +240,13 @@ export const subscriptionPlans: SubscriptionPlan[] = [
 
 /**
  * Initialize and present payment sheet for session booking
+ * If supporterStripeAccountId is provided, payment is split 75/25 (supporter/platform)
  */
 export async function processSessionPayment(
   sessionType: 'chat' | 'phone' | 'video',
   supporterId: string,
-  sessionDate: string
+  sessionDate: string,
+  supporterStripeAccountId?: string
 ): Promise<boolean> {
   const pricing = Config.pricing[sessionType];
 
@@ -259,9 +262,11 @@ export async function processSessionPayment(
 
   try {
     // Create payment intent on your backend
+    // If supporter has a Stripe Connect account, payment is split 75% to supporter, 25% platform fee
     const paymentIntent = await createPaymentIntent({
       amount: pricing.amount,
       metadata: { sessionType, supporterId, sessionDate },
+      supporterStripeAccountId,
     });
 
     // Initialize payment sheet
@@ -297,9 +302,11 @@ export async function processSessionPayment(
 
 /**
  * Process subscription payment with payment sheet
+ * If supporterStripeAccountId is provided, payment is split 75/25 (supporter/platform)
  */
 export async function processSubscriptionPaymentSheet(
-  tier: 'basic' | 'standard' | 'premium'
+  tier: 'basic' | 'standard' | 'premium',
+  supporterStripeAccountId?: string
 ): Promise<boolean> {
   const plan = subscriptionPlans.find(p => p.id === tier);
   if (!plan) return false;
@@ -316,9 +323,11 @@ export async function processSubscriptionPaymentSheet(
 
   try {
     // Create payment intent for first month
+    // If supporter has a Stripe Connect account, payment is split 75% to supporter, 25% platform fee
     const paymentIntent = await createPaymentIntent({
       amount: plan.amount,
       metadata: { type: 'subscription', tier },
+      supporterStripeAccountId,
     });
 
     // Initialize payment sheet

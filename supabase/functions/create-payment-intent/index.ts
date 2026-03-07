@@ -18,7 +18,7 @@ serve(async (req) => {
   }
 
   try {
-    const { amount, currency = 'usd', metadata } = await req.json();
+    const { amount, currency = 'usd', metadata, supporterStripeAccountId } = await req.json();
 
     // Validate amount
     if (!amount || amount < 50) {
@@ -28,15 +28,29 @@ serve(async (req) => {
       );
     }
 
-    // Create payment intent
-    const paymentIntent = await stripe.paymentIntents.create({
+    // Build payment intent options
+    const paymentIntentOptions: any = {
       amount,
       currency,
       metadata: metadata || {},
       automatic_payment_methods: {
         enabled: true,
       },
-    });
+    };
+
+    // Add Connect split if supporter's connected account is provided
+    // Platform fee: 25%, Supporter receives: 75%
+    if (supporterStripeAccountId) {
+      const applicationFee = Math.round(amount * 0.25); // 25% platform fee
+      paymentIntentOptions.application_fee_amount = applicationFee;
+      paymentIntentOptions.transfer_data = {
+        destination: supporterStripeAccountId,
+      };
+      console.log(`Connect payment: $${(amount/100).toFixed(2)} total, $${(applicationFee/100).toFixed(2)} platform fee, $${((amount-applicationFee)/100).toFixed(2)} to supporter`);
+    }
+
+    // Create payment intent
+    const paymentIntent = await stripe.paymentIntents.create(paymentIntentOptions);
 
     return new Response(
       JSON.stringify({

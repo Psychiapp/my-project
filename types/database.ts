@@ -148,6 +148,10 @@ export interface SupporterListing {
   training_complete: boolean;
   onboarding_complete: boolean; // Required for client assignment
   verification_status: VerificationStatus; // Required for client matching
+  // Stripe Connect fields for payment splits
+  stripe_connect_id: string | null;
+  stripe_connect_status: StripeConnectStatus | null;
+  stripe_payouts_enabled: boolean;
 }
 
 // Supporter detail (full profile for profile page)

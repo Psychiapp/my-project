@@ -20,6 +20,7 @@ interface CheckoutModalProps {
   onSuccess: () => void;
   sessionType: 'chat' | 'phone' | 'video';
   supporterName: string;
+  supporterStripeAccountId?: string; // For Connect split payments (75% to supporter, 25% platform fee)
   amount: number; // in cents
   date: string;
   time: string;
@@ -33,6 +34,7 @@ export default function CheckoutModal({
   onSuccess,
   sessionType,
   supporterName,
+  supporterStripeAccountId,
   amount,
   date,
   time,
@@ -72,6 +74,7 @@ export default function CheckoutModal({
 
     try {
       // Create payment intent
+      // If supporter has a Stripe Connect account, payment is split 75% to supporter, 25% platform fee
       const paymentIntent = await createPaymentIntent({
         amount,
         metadata: {
@@ -80,6 +83,7 @@ export default function CheckoutModal({
           date,
           time,
         },
+        supporterStripeAccountId,
       });
 
       if (!paymentIntent?.clientSecret) {

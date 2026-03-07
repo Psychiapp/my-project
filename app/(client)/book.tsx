@@ -142,7 +142,36 @@ export default function BookSessionScreen() {
   const [isLoadingAvailability, setIsLoadingAvailability] = useState(true);
   const [showOnboardingModal, setShowOnboardingModal] = useState(true);
   const [isLoadingAssignment, setIsLoadingAssignment] = useState(!params.supporterId);
-  const [assignedSupporter, setAssignedSupporter] = useState<{ id: string; name: string; specialty: string } | null>(null);
+  const [assignedSupporter, setAssignedSupporter] = useState<{ id: string; name: string; specialty: string; stripe_connect_id: string | null } | null>(null);
+  const [paramSupporter, setParamSupporter] = useState<{ id: string; name: string; specialty: string; stripe_connect_id: string | null } | null>(null);
+
+  // Fetch supporter details (for stripe_connect_id) when supporterId is in params
+  React.useEffect(() => {
+    const fetchParamSupporter = async () => {
+      if (!params.supporterId) return;
+
+      try {
+        const supporterDetail = await getSupporterDetail(params.supporterId);
+        setParamSupporter({
+          id: params.supporterId,
+          name: supporterDetail?.full_name || params.supporterName || 'Your Supporter',
+          specialty: 'Peer Support',
+          stripe_connect_id: supporterDetail?.stripe_connect_id || null,
+        });
+      } catch (error) {
+        console.error('Error fetching supporter details:', error);
+        // Fallback without stripe_connect_id
+        setParamSupporter({
+          id: params.supporterId,
+          name: params.supporterName || 'Your Supporter',
+          specialty: 'Peer Support',
+          stripe_connect_id: null,
+        });
+      }
+    };
+
+    fetchParamSupporter();
+  }, [params.supporterId, params.supporterName]);
 
   // Fetch assigned supporter if no supporterId in params
   React.useEffect(() => {
@@ -155,13 +184,14 @@ export default function BookSessionScreen() {
       try {
         const assignment = await getClientCurrentAssignment(user.id);
         if (assignment?.supporter_id) {
-          // Get supporter details
+          // Get supporter details including stripe_connect_id for payment split
           const supporterDetail = await getSupporterDetail(assignment.supporter_id);
           if (supporterDetail) {
             setAssignedSupporter({
               id: assignment.supporter_id,
               name: supporterDetail.full_name || 'Your Supporter',
               specialty: 'Peer Support',
+              stripe_connect_id: supporterDetail.stripe_connect_id || null,
             });
           }
         }
@@ -176,11 +206,7 @@ export default function BookSessionScreen() {
   }, [user?.id, params.supporterId]);
 
   // Get supporter from route params or fetched assignment
-  const supporter = params.supporterId ? {
-    id: params.supporterId,
-    name: params.supporterName || 'Your Supporter',
-    specialty: 'Peer Support',
-  } : assignedSupporter;
+  const supporter = params.supporterId ? paramSupporter : assignedSupporter;
 
   // Handle onboarding completion - save preferences and go to dashboard
   const handleOnboardingComplete = async (preferences: any) => {
@@ -272,11 +298,13 @@ export default function BookSessionScreen() {
       });
 
       // Process payment first (if Stripe is available)
+      // Payment is split 75% to supporter, 25% platform fee (if supporter has Stripe Connect)
       if (stripeAvailable) {
         const paymentSuccess = await processSessionPayment(
           selectedType,
           supporter.id,
-          scheduledTime.toISOString()
+          scheduledTime.toISOString(),
+          supporter.stripe_connect_id || undefined
         );
 
         if (!paymentSuccess) {

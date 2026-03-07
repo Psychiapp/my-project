@@ -549,6 +549,9 @@ export async function getAvailableSupporters(): Promise<SupporterListing[]> {
       full_name,
       avatar_url,
       onboarding_complete,
+      stripe_connect_id,
+      stripe_connect_status,
+      stripe_payouts_enabled,
       supporter_details (
         bio,
         specialties,
@@ -586,6 +589,9 @@ export async function getAvailableSupporters(): Promise<SupporterListing[]> {
       training_complete: details.training_complete || false,
       onboarding_complete: supporter.onboarding_complete || false,
       verification_status: details.verification_status || 'not_submitted',
+      stripe_connect_id: supporter.stripe_connect_id || null,
+      stripe_connect_status: supporter.stripe_connect_status || null,
+      stripe_payouts_enabled: supporter.stripe_payouts_enabled || false,
     };
   });
 }
@@ -607,6 +613,9 @@ export async function searchSupporters(
       full_name,
       avatar_url,
       onboarding_complete,
+      stripe_connect_id,
+      stripe_connect_status,
+      stripe_payouts_enabled,
       supporter_details (
         bio,
         specialties,
@@ -651,6 +660,9 @@ export async function searchSupporters(
       training_complete: details.training_complete || false,
       onboarding_complete: supporter.onboarding_complete || false,
       verification_status: details.verification_status || 'not_submitted',
+      stripe_connect_id: supporter.stripe_connect_id || null,
+      stripe_connect_status: supporter.stripe_connect_status || null,
+      stripe_payouts_enabled: supporter.stripe_payouts_enabled || false,
     };
   });
 
@@ -667,10 +679,10 @@ export async function searchSupporters(
 export async function getSupporterDetail(supporterId: string): Promise<SupporterDetail | null> {
   if (!supabase) return null;
 
-  // Query profiles for basic info (only columns that definitely exist)
+  // Query profiles for basic info including Stripe Connect status
   const { data: profileData, error: profileError } = await supabase
     .from('profiles')
-    .select('id, full_name, avatar_url')
+    .select('id, full_name, avatar_url, stripe_connect_id, stripe_connect_status, stripe_payouts_enabled')
     .eq('id', supporterId)
     .eq('role', 'supporter')
     .single();
@@ -725,6 +737,9 @@ export async function getSupporterDetail(supporterId: string): Promise<Supporter
     id: profileData.id,
     full_name: profileData.full_name,
     avatar_url: profileData.avatar_url,
+    stripe_connect_id: profileData.stripe_connect_id || null,
+    stripe_connect_status: profileData.stripe_connect_status || null,
+    stripe_payouts_enabled: profileData.stripe_payouts_enabled || false,
     bio: details?.bio || '',
     specialties: details?.specialties || [],
     education: details?.education || '',
@@ -2420,6 +2435,9 @@ export async function matchSupportersToClient(
       full_name,
       avatar_url,
       onboarding_complete,
+      stripe_connect_id,
+      stripe_connect_status,
+      stripe_payouts_enabled,
       supporter_details (
         bio,
         specialties,
@@ -2541,6 +2559,9 @@ export async function matchSupportersToClient(
       training_complete: details.training_complete || false,
       onboarding_complete: supporter.onboarding_complete || false,
       verification_status: details.verification_status || 'approved', // Only matched supporters are verified
+      stripe_connect_id: supporter.stripe_connect_id || null,
+      stripe_connect_status: supporter.stripe_connect_status || null,
+      stripe_payouts_enabled: supporter.stripe_payouts_enabled || false,
       compatibilityScore: Math.round(score),
       matchReasons: matchReasons.length > 0 ? matchReasons.slice(0, 3) : ['Available to support you'],
     });
@@ -2889,6 +2910,9 @@ export async function requestSupporterReassignment(
         training_complete: true,
         onboarding_complete: true,
         verification_status: 'approved',
+        stripe_connect_id: null,
+        stripe_connect_status: null,
+        stripe_payouts_enabled: false,
         compatibilityScore: 85,
         matchReasons: ['Based on your updated preferences'],
       },
