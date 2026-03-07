@@ -292,22 +292,38 @@ export async function uploadAvatar(
 
     if (publicUrl) {
       // Update profile with new avatar URL
-      const { error: updateError } = await supabase
+      console.log('Updating profile with avatar URL:', publicUrl);
+      const { data: updateData, error: updateError } = await supabase
         .from('profiles')
         .update({ avatar_url: publicUrl, updated_at: new Date().toISOString() })
-        .eq('id', userId);
+        .eq('id', userId)
+        .select();
 
       if (updateError) {
         console.error('Error updating profile with avatar URL:', updateError);
+        console.error('Update error code:', updateError.code);
+        console.error('Update error details:', updateError.details);
+        console.error('Update error hint:', updateError.hint);
+        // Delete the uploaded file since we couldn't update the profile
+        await supabase.storage.from('avatars').remove([filePath]);
+        throw new Error(`Failed to save avatar to profile: ${updateError.message}`);
       }
 
+      if (!updateData || updateData.length === 0) {
+        console.error('Profile avatar update returned no data - RLS may be blocking');
+        // Delete the uploaded file since we couldn't update the profile
+        await supabase.storage.from('avatars').remove([filePath]);
+        throw new Error('Failed to save avatar - profile update blocked');
+      }
+
+      console.log('Profile avatar updated successfully:', updateData);
       return publicUrl;
     }
 
     return null;
   } catch (error) {
     console.error('Error in uploadAvatar:', error);
-    return null;
+    throw error; // Re-throw so UI can show error message
   }
 }
 
@@ -320,16 +336,25 @@ export async function updateAvatarUrl(
 ): Promise<boolean> {
   if (!supabase) return false;
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('profiles')
     .update({ avatar_url: avatarUrl, updated_at: new Date().toISOString() })
-    .eq('id', userId);
+    .eq('id', userId)
+    .select();
 
   if (error) {
     console.error('Error updating avatar URL:', error);
+    console.error('Error code:', error.code);
+    console.error('Error details:', error.details);
     return false;
   }
 
+  if (!data || data.length === 0) {
+    console.error('Avatar URL update returned no data - RLS may be blocking');
+    return false;
+  }
+
+  console.log('Avatar URL updated successfully');
   return true;
 }
 
