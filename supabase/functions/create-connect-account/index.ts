@@ -77,20 +77,48 @@ serve(async (req) => {
   } catch (error) {
     console.error('Create Connect account error:', error);
 
-    // Check for platform profile not complete error
-    const errorMessage = error.message || '';
-    if (errorMessage.includes('platform profile') || errorMessage.includes('questionnaire')) {
-      return new Response(
-        JSON.stringify({
-          error: 'Payout setup is temporarily unavailable while we complete platform verification. Please try again later or contact support.',
-          code: 'PLATFORM_NOT_READY'
-        }),
-        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // Log detailed error info for debugging
+    const stripeError = error as any;
+    console.error('Stripe error details:', {
+      type: stripeError.type,
+      code: stripeError.code,
+      message: stripeError.message,
+      raw: stripeError.raw,
+    });
+
+    // Check if this is a Stripe API error
+    if (stripeError.type === 'StripeInvalidRequestError') {
+      // Check for platform profile not complete - but include diagnostic info
+      const errorMessage = stripeError.message || '';
+      if (errorMessage.includes('platform profile') || errorMessage.includes('questionnaire')) {
+        // Check API key mode to help diagnose
+        const secretKey = Deno.env.get('STRIPE_SECRET_KEY') || '';
+        const isTestMode = secretKey.startsWith('sk_test_');
+        const isLiveMode = secretKey.startsWith('sk_live_');
+
+        console.error('Platform profile error - API key mode:', {
+          isTestMode,
+          isLiveMode,
+          keyPrefix: secretKey.substring(0, 8) + '...',
+        });
+
+        return new Response(
+          JSON.stringify({
+            error: `Stripe Connect setup failed. Please verify: 1) Platform profile is completed in ${isTestMode ? 'TEST' : isLiveMode ? 'LIVE' : 'UNKNOWN'} mode in Stripe Dashboard. 2) The correct API key is configured. Original error: ${errorMessage}`,
+            code: 'PLATFORM_PROFILE_ERROR',
+            mode: isTestMode ? 'test' : isLiveMode ? 'live' : 'unknown',
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({
+        error: stripeError.message || 'Failed to create Connect account',
+        type: stripeError.type,
+        code: stripeError.code,
+      }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

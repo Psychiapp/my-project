@@ -427,9 +427,10 @@ export async function createConnectAccount(
           errorMessage = 'Payout service error. Please try again later.';
         }
       }
-      // Include error code in message for frontend handling
-      if (errorCode === 'PLATFORM_NOT_READY') {
-        errorMessage = 'Payout setup is temporarily unavailable while we complete platform verification. Please try again later.';
+      // Include diagnostic info in the error message
+      if (errorCode === 'PLATFORM_NOT_READY' || errorCode === 'PLATFORM_PROFILE_ERROR') {
+        // Return the full error message which includes diagnostic info
+        throw new Error(errorMessage);
       }
       throw new Error(errorMessage);
     }
