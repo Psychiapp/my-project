@@ -76,6 +76,19 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error('Create Connect account error:', error);
+
+    // Check for platform profile not complete error
+    const errorMessage = error.message || '';
+    if (errorMessage.includes('platform profile') || errorMessage.includes('questionnaire')) {
+      return new Response(
+        JSON.stringify({
+          error: 'Payout setup is temporarily unavailable while we complete platform verification. Please try again later or contact support.',
+          code: 'PLATFORM_NOT_READY'
+        }),
+        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

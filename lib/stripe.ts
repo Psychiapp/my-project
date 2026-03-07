@@ -403,16 +403,24 @@ export async function createConnectAccount(
 
     if (!response.ok) {
       let errorMessage = 'Failed to create payout account';
+      let errorCode = '';
       try {
         const errorData = await response.json();
         errorMessage = errorData.error || errorMessage;
+        errorCode = errorData.code || '';
       } catch {
         // Response wasn't JSON
         if (response.status === 404) {
           errorMessage = 'Payout service not available. Please try again later.';
+        } else if (response.status === 503) {
+          errorMessage = 'Payout setup is temporarily unavailable. Please try again later.';
         } else if (response.status === 500) {
           errorMessage = 'Payout service error. Please try again later.';
         }
+      }
+      // Include error code in message for frontend handling
+      if (errorCode === 'PLATFORM_NOT_READY') {
+        errorMessage = 'Payout setup is temporarily unavailable while we complete platform verification. Please try again later.';
       }
       throw new Error(errorMessage);
     }

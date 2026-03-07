@@ -169,7 +169,17 @@ export default function PayoutSettingsScreen() {
       const errorMessage = error instanceof Error
         ? error.message
         : 'Failed to set up payouts. Please try again.';
-      Alert.alert('Setup Error', errorMessage);
+
+      // Check for platform not ready error
+      if (errorMessage.includes('temporarily unavailable') || errorMessage.includes('PLATFORM_NOT_READY')) {
+        Alert.alert(
+          'Coming Soon',
+          'Payout setup is being finalized. We\'ll notify you when it\'s ready. In the meantime, your earnings will be tracked and available for payout once setup is complete.',
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert('Setup Error', errorMessage);
+      }
     } finally {
       setIsSettingUp(false);
     }
