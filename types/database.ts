@@ -423,6 +423,11 @@ export interface SupporterApplication {
   verification_submitted_at?: string | null;
   verification_reviewed_at?: string | null;
   verification_rejection_reason?: string | null;
+  // Education fields
+  school_name?: string | null;
+  major?: string | null;
+  years_attending?: number | null;
+  expected_graduation?: string | null;
 }
 
 // Admin user listing (for user management)

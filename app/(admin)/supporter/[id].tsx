@@ -555,7 +555,7 @@ export default function AdminSupporterDetailScreen() {
                 <Text style={styles.infoValue}>{supporter.major}</Text>
               </View>
             )}
-            {(supporter.years_attending !== undefined && supporter.years_attending > 0) && (
+            {(supporter.years_attending != null && supporter.years_attending > 0) && (
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Years Attending</Text>
                 <Text style={styles.infoValue}>{supporter.years_attending} years</Text>

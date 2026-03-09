@@ -2342,10 +2342,6 @@ export async function getAdminSupporterDetail(supporterId: string): Promise<Supp
       w9_completed_at,
       w9_data,
       verification_status,
-      verification_submitted_at,
-      verification_rejection_reason,
-      transcript_url,
-      id_document_url,
       supporter_details (
         bio,
         specialties,
@@ -2362,7 +2358,11 @@ export async function getAdminSupporterDetail(supporterId: string): Promise<Supp
         school_name,
         major,
         years_attending,
-        expected_graduation
+        expected_graduation,
+        verification_submitted_at,
+        verification_rejection_reason,
+        transcript_url,
+        id_document_url
       )
     `)
     .eq('id', supporterId)
@@ -2394,10 +2394,11 @@ export async function getAdminSupporterDetail(supporterId: string): Promise<Supp
     w9_completed_at: data.w9_completed_at,
     w9_data: data.w9_data,
     verification_status: data.verification_status || 'not_submitted',
-    verification_submitted_at: data.verification_submitted_at,
-    verification_rejection_reason: data.verification_rejection_reason,
-    transcript_url: data.transcript_url,
-    id_document_url: data.id_document_url,
+    // These fields are in supporter_details, not profiles
+    verification_submitted_at: details.verification_submitted_at,
+    verification_rejection_reason: details.verification_rejection_reason,
+    transcript_url: details.transcript_url,
+    id_document_url: details.id_document_url,
     school_name: details.school_name,
     major: details.major,
     years_attending: details.years_attending,
