@@ -239,15 +239,24 @@ export const subscriptionPlans: SubscriptionPlan[] = [
 // Payment Sheet Functions
 
 /**
+ * Result of a session payment
+ */
+export interface SessionPaymentResult {
+  success: boolean;
+  paymentIntentId?: string;
+}
+
+/**
  * Initialize and present payment sheet for session booking
  * If supporterStripeAccountId is provided, payment is split 75/25 (supporter/platform)
+ * Returns the payment intent ID on success for refund tracking
  */
 export async function processSessionPayment(
   sessionType: 'chat' | 'phone' | 'video',
   supporterId: string,
   sessionDate: string,
   supporterStripeAccountId?: string
-): Promise<boolean> {
+): Promise<SessionPaymentResult> {
   const pricing = Config.pricing[sessionType];
 
   // Check if Stripe is configured
@@ -257,7 +266,7 @@ export async function processSessionPayment(
       'Payment processing is not available in this environment.',
       [{ text: 'OK' }]
     );
-    return false;
+    return { success: false };
   }
 
   try {
@@ -279,7 +288,7 @@ export async function processSessionPayment(
     if (initError) {
       console.error('Error initializing payment sheet:', initError);
       Alert.alert('Error', 'Unable to load payment form. Please try again.');
-      return false;
+      return { success: false };
     }
 
     // Present payment sheet
@@ -289,14 +298,14 @@ export async function processSessionPayment(
       if (presentError.code !== 'Canceled') {
         Alert.alert('Payment Failed', presentError.message || 'Please try again.');
       }
-      return false;
+      return { success: false };
     }
 
-    return true;
+    return { success: true, paymentIntentId: paymentIntent.paymentIntentId };
   } catch (error) {
     console.error('Payment error:', error);
     Alert.alert('Error', 'Payment failed. Please try again.');
-    return false;
+    return { success: false };
   }
 }
 

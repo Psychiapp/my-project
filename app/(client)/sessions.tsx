@@ -44,6 +44,7 @@ interface Session {
   time: string;
   scheduledAt: string;
   duration: number;
+  stripePaymentIntentId?: string;
 }
 
 // Helper to format session data from database
@@ -60,6 +61,7 @@ const formatSessionFromDb = (dbSession: SessionWithDetails): Session => {
     time: scheduledDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
     scheduledAt: dbSession.scheduled_at,
     duration: dbSession.duration_minutes || 30,
+    stripePaymentIntentId: (dbSession as any).stripe_payment_intent_id || undefined,
   };
 };
 
@@ -191,6 +193,7 @@ export default function SessionsScreen() {
         sessionType: selectedSession.type,
         amount: sessionPrice,
         scheduledAt: selectedSession.scheduledAt,
+        stripePaymentIntentId: selectedSession.stripePaymentIntentId,
       },
       'Client requested cancellation',
       'client'

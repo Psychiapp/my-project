@@ -22,6 +22,7 @@ export interface SessionRefundInfo {
   sessionType: 'chat' | 'phone' | 'video';
   amount: number;
   scheduledAt: string;
+  stripePaymentIntentId?: string;
 }
 
 // Refund policies
@@ -147,7 +148,17 @@ export async function cancelSessionWithRefund(
   const scheduledTime = new Date(sessionInfo.scheduledAt);
   const refundCalc = calculateRefundAmount(sessionInfo.amount, scheduledTime, initiatedBy);
 
+  // If no refund needed (client cancels < 2 hours), just mark as success
   if (refundCalc.amount === 0 && initiatedBy === 'client') {
+    return {
+      success: true,
+      refundAmount: 0,
+    };
+  }
+
+  // If no payment intent ID (e.g., dev mode booking), skip refund but allow cancellation
+  if (!sessionInfo.stripePaymentIntentId) {
+    console.warn('No payment intent ID for session - skipping refund (may be dev mode)');
     return {
       success: true,
       refundAmount: 0,
@@ -156,7 +167,7 @@ export async function cancelSessionWithRefund(
 
   const refundResult = await processRefund({
     sessionId: sessionInfo.sessionId,
-    paymentIntentId: 'pi_' + sessionInfo.sessionId, // In production, get actual payment intent ID
+    paymentIntentId: sessionInfo.stripePaymentIntentId,
     amount: refundCalc.amount,
     reason: initiatedBy === 'supporter' ? 'supporter_cancelled' : 'client_cancelled',
     initiatedBy,

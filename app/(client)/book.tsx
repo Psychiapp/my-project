@@ -337,19 +337,23 @@ export default function BookSessionScreen() {
 
       // Process payment first (if Stripe is available)
       // Payment is split 75% to supporter, 25% platform fee (if supporter has Stripe Connect)
+      let paymentIntentId: string | undefined;
+
       if (stripeAvailable) {
-        const paymentSuccess = await processSessionPayment(
+        const paymentResult = await processSessionPayment(
           selectedType,
           supporter.id,
           scheduledTime.toISOString(),
           supporter.stripe_connect_id || undefined
         );
 
-        if (!paymentSuccess) {
+        if (!paymentResult.success) {
           // Payment failed or was cancelled - don't create session
           setIsBooking(false);
           return;
         }
+
+        paymentIntentId = paymentResult.paymentIntentId;
       } else {
         // In development/Expo Go, show notice but allow booking for testing
         Alert.alert(
@@ -359,13 +363,14 @@ export default function BookSessionScreen() {
         );
       }
 
-      // Payment succeeded (or dev mode) - now create the session
+      // Payment succeeded (or dev mode) - now create the session with payment intent ID
       const session = await createSession(
         user.id,
         supporter.id,
         selectedType,
         scheduledTime.toISOString(),
-        selectedType === 'chat' ? 30 : 45
+        selectedType === 'chat' ? 30 : 45,
+        paymentIntentId
       );
 
       if (!session) {

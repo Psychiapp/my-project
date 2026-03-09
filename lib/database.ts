@@ -1056,7 +1056,8 @@ export async function createSession(
   supporterId: string,
   sessionType: SessionType,
   scheduledAt: string,
-  durationMinutes: number
+  durationMinutes: number,
+  paymentIntentId?: string
 ): Promise<Session | null> {
   if (!supabase) return null;
 
@@ -1069,6 +1070,7 @@ export async function createSession(
       scheduled_at: scheduledAt,
       duration_minutes: durationMinutes,
       status: 'scheduled',
+      stripe_payment_intent_id: paymentIntentId || null,
     })
     .select()
     .single();
