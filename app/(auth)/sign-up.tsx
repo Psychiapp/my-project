@@ -22,7 +22,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { PsychiColors, Gradients, Spacing, BorderRadius, Shadows, Typography } from '@/constants/theme';
 import { UserRole } from '@/types';
 import { ChevronLeftIcon, HeartIcon, BookIcon, EyeIcon, CheckIcon, VideoIcon, MicIcon, AlertTriangleIcon, PhoneIcon } from '@/components/icons';
-import { saveClientPreferences } from '@/lib/database';
+import { saveClientPreferences, matchAndAssignSupporter } from '@/lib/database';
 import OnboardingModal from '@/components/OnboardingModal';
 import { PENDING_QUIZ_PREFERENCES_KEY } from './welcome';
 
@@ -208,16 +208,33 @@ export default function SignUpScreen() {
         try {
           const savedPreferences = await AsyncStorage.getItem(PENDING_QUIZ_PREFERENCES_KEY);
           if (savedPreferences) {
-            // User already took the quiz - save their preferences and go to dashboard
+            // User already took the quiz - save their preferences and match them with a supporter
             const preferences = JSON.parse(savedPreferences);
-            // Don't await - let it save in background, navigate immediately
-            saveClientPreferences(user.id, preferences).catch((err) => {
-              console.error('Error saving preferences (non-blocking):', err);
-            });
+
+            // Save preferences first
+            await saveClientPreferences(user.id, preferences);
+
             // Clear the saved preferences from AsyncStorage
             AsyncStorage.removeItem(PENDING_QUIZ_PREFERENCES_KEY).catch(() => {});
-            // Navigate directly to dashboard - no need to show quiz again
-            router.replace('/(client)');
+
+            // Match and assign a supporter based on their quiz answers
+            const matchResult = await matchAndAssignSupporter(user.id, preferences);
+
+            if (matchResult.success && matchResult.supporter) {
+              // Successfully matched - go to dashboard
+              Alert.alert(
+                'Welcome to Psychi!',
+                `You've been matched with ${matchResult.supporter.name}. Let's get started!`,
+                [{ text: 'Continue', onPress: () => router.replace('/(client)') }]
+              );
+            } else {
+              // No supporters available right now - still go to dashboard
+              Alert.alert(
+                'Welcome to Psychi!',
+                'Your preferences have been saved. We\'ll match you with a supporter soon.',
+                [{ text: 'Continue', onPress: () => router.replace('/(client)') }]
+              );
+            }
             return;
           }
         } catch (error) {
@@ -256,7 +273,28 @@ export default function SignUpScreen() {
   const handleQuizComplete = async (preferences: any) => {
     if (newUserId) {
       try {
+        // Save preferences
         await saveClientPreferences(newUserId, preferences);
+
+        // Match and assign a supporter
+        const matchResult = await matchAndAssignSupporter(newUserId, preferences);
+
+        setShowOnboardingModal(false);
+
+        if (matchResult.success && matchResult.supporter) {
+          Alert.alert(
+            'You\'re All Set!',
+            `You've been matched with ${matchResult.supporter.name}. Let's get started!`,
+            [{ text: 'Continue', onPress: () => router.replace('/(client)') }]
+          );
+        } else {
+          Alert.alert(
+            'Welcome to Psychi!',
+            'Your preferences have been saved. We\'ll match you with a supporter soon.',
+            [{ text: 'Continue', onPress: () => router.replace('/(client)') }]
+          );
+        }
+        return;
       } catch (error) {
         console.error('Error saving preferences:', error);
         // Continue to dashboard even if preferences fail to save - they can be set later
