@@ -2743,6 +2743,7 @@ export async function getBestMatchForClient(
 
 /**
  * Save client preferences to database for future reference
+ * Stores preferences as JSONB in the profiles.preferences column
  */
 export async function saveClientPreferences(
   clientId: string,
@@ -2750,30 +2751,17 @@ export async function saveClientPreferences(
 ): Promise<boolean> {
   if (!supabase) return false;
 
-  // Store preferences in a client_preferences table or as JSON in profiles
   const { error } = await supabase
-    .from('client_preferences')
-    .upsert({
-      client_id: clientId,
+    .from('profiles')
+    .update({
       preferences: preferences,
       updated_at: new Date().toISOString(),
-    });
+    })
+    .eq('id', clientId);
 
   if (error) {
-    // If table doesn't exist, store in profiles metadata
-    console.log('client_preferences table not found, storing in profiles');
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .update({
-        preferences: preferences,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', clientId);
-
-    if (profileError) {
-      console.error('Error saving preferences:', profileError);
-      return false;
-    }
+    console.error('Error saving preferences:', error);
+    return false;
   }
 
   return true;
@@ -2781,36 +2769,25 @@ export async function saveClientPreferences(
 
 /**
  * Get client preferences from database
- * Tries client_preferences table first, falls back to profiles.preferences
+ * Reads from profiles.preferences JSONB column
  */
 export async function getClientPreferences(
   clientId: string
 ): Promise<ClientPreferences | null> {
   if (!supabase) return null;
 
-  // First try the client_preferences table
-  const { data: prefData, error: prefError } = await supabase
-    .from('client_preferences')
-    .select('preferences')
-    .eq('client_id', clientId)
-    .maybeSingle();
-
-  if (!prefError && prefData?.preferences) {
-    return prefData.preferences as ClientPreferences;
-  }
-
-  // Fallback to profiles.preferences JSONB field
-  const { data: profileData, error: profileError } = await supabase
+  const { data, error } = await supabase
     .from('profiles')
     .select('preferences')
     .eq('id', clientId)
     .maybeSingle();
 
-  if (!profileError && profileData?.preferences) {
-    return profileData.preferences as ClientPreferences;
+  if (error) {
+    console.error('Error fetching preferences:', error);
+    return null;
   }
 
-  return null;
+  return data?.preferences as ClientPreferences | null;
 }
 
 /**

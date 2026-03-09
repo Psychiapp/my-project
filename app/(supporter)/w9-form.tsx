@@ -418,75 +418,73 @@ export default function W9FormScreen() {
               />
             </View>
 
-            <View style={styles.inputRow}>
-              <View style={[styles.inputGroup, { flex: 2, marginRight: Spacing.sm }]}>
-                <Text style={styles.label}>
-                  City <Text style={styles.required}>*</Text>
-                </Text>
-                <TextInput
-                  style={styles.input}
-                  value={formData.city}
-                  onChangeText={(text) => setFormData(prev => ({ ...prev, city: text }))}
-                  placeholder="City"
-                  placeholderTextColor={PsychiColors.textMuted}
-                  autoCapitalize="words"
-                />
-              </View>
-
-              <View style={[styles.inputGroup, { flex: 1, minWidth: 90 }]}>
-                <Text style={styles.label}>
-                  State <Text style={styles.required}>*</Text>
-                </Text>
-                <TouchableOpacity
-                  style={styles.statePickerButton}
-                  onPress={() => {
-                    // Close other picker if open
-                    setShowClassificationPicker(false);
-                    setShowStatePicker(!showStatePicker);
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[
-                    styles.statePickerButtonText,
-                    !formData.state && styles.statePickerPlaceholder
-                  ]}>
-                    {formData.state || 'Select'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>
+                City <Text style={styles.required}>*</Text>
+              </Text>
+              <TextInput
+                style={styles.input}
+                value={formData.city}
+                onChangeText={(text) => setFormData(prev => ({ ...prev, city: text }))}
+                placeholder="City"
+                placeholderTextColor={PsychiColors.textMuted}
+                autoCapitalize="words"
+              />
             </View>
 
-            {showStatePicker && (
-              <View style={styles.statePickerContainer}>
-                <ScrollView
-                  style={styles.statePickerScroll}
-                  nestedScrollEnabled
-                  keyboardShouldPersistTaps="handled"
-                >
-                  {US_STATES.map((state) => (
-                    <TouchableOpacity
-                      key={state}
-                      style={[
-                        styles.pickerOption,
-                        formData.state === state && styles.pickerOptionSelected
-                      ]}
-                      onPress={() => {
-                        setFormData(prev => ({ ...prev, state }));
-                        setShowStatePicker(false);
-                      }}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={[
-                        styles.pickerOptionText,
-                        formData.state === state && styles.pickerOptionTextSelected
-                      ]}>
-                        {state}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
-            )}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>
+                State <Text style={styles.required}>*</Text>
+              </Text>
+              <TouchableOpacity
+                style={styles.statePickerButton}
+                onPress={() => {
+                  // Close other picker if open
+                  setShowClassificationPicker(false);
+                  setShowStatePicker(!showStatePicker);
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={[
+                  styles.statePickerButtonText,
+                  !formData.state && styles.statePickerPlaceholder
+                ]}>
+                  {formData.state || 'Select'}
+                </Text>
+              </TouchableOpacity>
+
+              {showStatePicker && (
+                <View style={styles.statePickerContainer}>
+                  <ScrollView
+                    style={styles.statePickerScroll}
+                    nestedScrollEnabled
+                    keyboardShouldPersistTaps="handled"
+                  >
+                    {US_STATES.map((state) => (
+                      <TouchableOpacity
+                        key={state}
+                        style={[
+                          styles.pickerOption,
+                          formData.state === state && styles.pickerOptionSelected
+                        ]}
+                        onPress={() => {
+                          setFormData(prev => ({ ...prev, state }));
+                          setShowStatePicker(false);
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[
+                          styles.pickerOptionText,
+                          formData.state === state && styles.pickerOptionTextSelected
+                        ]}>
+                          {state}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
+            </View>
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>
@@ -719,9 +717,6 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(0,0,0,0.08)',
     minHeight: 48,
   },
-  inputRow: {
-    flexDirection: 'row',
-  },
   pickerButton: {
     backgroundColor: 'rgba(0,0,0,0.03)',
     borderRadius: BorderRadius.md,
@@ -734,17 +729,15 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.03)',
     borderRadius: BorderRadius.md,
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.md,
+    paddingVertical: Spacing.sm,
     borderWidth: 1,
     borderColor: 'rgba(0,0,0,0.08)',
     minHeight: 48,
     justifyContent: 'center',
-    alignItems: 'center',
   },
   statePickerButtonText: {
     fontSize: 16,
     color: PsychiColors.midnight,
-    textAlign: 'center',
   },
   statePickerPlaceholder: {
     color: PsychiColors.textMuted,
@@ -788,8 +781,6 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
     borderWidth: 1,
     borderColor: 'rgba(0,0,0,0.1)',
-    zIndex: 1000,
-    elevation: 5,
     ...Shadows.soft,
   },
   statePickerScroll: {
