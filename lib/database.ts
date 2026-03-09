@@ -2817,6 +2817,66 @@ export async function assignSupporterToClient(
 }
 
 /**
+ * Match a client with the best available supporter based on preferences
+ * and create the assignment. Returns the assigned supporter info.
+ */
+export async function matchAndAssignSupporter(
+  clientId: string,
+  preferences: ClientPreferences
+): Promise<{ success: boolean; supporter?: { id: string; name: string; specialty: string }; error?: string }> {
+  if (!supabase) {
+    return { success: false, error: 'Database not available' };
+  }
+
+  try {
+    // Find matching supporters based on preferences
+    const matches = await matchSupportersToClient(preferences);
+
+    if (matches.length === 0) {
+      return {
+        success: false,
+        error: 'No supporters are currently available. Please try again later.',
+      };
+    }
+
+    // Get the best match (highest score)
+    const bestMatch = matches[0];
+
+    // End any existing active assignments for this client
+    await supabase
+      .from('client_assignments')
+      .update({ status: 'ended' })
+      .eq('client_id', clientId)
+      .eq('status', 'active');
+
+    // Create the new assignment
+    const assigned = await assignSupporterToClient(clientId, bestMatch.id);
+
+    if (!assigned) {
+      return {
+        success: false,
+        error: 'Failed to create supporter assignment. Please try again.',
+      };
+    }
+
+    return {
+      success: true,
+      supporter: {
+        id: bestMatch.id,
+        name: bestMatch.full_name,
+        specialty: bestMatch.matchReasons?.[0] || 'Peer Support',
+      },
+    };
+  } catch (error) {
+    console.error('Error in matchAndAssignSupporter:', error);
+    return {
+      success: false,
+      error: 'An unexpected error occurred. Please try again.',
+    };
+  }
+}
+
+/**
  * Get the client's current active supporter assignment
  */
 export async function getClientCurrentAssignment(

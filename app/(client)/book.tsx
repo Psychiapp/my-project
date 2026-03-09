@@ -26,7 +26,7 @@ import {
   sendBookingConfirmedNotification,
   scheduleAllSessionReminders,
 } from '@/lib/notifications';
-import { createSession, getSupporterDetail, getSupporterAvailability, saveClientPreferences, getClientCurrentAssignment } from '@/lib/database';
+import { createSession, getSupporterDetail, getSupporterAvailability, saveClientPreferences, getClientCurrentAssignment, matchAndAssignSupporter } from '@/lib/database';
 import { processSessionPayment, stripeAvailable } from '@/lib/stripe';
 import OnboardingModal from '@/components/OnboardingModal';
 
@@ -208,20 +208,58 @@ export default function BookSessionScreen() {
   // Get supporter from route params or fetched assignment
   const supporter = params.supporterId ? paramSupporter : assignedSupporter;
 
-  // Handle onboarding completion - save preferences and go to dashboard
+  // Handle onboarding completion - save preferences, match supporter, and proceed to booking
   const handleOnboardingComplete = async (preferences: any) => {
-    if (user?.id) {
-      try {
-        await saveClientPreferences(user.id, preferences);
-      } catch (error) {
-        console.error('Error saving preferences:', error);
-      }
-    }
-    // Close modal first, then navigate after a brief delay
-    setShowOnboardingModal(false);
-    setTimeout(() => {
+    if (!user?.id) {
+      setShowOnboardingModal(false);
       router.replace('/(client)');
-    }, 100);
+      return;
+    }
+
+    try {
+      // Save preferences
+      await saveClientPreferences(user.id, preferences);
+
+      // Match and assign a supporter based on preferences
+      const result = await matchAndAssignSupporter(user.id, preferences);
+
+      if (result.success && result.supporter) {
+        // Supporter assigned successfully - fetch their full details and continue to booking
+        const supporterDetail = await getSupporterDetail(result.supporter.id);
+
+        setAssignedSupporter({
+          id: result.supporter.id,
+          name: result.supporter.name,
+          specialty: result.supporter.specialty,
+          stripe_connect_id: supporterDetail?.stripe_connect_id || null,
+        });
+
+        // Close modal and show booking flow
+        setShowOnboardingModal(false);
+
+        Alert.alert(
+          'Matched!',
+          `You've been matched with ${result.supporter.name}. Let's book your first session!`,
+          [{ text: 'Continue' }]
+        );
+      } else {
+        // No supporters available - notify user and go to dashboard
+        setShowOnboardingModal(false);
+        Alert.alert(
+          'No Supporters Available',
+          result.error || 'No supporters are currently available. We\'ll notify you when one becomes available.',
+          [{ text: 'OK', onPress: () => router.replace('/(client)') }]
+        );
+      }
+    } catch (error) {
+      console.error('Error during onboarding completion:', error);
+      setShowOnboardingModal(false);
+      Alert.alert(
+        'Error',
+        'Something went wrong. Please try again.',
+        [{ text: 'OK', onPress: () => router.replace('/(client)') }]
+      );
+    }
   };
 
   // Fetch supporter availability when supporter is available
@@ -431,14 +469,20 @@ export default function BookSessionScreen() {
   if (!supporter) {
     return (
       <SafeAreaView style={styles.container}>
+        {/* Show loading state when modal is closed but still navigating */}
+        {!showOnboardingModal && (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={PsychiColors.azure} />
+            <Text style={styles.loadingText}>Returning to dashboard...</Text>
+          </View>
+        )}
         <OnboardingModal
           visible={showOnboardingModal}
           onClose={() => {
-            // Close modal first, then navigate
+            // Hide modal and show loading state while navigating
             setShowOnboardingModal(false);
-            setTimeout(() => {
-              router.replace('/(client)');
-            }, 100);
+            // Navigate back to dashboard
+            router.replace('/(client)');
           }}
           onComplete={handleOnboardingComplete}
         />
