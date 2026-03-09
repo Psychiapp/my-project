@@ -609,32 +609,36 @@ export default function ProfileSetupScreen() {
               <Text style={styles.sectionTitle}>Your Name *</Text>
               <View style={styles.nameRow}>
                 {needsFirstName && (
-                  <View style={styles.nameInput}>
+                  <View style={styles.nameInputWrapper}>
                     <TextInput
-                      style={styles.input}
+                      style={styles.nameTextInput}
                       value={firstName}
                       onChangeText={setFirstName}
-                      placeholder="First Name"
+                      placeholder="Given name"
                       placeholderTextColor={PsychiColors.textMuted}
                       autoCapitalize="words"
-                      autoComplete="off"
-                      textContentType="none"
+                      autoComplete="given-name"
+                      textContentType="givenName"
                       autoCorrect={false}
+                      editable={true}
+                      returnKeyType="next"
                     />
                   </View>
                 )}
                 {needsLastName && (
-                  <View style={styles.nameInput}>
+                  <View style={styles.nameInputWrapper}>
                     <TextInput
-                      style={styles.input}
+                      style={styles.nameTextInput}
                       value={lastName}
                       onChangeText={setLastName}
-                      placeholder="Last Name"
+                      placeholder="Family name"
                       placeholderTextColor={PsychiColors.textMuted}
                       autoCapitalize="words"
-                      autoComplete="off"
-                      textContentType="none"
+                      autoComplete="family-name"
+                      textContentType="familyName"
                       autoCorrect={false}
+                      editable={true}
+                      returnKeyType="done"
                     />
                   </View>
                 )}
@@ -953,6 +957,19 @@ const styles = StyleSheet.create({
   },
   nameInput: {
     flex: 1,
+  },
+  nameInputWrapper: {
+    flex: 1,
+    backgroundColor: PsychiColors.white,
+    borderRadius: BorderRadius.md,
+    ...Shadows.soft,
+  },
+  nameTextInput: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.md,
+    fontSize: Typography.fontSize.base,
+    color: PsychiColors.textPrimary,
+    backgroundColor: 'transparent',
   },
   input: {
     backgroundColor: PsychiColors.white,
