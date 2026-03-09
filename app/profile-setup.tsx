@@ -81,8 +81,14 @@ export default function ProfileSetupScreen() {
   const needsPhoto = isSupporter && missingFields.includes('Profile Photo');
   const needsSpecialties = isSupporter && (profileNotFound || missingFields.includes('Specialties'));
   const needsAvailability = isSupporter && (profileNotFound || missingFields.includes('Availability'));
-  // Education is always required for new supporters
-  const needsEducation = isSupporter && profileNotFound;
+  // Education fields are required for supporters
+  const needsEducation = isSupporter && (
+    profileNotFound ||
+    missingFields.includes('School Name') ||
+    missingFields.includes('Major') ||
+    missingFields.includes('Years Attending') ||
+    missingFields.includes('Expected Graduation')
+  );
 
   // Load existing profile data to pre-fill form
   useEffect(() => {
@@ -109,6 +115,11 @@ export default function ProfileSetupScreen() {
           if (completion.specialties && completion.specialties.length > 0) {
             setSelectedSpecialties(completion.specialties);
           }
+          // Pre-fill education fields
+          if (completion.schoolName) setSchoolName(completion.schoolName);
+          if (completion.major) setMajor(completion.major);
+          if (completion.yearsAttending) setYearsAttending(String(completion.yearsAttending));
+          if (completion.expectedGraduation) setExpectedGraduation(completion.expectedGraduation);
         } else {
           const completion = await checkClientProfileCompletion(user.id);
           if (completion.firstName) setFirstName(completion.firstName);

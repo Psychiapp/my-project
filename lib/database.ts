@@ -69,6 +69,11 @@ export interface SupporterProfileCompletion {
   avatarUrl: string | null;
   specialties: string[] | null;
   hasAvailability: boolean;
+  // Education fields
+  schoolName: string | null;
+  major: string | null;
+  yearsAttending: number | null;
+  expectedGraduation: string | null;
 }
 
 /**
@@ -159,6 +164,10 @@ export async function checkSupporterProfileCompletion(
       avatarUrl: null,
       specialties: null,
       hasAvailability: false,
+      schoolName: null,
+      major: null,
+      yearsAttending: null,
+      expectedGraduation: null,
     };
   }
 
@@ -187,7 +196,7 @@ export async function checkSupporterProfileCompletion(
   // Fetch supporter details (no retry needed - may not exist yet for new users)
   const { data: detailsData } = await supabase
     .from('supporter_details')
-    .select('bio, specialties, availability')
+    .select('bio, specialties, availability, school_name, major, years_attending, expected_graduation')
     .eq('supporter_id', userId)
     .single();
 
@@ -202,6 +211,10 @@ export async function checkSupporterProfileCompletion(
       avatarUrl: null,
       specialties: null,
       hasAvailability: false,
+      schoolName: null,
+      major: null,
+      yearsAttending: null,
+      expectedGraduation: null,
     };
   }
 
@@ -215,6 +228,12 @@ export async function checkSupporterProfileCompletion(
   const availability = detailsData?.availability || null;
   const hasAvailability = availability && Object.keys(availability).length > 0;
 
+  // Education fields
+  const schoolName = detailsData?.school_name || null;
+  const major = detailsData?.major || null;
+  const yearsAttending = detailsData?.years_attending || null;
+  const expectedGraduation = detailsData?.expected_graduation || null;
+
   const missingFields: string[] = [];
   if (!firstName?.trim()) missingFields.push('First Name');
   if (!lastName?.trim()) missingFields.push('Last Name');
@@ -224,6 +243,11 @@ export async function checkSupporterProfileCompletion(
   // This prevents redirect loops if photo upload fails
   if (!specialties || specialties.length === 0) missingFields.push('Specialties');
   if (!hasAvailability) missingFields.push('Availability');
+  // Education fields are required for supporters
+  if (!schoolName?.trim()) missingFields.push('School Name');
+  if (!major?.trim()) missingFields.push('Major');
+  if (!yearsAttending) missingFields.push('Years Attending');
+  if (!expectedGraduation?.trim()) missingFields.push('Expected Graduation');
 
   return {
     isComplete: missingFields.length === 0,
@@ -235,6 +259,11 @@ export async function checkSupporterProfileCompletion(
     avatarUrl: profileData.avatar_url || null,
     specialties,
     hasAvailability,
+    // Education fields
+    schoolName: schoolName?.trim() || null,
+    major: major?.trim() || null,
+    yearsAttending,
+    expectedGraduation: expectedGraduation?.trim() || null,
   };
 }
 
