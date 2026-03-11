@@ -278,20 +278,14 @@ export async function uploadAvatar(
   if (!supabase) return null;
 
   try {
-    // Import FileSystem dynamically to avoid issues
+    // Import dependencies
     const FileSystem = require('expo-file-system');
+    const { decode } = require('base64-arraybuffer');
 
     // Read file as base64 (works reliably in React Native)
     const base64Data = await FileSystem.readAsStringAsync(imageUri, {
       encoding: FileSystem.EncodingType.Base64,
     });
-
-    // Convert base64 to Uint8Array
-    const binaryString = atob(base64Data);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
 
     // Generate unique filename
     const fileExt = imageUri.split('.').pop()?.toLowerCase() || 'jpg';
@@ -299,10 +293,11 @@ export async function uploadAvatar(
     const filePath = `${fileName}`;
     const contentType = `image/${fileExt === 'jpg' ? 'jpeg' : fileExt}`;
 
-    // Upload to Supabase storage
+    // Upload to Supabase storage using base64-arraybuffer decode
+    // This is the recommended approach for React Native
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('avatars')
-      .upload(filePath, bytes, {
+      .upload(filePath, decode(base64Data), {
         contentType,
         upsert: true,
       });
