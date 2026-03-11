@@ -283,8 +283,9 @@ export async function uploadAvatar(
     const { decode } = require('base64-arraybuffer');
 
     // Read file as base64 (works reliably in React Native)
+    // Use string 'base64' instead of EncodingType.Base64 for compatibility
     const base64Data = await FileSystem.readAsStringAsync(imageUri, {
-      encoding: FileSystem.EncodingType.Base64,
+      encoding: 'base64',
     });
 
     // Generate unique filename
