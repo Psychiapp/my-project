@@ -10,6 +10,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -145,7 +146,11 @@ export default function PermissionsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerIcon}>
@@ -211,7 +216,7 @@ export default function PermissionsScreen() {
             </Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -231,10 +236,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: PsychiColors.textMuted,
   },
-  content: {
+  scrollView: {
     flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.xl,
+    paddingBottom: Spacing.xl,
   },
   header: {
     alignItems: 'center',
@@ -340,9 +349,8 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   actions: {
-    marginTop: 'auto',
+    marginTop: Spacing.xl,
     gap: Spacing.sm,
-    paddingBottom: Spacing.lg,
   },
   settingsButton: {
     paddingVertical: Spacing.md,
