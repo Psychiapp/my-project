@@ -169,7 +169,8 @@ export default function EditProfileScreen() {
       }
     } catch (error) {
       console.error('Error uploading photo:', error);
-      Alert.alert('Upload Error', 'Failed to upload photo. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      Alert.alert('Upload Error', errorMessage);
       setAvatarUri(profile?.avatarUrl || null);
     } finally {
       setIsUploadingPhoto(false);
