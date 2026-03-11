@@ -1452,13 +1452,25 @@ export async function completeTrainingModule(
 
   // If all modules complete, update supporter as training complete
   if (completedModules >= totalModules) {
+    const now = new Date().toISOString();
+
+    // Update supporter_details
     await supabase
       .from('supporter_details')
       .update({
         training_complete: true,
-        training_completed_at: new Date().toISOString(),
+        training_completed_at: now,
       })
       .eq('supporter_id', supporterId);
+
+    // Also update profiles table for the onboarding checklist
+    await supabase
+      .from('profiles')
+      .update({
+        training_complete: true,
+        updated_at: now,
+      })
+      .eq('id', supporterId);
   }
 
   return true;
@@ -2367,6 +2379,7 @@ export async function getAdminSupporterDetail(supporterId: string): Promise<Supp
         major,
         years_attending,
         expected_graduation,
+        verification_status,
         verification_submitted_at,
         verification_rejection_reason,
         transcript_url,
@@ -2401,8 +2414,10 @@ export async function getAdminSupporterDetail(supporterId: string): Promise<Supp
     w9_completed: data.w9_completed || false,
     w9_completed_at: data.w9_completed_at,
     w9_data: data.w9_data,
-    verification_status: data.verification_status || 'not_submitted',
-    // These fields are in supporter_details, not profiles
+    // Prefer supporter_details.verification_status (source of truth for submissions)
+    // Fall back to profiles.verification_status for newer data
+    verification_status: details.verification_status || data.verification_status || 'not_submitted',
+    // These fields are in supporter_details
     verification_submitted_at: details.verification_submitted_at,
     verification_rejection_reason: details.verification_rejection_reason,
     transcript_url: details.transcript_url,
@@ -3609,6 +3624,21 @@ export async function submitVerificationDocuments(
     }
   }
 
+  // Also update verification_status in profiles table
+  // This is needed because the admin view and onboarding checklist read from profiles
+  const { error: profileError } = await supabase
+    .from('profiles')
+    .update({
+      verification_status: 'pending_review',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', supporterId);
+
+  if (profileError) {
+    console.error('Error updating profiles verification status:', profileError);
+    // Don't return false - the main data was saved, this is supplementary
+  }
+
   return true;
 }
 
@@ -3646,10 +3676,14 @@ export async function updateVerificationStatus(
       return false;
     }
 
-    // Also update profiles.is_verified
+    // Also update profiles.is_verified and verification_status
     const { error: profileError } = await supabase
       .from('profiles')
-      .update({ is_verified: true })
+      .update({
+        is_verified: true,
+        verification_status: 'approved',
+        updated_at: new Date().toISOString(),
+      })
       .eq('id', supporterId);
 
     if (profileError) {
@@ -3659,6 +3693,7 @@ export async function updateVerificationStatus(
 
     return true;
   } else {
+    // Rejected
     const { error } = await supabase
       .from('supporter_details')
       .update(updateData)
@@ -3667,6 +3702,20 @@ export async function updateVerificationStatus(
     if (error) {
       console.error('Error updating verification status:', error);
       return false;
+    }
+
+    // Also update profiles.verification_status for rejected
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .update({
+        verification_status: 'rejected',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', supporterId);
+
+    if (profileError) {
+      console.error('Error updating profile verification status:', profileError);
+      // Continue anyway, main update succeeded
     }
 
     return true;
