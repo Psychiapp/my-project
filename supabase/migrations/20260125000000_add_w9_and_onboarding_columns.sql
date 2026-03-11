@@ -56,7 +56,8 @@ CREATE INDEX IF NOT EXISTS idx_profiles_onboarding_complete ON profiles(onboardi
 
 -- Update RLS policy for W9 data - only the user can see their own W9 data
 -- The w9_data column contains sensitive information
-CREATE POLICY IF NOT EXISTS "Users can view own W9 data"
+DROP POLICY IF EXISTS "Users can view own W9 data" ON profiles;
+CREATE POLICY "Users can view own W9 data"
   ON profiles FOR SELECT
   USING (auth.uid() = id);
 

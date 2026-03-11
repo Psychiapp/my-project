@@ -38,11 +38,13 @@ CREATE INDEX IF NOT EXISTS idx_profiles_stripe_connect_id ON profiles(stripe_con
 ALTER TABLE payouts ENABLE ROW LEVEL SECURITY;
 
 -- Policy: Supporters can view their own payouts
-CREATE POLICY IF NOT EXISTS "Supporters can view own payouts"
+DROP POLICY IF EXISTS "Supporters can view own payouts" ON payouts;
+CREATE POLICY "Supporters can view own payouts"
   ON payouts FOR SELECT
   USING (auth.uid() = supporter_id);
 
 -- Policy: Only service role can insert/update payouts (via Edge Functions)
-CREATE POLICY IF NOT EXISTS "Service role can manage payouts"
+DROP POLICY IF EXISTS "Service role can manage payouts" ON payouts;
+CREATE POLICY "Service role can manage payouts"
   ON payouts FOR ALL
   USING (auth.role() = 'service_role');
