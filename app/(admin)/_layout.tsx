@@ -80,24 +80,18 @@ export default function AdminLayout() {
         name="supporter"
         options={{
           href: null,
-          tabBarButton: () => null,
-          tabBarStyle: { display: 'none' },
         }}
       />
       <Tabs.Screen
         name="transcript"
         options={{
           href: null,
-          tabBarButton: () => null,
-          tabBarStyle: { display: 'none' },
         }}
       />
       <Tabs.Screen
         name="verification"
         options={{
           href: null,
-          tabBarButton: () => null,
-          tabBarStyle: { display: 'none' },
         }}
       />
     </Tabs>

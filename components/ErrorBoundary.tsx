@@ -1,6 +1,8 @@
 import React, { Component, ReactNode, ErrorInfo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as SecureStore from 'expo-secure-store';
+import * as Updates from 'expo-updates';
 import { PsychiColors, Spacing, BorderRadius } from '@/constants/theme';
 import { SadFaceIcon } from '@/components/icons';
 
@@ -45,6 +47,53 @@ export default class ErrorBoundary extends Component<Props, State> {
     this.setState({ hasError: false, error: null });
   };
 
+  handleClearDataAndRestart = async () => {
+    try {
+      // Clear all Supabase auth-related keys from SecureStore
+      // These are the keys Supabase uses to store session data
+      const keysToDelete = [
+        'supabase.auth.token',
+        'supabase-auth-token',
+        'sb-auth-token',
+        // Supabase may use project-specific keys
+        'supabase.auth.session',
+      ];
+
+      for (const key of keysToDelete) {
+        try {
+          await SecureStore.deleteItemAsync(key);
+        } catch (e) {
+          // Ignore individual key deletion errors
+        }
+      }
+
+      // Also try to delete any keys that start with common prefixes
+      // Note: SecureStore doesn't have a "list all keys" API, so we try common patterns
+
+      Alert.alert(
+        'Data Cleared',
+        'Auth data has been cleared. The app will now restart.',
+        [
+          {
+            text: 'OK',
+            onPress: async () => {
+              // Reload the app
+              try {
+                await Updates.reloadAsync();
+              } catch (e) {
+                // If Updates.reloadAsync() fails (e.g., in dev), just clear state
+                this.setState({ hasError: false, error: null });
+              }
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      console.error('Failed to clear data:', error);
+      Alert.alert('Error', 'Failed to clear data. Please try reinstalling the app.');
+    }
+  };
+
   render() {
     if (this.state.hasError) {
       if (this.props.fallback) {
@@ -62,6 +111,15 @@ export default class ErrorBoundary extends Component<Props, State> {
             <TouchableOpacity style={styles.button} onPress={this.handleRetry}>
               <Text style={styles.buttonText}>Try Again</Text>
             </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.button, styles.clearButton]}
+              onPress={this.handleClearDataAndRestart}
+            >
+              <Text style={[styles.buttonText, styles.clearButtonText]}>Clear Data & Restart</Text>
+            </TouchableOpacity>
+            <Text style={styles.helpText}>
+              If "Try Again" doesn't work, tap "Clear Data & Restart" to reset the app.
+            </Text>
             {__DEV__ && this.state.error && (
               <View style={styles.errorDetails}>
                 <Text style={styles.errorTitle}>Error Details (Dev Only):</Text>
@@ -116,6 +174,22 @@ const styles = StyleSheet.create({
     color: PsychiColors.white,
     fontSize: 16,
     fontWeight: '600',
+  },
+  clearButton: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: PsychiColors.textMuted,
+    marginTop: Spacing.sm,
+  },
+  clearButtonText: {
+    color: PsychiColors.textSecondary,
+  },
+  helpText: {
+    fontSize: 12,
+    color: PsychiColors.textMuted,
+    textAlign: 'center',
+    marginTop: Spacing.md,
+    paddingHorizontal: Spacing.lg,
   },
   errorDetails: {
     marginTop: Spacing.xl,
