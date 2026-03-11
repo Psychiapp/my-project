@@ -197,9 +197,10 @@ export default function ProfileSetupScreen() {
       if (uploadedUrl) {
         setAvatarUri(uploadedUrl);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error uploading photo:', error);
-      Alert.alert('Upload Error', 'Failed to upload photo.');
+      const errorMessage = error?.message || 'Failed to upload photo. Please try again.';
+      Alert.alert('Upload Error', errorMessage);
       setAvatarUri(null);
     } finally {
       setIsUploadingPhoto(false);

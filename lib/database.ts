@@ -309,7 +309,18 @@ export async function uploadAvatar(
 
     if (uploadError) {
       console.error('Error uploading avatar:', uploadError);
-      return null;
+      console.error('Upload error details:', JSON.stringify(uploadError, null, 2));
+      // Provide specific error message
+      if (uploadError.message?.includes('Bucket not found')) {
+        throw new Error('Storage not configured. Please contact support.');
+      }
+      if (uploadError.message?.includes('row-level security') || uploadError.message?.includes('policy')) {
+        throw new Error('Permission denied. Please sign out and sign in again.');
+      }
+      if (uploadError.message?.includes('exceeded') || uploadError.message?.includes('size')) {
+        throw new Error('Image is too large. Please use a smaller image (max 5MB).');
+      }
+      throw new Error(uploadError.message || 'Failed to upload image');
     }
 
     // Get public URL
