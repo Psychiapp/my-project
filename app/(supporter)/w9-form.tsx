@@ -432,7 +432,7 @@ export default function W9FormScreen() {
               />
             </View>
 
-            <View style={styles.inputGroup}>
+            <View style={[styles.inputGroup, styles.stateInputGroup, showStatePicker && { zIndex: 100 }]}>
               <Text style={styles.label}>
                 State <Text style={styles.required}>*</Text>
               </Text>
@@ -449,7 +449,7 @@ export default function W9FormScreen() {
                   styles.statePickerButtonText,
                   !formData.state && styles.statePickerPlaceholder
                 ]}>
-                  {formData.state || 'Select'}
+                  {formData.state || 'Select State'}
                 </Text>
               </TouchableOpacity>
 
@@ -457,28 +457,32 @@ export default function W9FormScreen() {
                 <View style={styles.statePickerContainer}>
                   <ScrollView
                     style={styles.statePickerScroll}
-                    nestedScrollEnabled
-                    keyboardShouldPersistTaps="handled"
+                    nestedScrollEnabled={true}
+                    keyboardShouldPersistTaps="always"
+                    showsVerticalScrollIndicator={true}
                   >
-                    {US_STATES.map((state) => (
+                    {US_STATES.map((stateCode) => (
                       <TouchableOpacity
-                        key={state}
+                        key={stateCode}
                         style={[
                           styles.pickerOption,
-                          formData.state === state && styles.pickerOptionSelected
+                          formData.state === stateCode && styles.pickerOptionSelected
                         ]}
                         onPress={() => {
-                          setFormData(prev => ({ ...prev, state }));
+                          setFormData(prev => ({ ...prev, state: stateCode }));
                           setShowStatePicker(false);
                         }}
                         activeOpacity={0.7}
                       >
                         <Text style={[
                           styles.pickerOptionText,
-                          formData.state === state && styles.pickerOptionTextSelected
+                          formData.state === stateCode && styles.pickerOptionTextSelected
                         ]}>
-                          {state}
+                          {stateCode}
                         </Text>
+                        {formData.state === stateCode && (
+                          <CheckIcon size={16} color={PsychiColors.azure} />
+                        )}
                       </TouchableOpacity>
                     ))}
                   </ScrollView>
@@ -692,6 +696,10 @@ const styles = StyleSheet.create({
   inputGroup: {
     marginBottom: Spacing.md,
   },
+  stateInputGroup: {
+    position: 'relative',
+    zIndex: 10,
+  },
   label: {
     fontSize: 14,
     fontWeight: '600',
@@ -775,13 +783,18 @@ const styles = StyleSheet.create({
     color: PsychiColors.azure,
   },
   statePickerContainer: {
-    marginTop: Spacing.xs,
-    maxHeight: 200,
+    position: 'absolute',
+    top: 76,
+    left: 0,
+    right: 0,
+    maxHeight: 250,
     backgroundColor: PsychiColors.white,
     borderRadius: BorderRadius.md,
     borderWidth: 1,
     borderColor: 'rgba(0,0,0,0.1)',
-    ...Shadows.soft,
+    zIndex: 1000,
+    elevation: 10,
+    ...Shadows.medium,
   },
   statePickerScroll: {
     flex: 1,
