@@ -4,15 +4,37 @@ import * as SecureStore from 'expo-secure-store';
 import { SupabaseConfig } from '@/constants/config';
 
 // Custom storage adapter for React Native using SecureStore
+// With error handling to recover from corrupted sessions
 const ExpoSecureStoreAdapter = {
   getItem: async (key: string) => {
-    return SecureStore.getItemAsync(key);
+    try {
+      return await SecureStore.getItemAsync(key);
+    } catch (error) {
+      console.error('SecureStore getItem error:', error);
+      // If there's an error reading, try to clear the corrupted data
+      try {
+        await SecureStore.deleteItemAsync(key);
+      } catch (e) {
+        // Ignore delete errors
+      }
+      return null;
+    }
   },
   setItem: async (key: string, value: string) => {
-    await SecureStore.setItemAsync(key, value);
+    try {
+      await SecureStore.setItemAsync(key, value);
+    } catch (error) {
+      console.error('SecureStore setItem error:', error);
+      // If we can't save, that's okay - user will need to log in again next time
+    }
   },
   removeItem: async (key: string) => {
-    await SecureStore.deleteItemAsync(key);
+    try {
+      await SecureStore.deleteItemAsync(key);
+    } catch (error) {
+      console.error('SecureStore removeItem error:', error);
+      // Ignore remove errors
+    }
   },
 };
 

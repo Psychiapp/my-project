@@ -79,10 +79,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         // Get current session
-        const { data: { session }, error } = await supabase.auth.getSession();
-
-        if (error) {
-          console.error('Error getting session:', error);
+        let session = null;
+        try {
+          const { data, error } = await supabase.auth.getSession();
+          if (error) {
+            console.error('Error getting session:', error);
+            // Clear corrupted session
+            await supabase.auth.signOut();
+            setIsLoading(false);
+            return;
+          }
+          session = data.session;
+        } catch (sessionError) {
+          console.error('Session fetch crashed, clearing auth state:', sessionError);
+          // Something went wrong, clear auth state
+          try {
+            await supabase.auth.signOut();
+          } catch (e) {
+            // Ignore signout errors
+          }
           setIsLoading(false);
           return;
         }
@@ -92,13 +107,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(authUser);
 
           // Fetch profile from database
-          const userProfile = await fetchProfile(session.user.id);
-          if (userProfile) {
-            setProfile(userProfile);
+          try {
+            const userProfile = await fetchProfile(session.user.id);
+            if (userProfile) {
+              setProfile(userProfile);
+            }
+          } catch (profileError) {
+            console.error('Profile fetch error:', profileError);
+            // Don't crash, just continue without profile
           }
         }
       } catch (error) {
         console.error('Auth init error:', error);
+        // Try to clear any corrupted state
+        try {
+          if (supabase) {
+            await supabase.auth.signOut();
+          }
+        } catch (e) {
+          // Ignore
+        }
       } finally {
         setIsLoading(false);
       }
