@@ -7,11 +7,13 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
+import { supabase } from '@/lib/supabase';
 import {
   getAdminSupporterDetail,
   getSupporterStats,
@@ -243,6 +245,49 @@ export default function AdminSupporterDetailScreen() {
       hour: 'numeric',
       minute: '2-digit',
     });
+  };
+
+  const openDocument = async (url: string | null, documentType: string) => {
+    if (!url) {
+      Alert.alert('No Document', `No ${documentType} has been uploaded.`);
+      return;
+    }
+
+    try {
+      // Check if URL is a full URL or just a file path
+      if (url.startsWith('http://') || url.startsWith('https://')) {
+        // Already a full URL (signed URL) - open directly
+        const canOpen = await Linking.canOpenURL(url);
+        if (canOpen) {
+          await Linking.openURL(url);
+        } else {
+          Alert.alert('Cannot Open', 'Unable to open this document URL.');
+        }
+      } else if (supabase) {
+        // It's a file path - generate a new signed URL
+        const { data, error } = await supabase.storage
+          .from('verification-documents')
+          .createSignedUrl(url, 60 * 60); // 1 hour expiry
+
+        if (error || !data?.signedUrl) {
+          console.error('Error generating signed URL:', error);
+          Alert.alert('Error', 'Failed to access document. Please try again.');
+          return;
+        }
+
+        const canOpen = await Linking.canOpenURL(data.signedUrl);
+        if (canOpen) {
+          await Linking.openURL(data.signedUrl);
+        } else {
+          Alert.alert('Cannot Open', 'Unable to open this document.');
+        }
+      } else {
+        Alert.alert('Error', 'Storage not available.');
+      }
+    } catch (error) {
+      console.error('Error opening document:', error);
+      Alert.alert('Error', 'Failed to open document. Please try again.');
+    }
   };
 
   if (isLoading) {
@@ -481,7 +526,7 @@ export default function AdminSupporterDetailScreen() {
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Transcript</Text>
                 <TouchableOpacity
-                  onPress={() => Alert.alert('Document', 'View transcript at:\n' + supporter.transcript_url)}
+                  onPress={() => openDocument(supporter.transcript_url, 'transcript')}
                 >
                   <Text style={[styles.infoValue, { color: PsychiColors.azure }]}>View Document</Text>
                 </TouchableOpacity>
@@ -492,7 +537,7 @@ export default function AdminSupporterDetailScreen() {
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>ID Document</Text>
                 <TouchableOpacity
-                  onPress={() => Alert.alert('Document', 'View ID at:\n' + supporter.id_document_url)}
+                  onPress={() => openDocument(supporter.id_document_url, 'ID document')}
                 >
                   <Text style={[styles.infoValue, { color: PsychiColors.azure }]}>View Document</Text>
                 </TouchableOpacity>

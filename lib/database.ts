@@ -3596,15 +3596,16 @@ export async function submitVerificationDocuments(
 ): Promise<boolean> {
   if (!supabase) return false;
 
-  // First check if supporter_details row exists
-  const { data: existingRow, error: checkError } = await supabase
-    .from('supporter_details')
-    .select('supporter_id')
-    .eq('supporter_id', supporterId)
-    .single();
+  // Verify we have a valid session before making database changes
+  const { data: sessionData } = await supabase.auth.getSession();
+  if (!sessionData?.session) {
+    console.error('No valid session for submitVerificationDocuments');
+    return false;
+  }
 
-  if (checkError && checkError.code !== 'PGRST116') {
-    console.error('Error checking supporter_details:', checkError);
+  // Verify the supporterId matches the authenticated user
+  if (sessionData.session.user.id !== supporterId) {
+    console.error('User ID mismatch: session user does not match supporterId');
     return false;
   }
 
@@ -3616,28 +3617,31 @@ export async function submitVerificationDocuments(
     verification_rejection_reason: null, // Clear any previous rejection
   };
 
-  if (existingRow) {
-    const { error } = await supabase
-      .from('supporter_details')
-      .update(verificationData)
-      .eq('supporter_id', supporterId);
-
-    if (error) {
-      console.error('Error updating verification documents:', error);
-      return false;
-    }
-  } else {
-    const { error } = await supabase
-      .from('supporter_details')
-      .insert({
+  // Use upsert to handle both INSERT and UPDATE in one operation
+  // This is more reliable than checking existence first
+  const { data: upsertedData, error: upsertError } = await supabase
+    .from('supporter_details')
+    .upsert(
+      {
         supporter_id: supporterId,
         ...verificationData,
-      });
+      },
+      {
+        onConflict: 'supporter_id',
+      }
+    )
+    .select('supporter_id, transcript_url, id_document_url')
+    .single();
 
-    if (error) {
-      console.error('Error inserting verification documents:', error);
-      return false;
-    }
+  if (upsertError) {
+    console.error('Error upserting verification documents:', upsertError);
+    return false;
+  }
+
+  // Verify the data was actually saved
+  if (!upsertedData || !upsertedData.transcript_url || !upsertedData.id_document_url) {
+    console.error('Verification documents were not saved correctly:', upsertedData);
+    return false;
   }
 
   // Also update verification_status in profiles table
