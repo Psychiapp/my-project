@@ -25,25 +25,22 @@ serve(async (req) => {
       );
     }
 
-    // Create a client with the user's token to verify their identity
-    const supabaseUser = createClient(supabaseUrl, supabaseServiceKey, {
-      global: {
-        headers: { Authorization: authHeader },
-      },
-    });
-
-    // Get the calling user's info
-    const { data: { user: callerUser }, error: authError } = await supabaseUser.auth.getUser();
-
-    if (authError || !callerUser) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid authorization token' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    // Extract the JWT token from the Authorization header
+    const token = authHeader.replace('Bearer ', '');
 
     // Create service role client for admin operations
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Get the calling user's info from the JWT token
+    const { data: { user: callerUser }, error: authError } = await supabaseAdmin.auth.getUser(token);
+
+    if (authError || !callerUser) {
+      console.error('Auth error:', authError);
+      return new Response(
+        JSON.stringify({ error: 'Invalid authorization token', details: authError?.message }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Verify the caller is an admin
     const { data: callerProfile, error: profileError } = await supabaseAdmin
