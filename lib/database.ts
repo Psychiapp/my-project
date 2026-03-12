@@ -1082,6 +1082,8 @@ export async function createSession(
       duration_minutes: durationMinutes,
       status: 'scheduled',
       stripe_payment_intent_id: paymentIntentId || null,
+      // If we have a payment intent, payment already succeeded (webhook already processed)
+      payment_status: paymentIntentId ? 'completed' : 'pending',
     })
     .select()
     .single();

@@ -15,6 +15,19 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  // Check environment variables
+  if (!supabaseUrl || !supabaseServiceKey) {
+    console.error('Missing environment variables:', {
+      hasUrl: !!supabaseUrl,
+      hasServiceKey: !!supabaseServiceKey,
+      serviceKeyPrefix: supabaseServiceKey?.substring(0, 20) + '...'
+    });
+    return new Response(
+      JSON.stringify({ error: 'Server configuration error: missing environment variables' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
   try {
     // Get the authorization header to identify the caller
     const authHeader = req.headers.get('Authorization');
@@ -31,6 +44,8 @@ serve(async (req) => {
     // Create service role client for admin operations
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
+    console.log('Step 1: Getting user from token...');
+
     // Get the calling user's info from the JWT token
     const { data: { user: callerUser }, error: authError } = await supabaseAdmin.auth.getUser(token);
 
@@ -42,6 +57,8 @@ serve(async (req) => {
       );
     }
 
+    console.log('Step 2: Verifying caller is admin...', { callerId: callerUser.id, callerEmail: callerUser.email });
+
     // Verify the caller is an admin
     const { data: callerProfile, error: profileError } = await supabaseAdmin
       .from('profiles')
@@ -50,21 +67,26 @@ serve(async (req) => {
       .single();
 
     if (profileError || !callerProfile) {
+      console.error('Profile error:', profileError);
       return new Response(
-        JSON.stringify({ error: 'Failed to verify caller profile' }),
+        JSON.stringify({ error: 'Failed to verify caller profile', details: profileError?.message }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    console.log('Step 3: Caller role is:', callerProfile.role);
+
     if (callerProfile.role !== 'admin') {
       return new Response(
-        JSON.stringify({ error: 'Unauthorized: Admin role required' }),
+        JSON.stringify({ error: 'Unauthorized: Admin role required', callerRole: callerProfile.role }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     // Get the user ID to delete from the request body
     const { userId } = await req.json();
+
+    console.log('Step 4: Attempting to delete userId:', userId);
 
     if (!userId) {
       return new Response(

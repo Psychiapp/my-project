@@ -60,31 +60,33 @@ serve(async (req) => {
           .eq('stripe_payment_intent_id', paymentIntent.id);
 
         // If this payment has a session_id in metadata, update session payment status
+        // Note: session_id may not be in metadata if session is created after payment
         if (paymentIntent.metadata?.session_id) {
           await supabase
             .from('sessions')
             .update({ payment_status: 'completed' })
             .eq('id', paymentIntent.metadata.session_id);
+        }
 
-          // Calculate and add to supporter's pending payout (75% cut)
-          if (paymentIntent.metadata?.supporter_id) {
-            const supporterCut = Math.floor(paymentIntent.amount * 0.75);
+        // Calculate and add to supporter's pending payout (75% cut)
+        // This runs even without session_id since earnings are tied to supporter, not session
+        if (paymentIntent.metadata?.supporter_id) {
+          const supporterCut = Math.floor(paymentIntent.amount * 0.75);
 
-            const { data: supporterDetails } = await supabase
+          const { data: supporterDetails } = await supabase
+            .from('supporter_details')
+            .select('pending_payout, total_earnings')
+            .eq('supporter_id', paymentIntent.metadata.supporter_id)
+            .single();
+
+          if (supporterDetails) {
+            await supabase
               .from('supporter_details')
-              .select('pending_payout, total_earnings')
-              .eq('supporter_id', paymentIntent.metadata.supporter_id)
-              .single();
-
-            if (supporterDetails) {
-              await supabase
-                .from('supporter_details')
-                .update({
-                  pending_payout: (supporterDetails.pending_payout || 0) + supporterCut,
-                  total_earnings: (supporterDetails.total_earnings || 0) + supporterCut,
-                })
-                .eq('supporter_id', paymentIntent.metadata.supporter_id);
-            }
+              .update({
+                pending_payout: (supporterDetails.pending_payout || 0) + supporterCut,
+                total_earnings: (supporterDetails.total_earnings || 0) + supporterCut,
+              })
+              .eq('supporter_id', paymentIntent.metadata.supporter_id);
           }
         }
         break;
