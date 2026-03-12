@@ -25,6 +25,7 @@ import { PsychiColors, Spacing, BorderRadius } from '@/constants/theme';
 import { Avatar } from '@/components/Avatar';
 import { LockIcon, MicIcon, MicOffIcon, VideoIcon, VideoOffIcon, VolumeHighIcon, VolumeLowIcon, PhoneIcon, WifiOffIcon } from '@/components/icons';
 import EmergencyButton from './EmergencyButton';
+import { createSessionLogger, logSessionEvent } from '@/lib/sessionLogger';
 
 // Constants for timeouts and warnings
 const CONNECTION_TIMEOUT_MS = 30000; // 30 seconds to connect
@@ -121,6 +122,8 @@ export default function VideoCall({
           audioSource: true,
         });
 
+        const sessionType = isVideoEnabled ? 'video' : 'phone';
+
         // Event handlers
         call.on('joined-meeting', () => {
           setIsConnecting(false);
@@ -131,6 +134,14 @@ export default function VideoCall({
             connectionTimeoutRef.current = null;
           }
           setParticipants(call.participants());
+
+          // Log successful join
+          if (sessionId) {
+            logSessionEvent(sessionId, sessionType, participantName, 'session_join', {
+              roomUrl,
+              otherParticipantId: otherParticipant.id,
+            });
+          }
         });
 
         call.on('left-meeting', () => {
@@ -155,6 +166,13 @@ export default function VideoCall({
         call.on('participant-left', (event: any) => {
           const updatedParticipants = call.participants();
           setParticipants({ ...updatedParticipants });
+
+          // Log participant left
+          if (sessionId) {
+            logSessionEvent(sessionId, sessionType, participantName, 'participant_left', {
+              otherParticipantId: otherParticipant.id,
+            });
+          }
 
           // Check if the remote participant left (not us)
           const remoteParticipant = Object.values(updatedParticipants).find((p: any) => !p.local);
@@ -183,6 +201,18 @@ export default function VideoCall({
           const errorMsg = event?.errorMsg || 'Connection error';
           setError(errorMsg);
           onError?.(errorMsg);
+
+          // Log the error
+          if (sessionId) {
+            logSessionEvent(
+              sessionId,
+              sessionType,
+              participantName,
+              'session_error',
+              { roomUrl },
+              new Error(errorMsg)
+            );
+          }
         });
 
         setCallObject(call);
@@ -190,6 +220,17 @@ export default function VideoCall({
         // Set connection timeout
         connectionTimeoutRef.current = setTimeout(() => {
           if (isConnecting) {
+            // Log timeout event
+            if (sessionId) {
+              logSessionEvent(
+                sessionId,
+                sessionType,
+                participantName,
+                'connection_timeout',
+                { roomUrl, timeoutMs: CONNECTION_TIMEOUT_MS },
+                new Error('Connection timed out')
+              );
+            }
             setError('Connection timed out. Please check your internet connection and try again.');
             onError?.('Connection timed out');
             call.leave();
@@ -278,6 +319,18 @@ export default function VideoCall({
       // Network disconnected during call
       if (wasConnected && !nowConnected && !isConnecting) {
         setIsReconnecting(true);
+
+        // Log connection lost
+        if (sessionId) {
+          logSessionEvent(
+            sessionId,
+            isVideoEnabled ? 'video' : 'phone',
+            participantName,
+            'connection_lost',
+            { roomUrl }
+          );
+        }
+
         Alert.alert(
           'Connection Lost',
           'Your internet connection was lost. Attempting to reconnect...',
@@ -300,6 +353,18 @@ export default function VideoCall({
       // Network reconnected
       if (!wasConnected && nowConnected && isReconnecting) {
         setIsReconnecting(false);
+
+        // Log connection restored
+        if (sessionId) {
+          logSessionEvent(
+            sessionId,
+            isVideoEnabled ? 'video' : 'phone',
+            participantName,
+            'connection_restored',
+            { roomUrl }
+          );
+        }
+
         Alert.alert(
           'Reconnected',
           'Your connection has been restored.',
@@ -378,6 +443,17 @@ export default function VideoCall({
           text: 'End Call',
           style: 'destructive',
           onPress: () => {
+            // Log session end
+            if (sessionId) {
+              logSessionEvent(
+                sessionId,
+                isVideoEnabled ? 'video' : 'phone',
+                participantName,
+                'session_end',
+                { duration: callDuration, roomUrl }
+              );
+            }
+
             if (callObject) {
               callObject.leave();
             }
@@ -386,7 +462,7 @@ export default function VideoCall({
         },
       ]
     );
-  }, [callObject, onEndCall]);
+  }, [callObject, onEndCall, sessionId, isVideoEnabled, participantName, callDuration, roomUrl]);
 
   // Get participants
   const localParticipant = participants.local;

@@ -21,6 +21,7 @@ import { useEncryptedChat, ChatMessage } from '@/hooks/useEncryptedChat';
 import EmergencyButton from './EmergencyButton';
 import ReportUserModal from '@/components/ReportUserModal';
 import BlockUserModal from '@/components/BlockUserModal';
+import { logSessionEvent } from '@/lib/sessionLogger';
 
 interface Message {
   id: string;
@@ -140,15 +141,33 @@ export default function ChatSession({
         if (!success) {
           // Fall back to local if encryption fails
           addLocalMessage(messageContent);
+          logSessionEvent(sessionId, 'chat', currentUserId, 'chat_message_failed', {
+            reason: 'encryption_fallback',
+          });
+        } else {
+          logSessionEvent(sessionId, 'chat', currentUserId, 'chat_message_sent', {
+            encrypted: true,
+          });
         }
       } else {
         // Demo mode - add locally
         addLocalMessage(messageContent);
+        logSessionEvent(sessionId, 'chat', currentUserId, 'chat_message_sent', {
+          encrypted: false,
+        });
       }
     } catch (error) {
       console.error('Failed to send message:', error);
       // Fall back to local message on any error
       addLocalMessage(messageContent);
+      logSessionEvent(
+        sessionId,
+        'chat',
+        currentUserId,
+        'chat_message_failed',
+        { reason: 'exception' },
+        error instanceof Error ? error : new Error(String(error))
+      );
     } finally {
       setIsSending(false);
     }

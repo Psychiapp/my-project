@@ -18,6 +18,7 @@ import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme'
 import { createSession as createDailySession, SessionConfig, deleteRoom, getRoomNameFromUrl } from '@/lib/daily';
 import { getSession, updateSessionStatus, updateSessionRoomUrl } from '@/lib/database';
 import { useAuth } from '@/contexts/AuthContext';
+import { logSessionEvent } from '@/lib/sessionLogger';
 import {
   ensureSessionPermissions,
   getPermissionDisplayName,
@@ -155,7 +156,25 @@ export default function SessionScreen() {
         setDailySession(config);
         // Save room URL to database and mark session as in_progress
         await updateSessionRoomUrl(sessionData.id, config.roomUrl);
+
+        // Log room creation
+        logSessionEvent(
+          sessionData.id,
+          sessionData.type,
+          currentUserId,
+          'room_created',
+          { roomUrl: config.roomUrl, participantId: sessionData.participant.id }
+        );
       } else {
+        // Log room creation failure
+        logSessionEvent(
+          sessionData.id,
+          sessionData.type,
+          currentUserId,
+          'room_join_failed',
+          { reason: 'Failed to create Daily room' },
+          new Error('Failed to create call session')
+        );
         Alert.alert('Error', 'Failed to create call session. Please try again.');
       }
       setIsCreatingRoom(false);
@@ -176,6 +195,15 @@ export default function SessionScreen() {
       await updateSessionStatus(sessionData.id, 'completed', {
         ended_at: new Date().toISOString()
       });
+
+      // Log session end
+      logSessionEvent(
+        sessionData.id,
+        sessionData.type,
+        currentUserId,
+        'session_end',
+        { participantId: sessionData.participant.id }
+      );
     }
 
     // Clean up Daily.co room if it exists
@@ -183,6 +211,17 @@ export default function SessionScreen() {
       const roomName = getRoomNameFromUrl(dailySession.roomUrl);
       if (roomName) {
         await deleteRoom(roomName);
+
+        // Log room deletion
+        if (sessionData?.id) {
+          logSessionEvent(
+            sessionData.id,
+            sessionData.type,
+            currentUserId,
+            'room_deleted',
+            { roomUrl: dailySession.roomUrl }
+          );
+        }
       }
     }
 
@@ -193,11 +232,32 @@ export default function SessionScreen() {
   useEffect(() => {
     if (sessionData?.type === 'chat' && sessionData?.id) {
       updateSessionStatus(sessionData.id, 'in_progress');
+
+      // Log chat session start
+      logSessionEvent(
+        sessionData.id,
+        'chat',
+        currentUserId,
+        'session_start',
+        { participantId: sessionData.participant.id }
+      );
     }
-  }, [sessionData?.id, sessionData?.type]);
+  }, [sessionData?.id, sessionData?.type, currentUserId, sessionData?.participant?.id]);
 
   // Handle connection issue - show post-call contact window
   const handleConnectionIssue = async (reason: 'timeout' | 'disconnect' | 'network') => {
+    // Log the connection issue
+    if (sessionData?.id) {
+      const eventType = reason === 'timeout' ? 'connection_timeout' : 'connection_lost';
+      logSessionEvent(
+        sessionData.id,
+        sessionData.type,
+        currentUserId,
+        eventType,
+        { reason, participantId: sessionData.participant.id }
+      );
+    }
+
     // Clean up Daily.co room on connection issues
     if (dailySession?.roomUrl) {
       const roomName = getRoomNameFromUrl(dailySession.roomUrl);

@@ -4605,3 +4605,69 @@ export async function notifyClientNoSupportersAvailable(params: {
 
   return result.sent;
 }
+
+// ============================================
+// POST-CALL MESSAGES
+// ============================================
+
+export interface PostCallMessage {
+  id: string;
+  session_id: string;
+  sender_id: string;
+  recipient_id: string;
+  content: string;
+  issue_reason: 'timeout' | 'disconnect' | 'network';
+  created_at: string;
+}
+
+/**
+ * Save a post-call recovery message
+ */
+export async function savePostCallMessage(params: {
+  sessionId: string;
+  senderId: string;
+  recipientId: string;
+  content: string;
+  issueReason: 'timeout' | 'disconnect' | 'network';
+}): Promise<PostCallMessage | null> {
+  if (!supabase) return null;
+
+  const { data, error } = await supabase
+    .from('post_call_messages')
+    .insert({
+      session_id: params.sessionId,
+      sender_id: params.senderId,
+      recipient_id: params.recipientId,
+      content: params.content,
+      issue_reason: params.issueReason,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error saving post-call message:', error);
+    return null;
+  }
+
+  return data;
+}
+
+/**
+ * Get post-call messages for a session
+ */
+export async function getPostCallMessages(sessionId: string): Promise<PostCallMessage[]> {
+  if (!supabase) return [];
+
+  const { data, error } = await supabase
+    .from('post_call_messages')
+    .select('*')
+    .eq('session_id', sessionId)
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    console.error('Error fetching post-call messages:', error);
+    return [];
+  }
+
+  return data || [];
+}

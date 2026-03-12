@@ -22,6 +22,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { PsychiColors, Spacing, BorderRadius, Typography } from '@/constants/theme';
 import { ClockIcon, SendIcon, AlertIcon } from '@/components/icons';
 import { supabase } from '@/lib/supabase';
+import { savePostCallMessage } from '@/lib/database';
+import { logSessionEvent } from '@/lib/sessionLogger';
 
 const CONTACT_WINDOW_MINUTES = 10;
 const CONTACT_WINDOW_MS = CONTACT_WINDOW_MINUTES * 60 * 1000;
@@ -152,7 +154,29 @@ export default function PostCallContact({
     setMessages((prev) => [...prev, newMessage]);
     setInputText('');
 
-    // Broadcast to other participant
+    // Persist message to database
+    try {
+      await savePostCallMessage({
+        sessionId,
+        senderId: currentUserId,
+        recipientId: otherParticipant.id,
+        content: newMessage.content,
+        issueReason,
+      });
+
+      // Log the event
+      logSessionEvent(
+        sessionId,
+        callType === 'video' ? 'video' : 'phone',
+        currentUserId,
+        'post_call_message',
+        { recipientId: otherParticipant.id, issueReason }
+      );
+    } catch (error) {
+      console.warn('Failed to persist post-call message:', error);
+    }
+
+    // Broadcast to other participant for real-time delivery
     const channelId = `post-call-${sessionId}`;
     await supabase.channel(channelId).send({
       type: 'broadcast',
