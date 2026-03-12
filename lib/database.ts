@@ -2081,29 +2081,38 @@ export async function suspendUser(userId: string): Promise<boolean> {
 
 /**
  * Delete a user account (admin only)
+ * Calls the delete-user Edge Function which uses service role to delete from auth.users
+ * This cascades to profiles -> supporter_details -> all related tables
  */
 export async function deleteUser(userId: string): Promise<boolean> {
   if (!supabase) return false;
 
   try {
-    // Delete supporter_details if exists
-    await supabase
-      .from('supporter_details')
-      .delete()
-      .eq('supporter_id', userId);
-
-    // Delete the profile
-    const { error } = await supabase
-      .from('profiles')
-      .delete()
-      .eq('id', userId);
+    // Call the delete-user Edge Function
+    // This requires admin role and uses service role key to delete from auth.users
+    const { data, error } = await supabase.functions.invoke('delete-user', {
+      body: { userId },
+    });
 
     if (error) {
-      console.error('Error deleting user:', error);
+      console.error('Error calling delete-user function:', error);
       return false;
     }
 
-    return true;
+    // Check for error in response body
+    if (data?.error) {
+      console.error('Delete user failed:', data.error, data.details);
+      return false;
+    }
+
+    // Verify success
+    if (data?.success) {
+      console.log('User deleted successfully:', data.message);
+      return true;
+    }
+
+    console.error('Unexpected response from delete-user:', data);
+    return false;
   } catch (error) {
     console.error('Error deleting user:', error);
     return false;
