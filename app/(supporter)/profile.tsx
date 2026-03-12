@@ -9,8 +9,8 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import { Avatar } from '@/components/Avatar';
 import { useAuth } from '@/contexts/AuthContext';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
 import {
@@ -56,6 +56,7 @@ export default function SupporterProfileScreen() {
         if (detail) {
           setSupporterData({
             name: detail.full_name,
+            avatarUrl: detail.avatar_url || null,
             education: detail.education || '',
             totalSessions: sessionCount || 0,
             bio: detail.bio || '',
@@ -94,6 +95,7 @@ export default function SupporterProfileScreen() {
   // Use fetched data or defaults
   const supporterProfile = supporterData || {
     name: `${profile?.firstName || ''} ${profile?.lastName || ''}`.trim() || 'Your Profile',
+    avatarUrl: profile?.avatarUrl || null,
     education: '',
     totalSessions: 0,
     bio: 'Add a bio to tell clients about yourself',
@@ -156,12 +158,12 @@ export default function SupporterProfileScreen() {
 
         {/* Profile Card */}
         <View style={styles.profileCard}>
-          <LinearGradient
+          <Avatar
+            imageUrl={supporterProfile.avatarUrl}
+            name={supporterProfile.name}
+            size={60}
             colors={[PsychiColors.azure, PsychiColors.deep]}
-            style={styles.avatarGradient}
-          >
-            <Text style={styles.avatarText}>{supporterProfile.name.charAt(0)}</Text>
-          </LinearGradient>
+          />
           <View style={styles.profileInfo}>
             <Text style={styles.profileName}>{supporterProfile.name}</Text>
             <Text style={styles.profileEducation}>{supporterProfile.education}</Text>

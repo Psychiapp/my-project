@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PsychiColors, Spacing, BorderRadius, Shadows, Typography } from '@/constants/theme';
+import { Avatar } from '@/components/Avatar';
 import { LockIcon, MoreHorizontalIcon } from '@/components/icons';
 import { useEncryptedChat, ChatMessage } from '@/hooks/useEncryptedChat';
 import EmergencyButton from './EmergencyButton';
@@ -36,6 +37,7 @@ interface ChatSessionProps {
   otherParticipant: {
     id: string;
     name: string;
+    avatarUrl?: string | null;
   };
   currentUserId: string;
   currentUserName?: string; // Name of the current user for notifications
@@ -152,9 +154,12 @@ export default function ChatSession({
   const renderMessage = ({ item }: { item: Message }) => (
     <View style={[styles.messageRow, item.isOwn && styles.messageRowOwn]}>
       {!item.isOwn && (
-        <View style={styles.avatarSmall}>
-          <Text style={styles.avatarSmallText}>{otherParticipant.name.charAt(0)}</Text>
-        </View>
+        <Avatar
+          imageUrl={otherParticipant.avatarUrl}
+          name={otherParticipant.name}
+          size={32}
+          colors={[PsychiColors.azure, PsychiColors.deep]}
+        />
       )}
       <View style={[styles.messageBubble, item.isOwn && styles.messageBubbleOwn]}>
         <Text style={[styles.messageText, item.isOwn && styles.messageTextOwn]}>
@@ -172,12 +177,12 @@ export default function ChatSession({
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <LinearGradient
+          <Avatar
+            imageUrl={otherParticipant.avatarUrl}
+            name={otherParticipant.name}
+            size={44}
             colors={[PsychiColors.azure, PsychiColors.deep]}
-            style={styles.avatar}
-          >
-            <Text style={styles.avatarText}>{otherParticipant.name.charAt(0)}</Text>
-          </LinearGradient>
+          />
           <View style={styles.headerInfo}>
             <Text style={styles.headerName}>{otherParticipant.name}</Text>
             <View style={styles.statusRow}>
@@ -233,9 +238,12 @@ export default function ChatSession({
         {/* Typing Indicator */}
         {isTyping && (
           <View style={styles.typingContainer}>
-            <View style={styles.avatarSmall}>
-              <Text style={styles.avatarSmallText}>{otherParticipant.name.charAt(0)}</Text>
-            </View>
+            <Avatar
+              imageUrl={otherParticipant.avatarUrl}
+              name={otherParticipant.name}
+              size={32}
+              colors={[PsychiColors.azure, PsychiColors.deep]}
+            />
             <View style={styles.typingBubble}>
               <View style={styles.typingDots}>
                 <View style={[styles.typingDot, styles.typingDot1]} />

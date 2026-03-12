@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
 import { ChatIcon, PhoneIcon, VideoIcon } from '@/components/icons';
+import { Avatar } from '@/components/Avatar';
 import { getAllSessions } from '@/lib/database';
 import { useAuth } from '@/contexts/AuthContext';
 import type { AdminSessionListing, SessionStatus } from '@/types/database';
@@ -291,11 +292,12 @@ export default function AdminSessions() {
               {/* Participants */}
               <View style={styles.participants}>
                 <View style={styles.participant}>
-                  <View style={[styles.participantAvatar, { backgroundColor: PsychiColors.azure }]}>
-                    <Text style={styles.participantInitial}>
-                      {session.client_name.charAt(0)}
-                    </Text>
-                  </View>
+                  <Avatar
+                    imageUrl={session.client_avatar}
+                    name={session.client_name}
+                    size={32}
+                    colors={[PsychiColors.azure, PsychiColors.azure]}
+                  />
                   <View>
                     <Text style={styles.participantLabel}>Client</Text>
                     <Text style={styles.participantName}>{session.client_name}</Text>
@@ -303,11 +305,12 @@ export default function AdminSessions() {
                 </View>
                 <View style={styles.participantDivider} />
                 <View style={styles.participant}>
-                  <View style={[styles.participantAvatar, { backgroundColor: PsychiColors.coral }]}>
-                    <Text style={styles.participantInitial}>
-                      {session.supporter_name.charAt(0)}
-                    </Text>
-                  </View>
+                  <Avatar
+                    imageUrl={session.supporter_avatar}
+                    name={session.supporter_name}
+                    size={32}
+                    colors={[PsychiColors.coral, PsychiColors.coral]}
+                  />
                   <View>
                     <Text style={styles.participantLabel}>Supporter</Text>
                     <Text style={styles.participantName}>{session.supporter_name}</Text>

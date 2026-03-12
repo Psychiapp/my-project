@@ -9,16 +9,17 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
 import { ChevronLeftIcon, HeartIcon, ChatIcon, PhoneIcon, VideoIcon } from '@/components/icons';
+import { Avatar } from '@/components/Avatar';
 import { Config } from '@/constants/config';
 import { getSupporterDetail, getSupporterAvailability } from '@/lib/database';
 
 interface SupporterData {
   id: string;
   name: string;
+  avatarUrl: string | null;
   education: string;
   specialties: string[];
   sessions: number;
@@ -64,6 +65,7 @@ export default function SupporterProfileScreen() {
           setSupporter({
             id: detail.id,
             name: detail.full_name,
+            avatarUrl: detail.avatar_url || null,
             education: detail.education || '',
             specialties: detail.specialties || [],
             sessions: detail.total_sessions || 0,
@@ -149,12 +151,12 @@ export default function SupporterProfileScreen() {
         {/* Profile Header */}
         <View style={styles.profileHeader}>
           <View style={styles.avatarContainer}>
-            <LinearGradient
+            <Avatar
+              imageUrl={supporter.avatarUrl}
+              name={supporter.name}
+              size={100}
               colors={[PsychiColors.azure, PsychiColors.deep]}
-              style={styles.avatar}
-            >
-              <Text style={styles.avatarText}>{supporter.name.charAt(0)}</Text>
-            </LinearGradient>
+            />
             {supporter.available && <View style={styles.onlineDot} />}
           </View>
           <Text style={styles.name}>{supporter.name}</Text>

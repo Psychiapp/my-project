@@ -21,6 +21,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import NetInfo, { NetInfoState } from '@react-native-community/netinfo';
 import { PsychiColors, Spacing, BorderRadius } from '@/constants/theme';
+import { Avatar } from '@/components/Avatar';
 import { LockIcon, MicIcon, MicOffIcon, VideoIcon, VideoOffIcon, VolumeHighIcon, VolumeLowIcon, PhoneIcon, WifiOffIcon } from '@/components/icons';
 import EmergencyButton from './EmergencyButton';
 
@@ -51,6 +52,7 @@ interface VideoCallProps {
   otherParticipant: {
     id: string;
     name: string;
+    avatarUrl?: string | null;
   };
   isVideoEnabled?: boolean;
   onEndCall: () => void;
@@ -503,14 +505,12 @@ export default function VideoCall({
             style={styles.audioOnlyContainer}
           >
             <View style={styles.audioOnlyAvatar}>
-              <LinearGradient
-                colors={[PsychiColors.azure, PsychiColors.deep] as const}
-                style={styles.avatarGradient}
-              >
-                <Text style={styles.avatarLargeText}>
-                  {remoteParticipant?.user_name?.charAt(0) || otherParticipant.name.charAt(0)}
-                </Text>
-              </LinearGradient>
+              <Avatar
+                imageUrl={otherParticipant.avatarUrl}
+                name={remoteParticipant?.user_name || otherParticipant.name}
+                size={140}
+                colors={[PsychiColors.azure, PsychiColors.deep]}
+              />
             </View>
             <Text style={styles.audioOnlyName}>
               {remoteParticipant?.user_name || otherParticipant.name}

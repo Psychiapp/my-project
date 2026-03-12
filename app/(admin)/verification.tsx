@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
 import { CheckIcon, DocumentIcon } from '@/components/icons';
+import { Avatar } from '@/components/Avatar';
 import { getPendingSupporters } from '@/lib/database';
 import { useAuth } from '@/contexts/AuthContext';
 import type { SupporterApplication } from '@/types/database';
@@ -157,11 +158,12 @@ export default function AdminVerification() {
               >
                 {/* Header Row */}
                 <View style={styles.cardHeader}>
-                  <View style={styles.avatarContainer}>
-                    <Text style={styles.avatarText}>
-                      {supporter.full_name.charAt(0).toUpperCase()}
-                    </Text>
-                  </View>
+                  <Avatar
+                    imageUrl={supporter.avatar_url}
+                    name={supporter.full_name}
+                    size={48}
+                    colors={[PsychiColors.coral, PsychiColors.coral]}
+                  />
                   <View style={styles.headerInfo}>
                     <Text style={styles.supporterName}>{supporter.full_name}</Text>
                     <Text style={styles.supporterEmail}>{supporter.email}</Text>

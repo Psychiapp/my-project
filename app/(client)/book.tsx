@@ -29,6 +29,7 @@ import {
 import { createSession, getSupporterDetail, getSupporterAvailability, saveClientPreferences, getClientCurrentAssignment, matchAndAssignSupporter } from '@/lib/database';
 import { processSessionPayment, stripeAvailable } from '@/lib/stripe';
 import OnboardingModal from '@/components/OnboardingModal';
+import { Avatar } from '@/components/Avatar';
 
 type SessionType = 'chat' | 'phone' | 'video';
 type BookingStep = 'type' | 'date' | 'time' | 'confirm';
@@ -142,8 +143,8 @@ export default function BookSessionScreen() {
   const [isLoadingAvailability, setIsLoadingAvailability] = useState(true);
   const [showOnboardingModal, setShowOnboardingModal] = useState(true);
   const [isLoadingAssignment, setIsLoadingAssignment] = useState(!params.supporterId);
-  const [assignedSupporter, setAssignedSupporter] = useState<{ id: string; name: string; specialty: string; stripe_connect_id: string | null } | null>(null);
-  const [paramSupporter, setParamSupporter] = useState<{ id: string; name: string; specialty: string; stripe_connect_id: string | null } | null>(null);
+  const [assignedSupporter, setAssignedSupporter] = useState<{ id: string; name: string; specialty: string; stripe_connect_id: string | null; avatarUrl: string | null } | null>(null);
+  const [paramSupporter, setParamSupporter] = useState<{ id: string; name: string; specialty: string; stripe_connect_id: string | null; avatarUrl: string | null } | null>(null);
 
   // Fetch supporter details (for stripe_connect_id) when supporterId is in params
   React.useEffect(() => {
@@ -157,6 +158,7 @@ export default function BookSessionScreen() {
           name: supporterDetail?.full_name || params.supporterName || 'Your Supporter',
           specialty: 'Peer Support',
           stripe_connect_id: supporterDetail?.stripe_connect_id || null,
+          avatarUrl: supporterDetail?.avatar_url || null,
         });
       } catch (error) {
         console.error('Error fetching supporter details:', error);
@@ -166,6 +168,7 @@ export default function BookSessionScreen() {
           name: params.supporterName || 'Your Supporter',
           specialty: 'Peer Support',
           stripe_connect_id: null,
+          avatarUrl: null,
         });
       }
     };
@@ -192,6 +195,7 @@ export default function BookSessionScreen() {
               name: supporterDetail.full_name || 'Your Supporter',
               specialty: 'Peer Support',
               stripe_connect_id: supporterDetail.stripe_connect_id || null,
+              avatarUrl: supporterDetail.avatar_url || null,
             });
           }
         }
@@ -232,6 +236,7 @@ export default function BookSessionScreen() {
           name: result.supporter.name,
           specialty: result.supporter.specialty,
           stripe_connect_id: supporterDetail?.stripe_connect_id || null,
+          avatarUrl: supporterDetail?.avatar_url || null,
         });
 
         // Close modal and show booking flow
@@ -750,12 +755,12 @@ export default function BookSessionScreen() {
 
             <View style={styles.confirmCard}>
               <View style={styles.confirmHeader}>
-                <LinearGradient
-                  colors={[PsychiColors.azure, PsychiColors.deep] as const}
-                  style={styles.confirmAvatar}
-                >
-                  <Text style={styles.confirmAvatarText}>{supporter.name.charAt(0)}</Text>
-                </LinearGradient>
+                <Avatar
+                  imageUrl={supporter.avatarUrl}
+                  name={supporter.name}
+                  size={56}
+                  colors={[PsychiColors.azure, PsychiColors.deep]}
+                />
                 <View style={styles.confirmHeaderInfo}>
                   <Text style={styles.confirmSupporterName}>{supporter.name}</Text>
                   <Text style={styles.confirmSessionType}>

@@ -8,8 +8,8 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import { Avatar } from '@/components/Avatar';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   PsychiColors,
@@ -114,14 +114,12 @@ export default function ProfileScreen() {
 
         {/* Profile Card */}
         <View style={styles.profileCard}>
-          <LinearGradient
+          <Avatar
+            imageUrl={profile?.avatarUrl}
+            name={profile?.firstName || profile?.email || 'User'}
+            size={60}
             colors={[PsychiColors.azure, PsychiColors.royalBlue]}
-            style={styles.avatarGradient}
-          >
-            <Text style={styles.avatarText}>
-              {profile?.firstName?.charAt(0) || profile?.email?.charAt(0).toUpperCase() || 'U'}
-            </Text>
-          </LinearGradient>
+          />
           <View style={styles.profileInfo}>
             <Text style={styles.profileName}>
               {profile?.firstName && profile?.lastName

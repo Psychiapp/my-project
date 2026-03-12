@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Avatar } from '@/components/Avatar';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
 import { supabase } from '@/lib/supabase';
 import {
@@ -342,12 +342,12 @@ export default function AdminSupporterDetailScreen() {
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Header Card */}
         <View style={styles.headerCard}>
-          <LinearGradient
+          <Avatar
+            imageUrl={supporter.avatar_url}
+            name={supporter.full_name}
+            size={80}
             colors={[PsychiColors.azure, PsychiColors.deep]}
-            style={styles.avatarGradient}
-          >
-            <Text style={styles.avatarText}>{supporter.full_name.charAt(0)}</Text>
-          </LinearGradient>
+          />
           <Text style={styles.supporterName}>{supporter.full_name}</Text>
           <Text style={styles.supporterEmail}>{supporter.email}</Text>
 

@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
 import { CheckIcon, CloseIcon, TrashIcon, DocumentIcon } from '@/components/icons';
+import { Avatar } from '@/components/Avatar';
 import { getAllUsers, approveSupporter, deleteUser } from '@/lib/database';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -290,11 +291,12 @@ export default function AdminUsers() {
             <View key={user.id} style={styles.userCard}>
               {/* User Header */}
               <View style={styles.userHeader}>
-                <View style={[styles.avatar, user.role === 'supporter' && styles.avatarSupporter]}>
-                  <Text style={styles.avatarText}>
-                    {user.full_name.charAt(0).toUpperCase()}
-                  </Text>
-                </View>
+                <Avatar
+                  imageUrl={user.avatar_url}
+                  name={user.full_name}
+                  size={48}
+                  colors={user.role === 'supporter' ? [PsychiColors.coral, PsychiColors.coral] : [PsychiColors.azure, PsychiColors.azure]}
+                />
                 <View style={styles.userInfo}>
                   <View style={styles.nameRow}>
                     <Text style={styles.userName}>{user.full_name}</Text>

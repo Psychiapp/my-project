@@ -9,8 +9,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
 import { PsychiColors, Spacing, BorderRadius, Shadows, Typography } from '@/constants/theme';
+import { Avatar } from '@/components/Avatar';
 import { ChatIcon, CheckIcon, ArrowLeftIcon } from '@/components/icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { getSupporterReviews } from '@/lib/database';
@@ -144,14 +144,12 @@ export default function FeedbackScreen() {
                 filteredReviews.map((review) => (
                   <View key={review.id} style={styles.reviewCard}>
                     <View style={styles.reviewHeader}>
-                      <LinearGradient
+                      <Avatar
+                        imageUrl={null}
+                        name={review.client_name}
+                        size={40}
                         colors={['#4A90E2', '#2E5C8A']}
-                        style={styles.reviewAvatar}
-                      >
-                        <Text style={styles.reviewAvatarText}>
-                          {review.client_name.charAt(0)}
-                        </Text>
-                      </LinearGradient>
+                      />
                       <View style={styles.reviewHeaderInfo}>
                         <Text style={styles.reviewName}>{review.client_name}</Text>
                         <Text style={styles.reviewMeta}>
