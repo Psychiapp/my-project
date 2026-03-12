@@ -1990,7 +1990,11 @@ export async function getPendingSupporters(): Promise<SupporterApplication[]> {
         years_experience,
         training_complete,
         training_completed_at,
-        is_verified
+        is_verified,
+        verification_status,
+        verification_submitted_at,
+        transcript_url,
+        id_document_url
       )
     `)
     .eq('role', 'supporter');
@@ -2017,6 +2021,10 @@ export async function getPendingSupporters(): Promise<SupporterApplication[]> {
         training_complete: details.training_complete || false,
         training_completed_at: details.training_completed_at,
         is_verified: details.is_verified || false,
+        verification_status: details.verification_status || 'not_submitted',
+        verification_submitted_at: details.verification_submitted_at,
+        transcript_url: details.transcript_url,
+        id_document_url: details.id_document_url,
       };
     })
     .filter(s => !s.is_verified); // Only return unverified supporters
