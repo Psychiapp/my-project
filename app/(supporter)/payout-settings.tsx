@@ -26,6 +26,7 @@ import {
   isPayoutReady,
   stripeAvailable,
 } from '@/lib/stripe';
+import { checkAndCompleteOnboarding } from '@/lib/database';
 import type { StripeConnectStatus, PayoutSchedule } from '@/types/database';
 
 const DAYS_OF_WEEK = [
@@ -117,6 +118,11 @@ export default function PayoutSettingsScreen() {
           } else if (data.payout_schedule === 'monthly') {
             setMonthlyDay(parseInt(data.payout_schedule_day, 10) || 1);
           }
+        }
+
+        // If payouts just became enabled, check if all onboarding requirements are met
+        if (data.stripe_payouts_enabled) {
+          checkAndCompleteOnboarding(user.id);
         }
       }
     } catch (error) {

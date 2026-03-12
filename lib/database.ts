@@ -1472,6 +1472,9 @@ export async function completeTrainingModule(
         updated_at: now,
       })
       .eq('id', supporterId);
+
+    // Check if all onboarding requirements are now met
+    await checkAndCompleteOnboarding(supporterId);
   }
 
   return true;
@@ -3700,6 +3703,10 @@ export async function updateVerificationStatus(
       // Continue anyway, main update succeeded
     }
 
+    // Check if all onboarding requirements are now met
+    // This will auto-enable client matching if all steps are complete
+    await checkAndCompleteOnboarding(supporterId);
+
     return true;
   } else {
     // Rejected
@@ -3728,6 +3735,110 @@ export async function updateVerificationStatus(
     }
 
     return true;
+  }
+}
+
+/**
+ * Check if all onboarding requirements are met and auto-complete onboarding
+ * This should be called after any onboarding step completes:
+ * - W9 form submission
+ * - Stripe payout setup
+ * - Training completion
+ * - Verification approval
+ *
+ * When all 4 requirements are met, sets:
+ * - profiles.onboarding_complete = true
+ * - supporter_details.accepting_clients = true
+ */
+export async function checkAndCompleteOnboarding(supporterId: string): Promise<{
+  isComplete: boolean;
+  missingSteps: string[];
+}> {
+  if (!supabase) return { isComplete: false, missingSteps: ['Database not available'] };
+
+  try {
+    // Fetch current status from profiles and supporter_details
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('w9_completed, stripe_payouts_enabled, training_complete, verification_status, onboarding_complete')
+      .eq('id', supporterId)
+      .single();
+
+    if (profileError || !profile) {
+      console.error('Error fetching profile for onboarding check:', profileError);
+      return { isComplete: false, missingSteps: ['Could not fetch profile'] };
+    }
+
+    // Check each requirement
+    const missingSteps: string[] = [];
+
+    if (!profile.w9_completed) {
+      missingSteps.push('W-9 form');
+    }
+    if (!profile.stripe_payouts_enabled) {
+      missingSteps.push('Payout setup');
+    }
+    if (!profile.training_complete) {
+      missingSteps.push('Training');
+    }
+    if (profile.verification_status !== 'approved') {
+      missingSteps.push('Document verification');
+    }
+
+    const isComplete = missingSteps.length === 0;
+
+    // If all requirements met and not already complete, mark as complete
+    if (isComplete && !profile.onboarding_complete) {
+      // Update profiles table
+      const { error: updateProfileError } = await supabase
+        .from('profiles')
+        .update({
+          onboarding_complete: true,
+          onboarding_completed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', supporterId);
+
+      if (updateProfileError) {
+        console.error('Error updating onboarding_complete:', updateProfileError);
+      }
+
+      // Update supporter_details to enable client matching
+      const { error: updateDetailsError } = await supabase
+        .from('supporter_details')
+        .update({
+          accepting_clients: true,
+          is_verified: true,
+        })
+        .eq('supporter_id', supporterId);
+
+      if (updateDetailsError) {
+        console.error('Error updating accepting_clients:', updateDetailsError);
+      }
+
+      console.log(`Supporter ${supporterId} onboarding completed - now accepting clients`);
+    }
+
+    // If requirements not met but was previously complete, mark as incomplete
+    if (!isComplete && profile.onboarding_complete) {
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({
+          onboarding_complete: false,
+          onboarding_completed_at: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', supporterId);
+
+      if (updateError) {
+        console.error('Error resetting onboarding_complete:', updateError);
+      }
+    }
+
+    return { isComplete, missingSteps };
+  } catch (error) {
+    console.error('Error in checkAndCompleteOnboarding:', error);
+    return { isComplete: false, missingSteps: ['Error checking status'] };
   }
 }
 

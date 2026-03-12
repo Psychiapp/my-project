@@ -25,6 +25,7 @@ import {
 } from '@/components/icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { checkAndCompleteOnboarding } from '@/lib/database';
 
 interface OnboardingStatus {
   w9_completed: boolean;
@@ -115,8 +116,12 @@ export default function SupporterOnboardingChecklist({ onComplete }: SupporterOn
           verification_submitted: verificationSubmitted,
         });
 
+        // Check if all requirements are met and auto-complete onboarding
+        // This ensures status is always up-to-date even if a webhook updated the DB
+        const result = await checkAndCompleteOnboarding(user.id);
+
         // Call onComplete if all steps are done
-        if (profile.onboarding_complete && onComplete) {
+        if ((profile.onboarding_complete || result.isComplete) && onComplete) {
           onComplete();
         }
       }
@@ -135,10 +140,11 @@ export default function SupporterOnboardingChecklist({ onComplete }: SupporterOn
     status.training_complete,
   ].filter(Boolean).length;
   const totalSteps = 4;
+  const remainingSteps = totalSteps - completedSteps;
   const progress = completedSteps / totalSteps;
 
-  // Don't show if onboarding is complete
-  if (status.onboarding_complete) {
+  // Don't show if onboarding is complete (all steps done)
+  if (status.onboarding_complete || remainingSteps === 0) {
     return null;
   }
 
@@ -177,43 +183,51 @@ export default function SupporterOnboardingChecklist({ onComplete }: SupporterOn
             <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
           </View>
           <Text style={styles.progressText}>
-            {completedSteps} of {totalSteps} complete
+            {remainingSteps} {remainingSteps === 1 ? 'step' : 'steps'} remaining
           </Text>
         </View>
 
-        {/* Checklist Items */}
+        {/* Checklist Items - Only show incomplete items */}
         <View style={styles.checklist}>
-          <ChecklistItem
-            icon={ProfileIcon}
-            title="Verify Your Identity"
-            subtitle="Upload transcript and government ID"
-            completed={status.verification_submitted}
-            onPress={() => router.push('/(supporter)/verification')}
-          />
+          {!status.verification_submitted && (
+            <ChecklistItem
+              icon={ProfileIcon}
+              title="Verify Your Identity"
+              subtitle="Upload transcript and government ID"
+              completed={false}
+              onPress={() => router.push('/(supporter)/verification')}
+            />
+          )}
 
-          <ChecklistItem
-            icon={DocumentIcon}
-            title="Complete W-9 Form"
-            subtitle="Required for tax reporting"
-            completed={status.w9_completed}
-            onPress={() => router.push('/(supporter)/w9-form')}
-          />
+          {!status.w9_completed && (
+            <ChecklistItem
+              icon={DocumentIcon}
+              title="Complete W-9 Form"
+              subtitle="Required for tax reporting"
+              completed={false}
+              onPress={() => router.push('/(supporter)/w9-form')}
+            />
+          )}
 
-          <ChecklistItem
-            icon={BankIcon}
-            title="Set Up Payout Method"
-            subtitle="Connect your bank account via Stripe"
-            completed={status.stripe_payouts_enabled}
-            onPress={() => router.push('/(supporter)/payout-settings')}
-          />
+          {!status.stripe_payouts_enabled && (
+            <ChecklistItem
+              icon={BankIcon}
+              title="Set Up Payout Method"
+              subtitle="Connect your bank account via Stripe"
+              completed={false}
+              onPress={() => router.push('/(supporter)/payout-settings')}
+            />
+          )}
 
-          <ChecklistItem
-            icon={BookIcon}
-            title="Complete Training"
-            subtitle="Finish all training modules"
-            completed={status.training_complete}
-            onPress={() => router.push('/(supporter)/training')}
-          />
+          {!status.training_complete && (
+            <ChecklistItem
+              icon={BookIcon}
+              title="Complete Training"
+              subtitle="Finish all training modules"
+              completed={false}
+              onPress={() => router.push('/(supporter)/training')}
+            />
+          )}
         </View>
 
         {/* Info Note */}

@@ -27,6 +27,7 @@ import {
 } from '@/components/icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { checkAndCompleteOnboarding } from '@/lib/database';
 
 type TaxClassification =
   | 'individual'
@@ -239,6 +240,9 @@ export default function W9FormScreen() {
         .eq('id', user.id);
 
       if (updateError) throw updateError;
+
+      // Check if all onboarding requirements are now met
+      await checkAndCompleteOnboarding(user.id);
 
       setIsCompleted(true);
 
