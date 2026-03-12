@@ -190,6 +190,9 @@ export interface Session {
   created_at: string;
   ended_at: string | null;
   feedback_comment: string | null;
+  // Payment tracking
+  payment_status: PaymentStatus | null;
+  stripe_payment_intent_id: string | null;
 }
 
 // Session with related data (for display)

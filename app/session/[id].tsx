@@ -91,6 +91,15 @@ export default function SessionScreen() {
           return;
         }
 
+        // CRITICAL: Verify payment before allowing session to start
+        // This prevents sessions from proceeding without payment
+        if (session.payment_status !== 'completed') {
+          console.error('Session payment not completed:', session.id, session.payment_status);
+          setLoadError('Payment required. This session cannot start until payment is confirmed. Please contact support if you believe this is an error.');
+          setIsLoadingSession(false);
+          return;
+        }
+
         setSessionData({
           id: session.id,
           type: (type as SessionType) || session.session_type || 'chat',
