@@ -539,7 +539,7 @@ export async function getSupporterProfile(userId: string): Promise<SupporterProf
     return null;
   }
 
-  const details = data.supporter_details?.[0] || {};
+  const details = data.supporter_details || {};
   return {
     ...data,
     ...details,
@@ -618,7 +618,7 @@ export async function getAvailableSupporters(): Promise<SupporterListing[]> {
   return (data || [])
     .filter((supporter) => supporter.stripe_connect_id && supporter.stripe_payouts_enabled) // Verify Stripe Connect is active
     .map((supporter) => {
-      const details = supporter.supporter_details?.[0] || {};
+      const details = (supporter.supporter_details || {}) as any;
       return {
         id: supporter.id,
         full_name: supporter.full_name,
@@ -692,7 +692,7 @@ export async function searchSupporters(
   let results = (data || [])
     .filter((supporter) => supporter.stripe_connect_id && supporter.stripe_payouts_enabled) // Verify Stripe Connect is active
     .map((supporter) => {
-      const details = supporter.supporter_details?.[0] || {};
+      const details = (supporter.supporter_details || {}) as any;
       return {
         id: supporter.id,
         full_name: supporter.full_name,
@@ -1950,7 +1950,7 @@ export async function getAllUsers(
   }
 
   let users = (data || []).map((user: any) => {
-    const supporterDetails = user.supporter_details?.[0];
+    const supporterDetails = user.supporter_details;
     return {
       id: user.id,
       email: user.email,
@@ -2011,9 +2011,9 @@ export async function getPendingSupporters(): Promise<SupporterApplication[]> {
     return [];
   }
 
-  return (data || [])
+  const result = (data || [])
     .map((supporter: any) => {
-      const details = supporter.supporter_details?.[0] || {};
+      const details = supporter.supporter_details || {};
       return {
         id: supporter.id,
         email: supporter.email,
@@ -2035,6 +2035,8 @@ export async function getPendingSupporters(): Promise<SupporterApplication[]> {
       };
     })
     .filter(s => !s.is_verified); // Only return unverified supporters
+
+  return result;
 }
 
 /**
@@ -2420,7 +2422,7 @@ export async function getAdminSupporterDetail(supporterId: string): Promise<Supp
     return null;
   }
 
-  const details = data.supporter_details?.[0] || {};
+  const details = (data.supporter_details || {}) as any;
 
   return {
     id: data.id,
@@ -2551,7 +2553,7 @@ export async function matchSupportersToClient(
   const matchedSupporters: MatchedSupporter[] = [];
 
   for (const supporter of data || []) {
-    const details = supporter.supporter_details?.[0];
+    const details = supporter.supporter_details as any;
 
     // Skip if not fully active (verified, accepting clients, and has Stripe Connect enabled)
     if (!details?.accepting_clients || !details?.is_verified || !supporter.stripe_connect_id || !supporter.stripe_payouts_enabled) {

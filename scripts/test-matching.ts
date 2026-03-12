@@ -91,10 +91,7 @@ async function testMatching() {
   console.log(`Found ${supporters.length} supporter(s):\n`);
 
   for (const s of supporters) {
-    // Handle both array and object responses from Supabase join
-    const details = Array.isArray(s.supporter_details)
-      ? s.supporter_details[0]
-      : s.supporter_details;
+    const details = s.supporter_details as any;
     console.log(`  👤 ${s.full_name} (${s.email})`);
     console.log(`     Specialties: ${details?.specialties?.join(', ') || 'None'}`);
     console.log(`     Training Complete: ${details?.training_complete ? '✅' : '❌'}`);
@@ -184,10 +181,7 @@ async function runMatching(
   const matchedSupporters: MatchedSupporter[] = [];
 
   for (const supporter of supporters) {
-    // Handle both array and object responses
-    const details = Array.isArray(supporter.supporter_details)
-      ? supporter.supporter_details[0]
-      : supporter.supporter_details;
+    const details = supporter.supporter_details;
 
     // Skip if not fully active
     if (!details?.training_complete || !details?.accepting_clients || !details?.is_verified) {
