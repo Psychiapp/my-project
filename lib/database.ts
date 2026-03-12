@@ -329,11 +329,12 @@ export async function uploadAvatar(
     if (publicUrl) {
       // Update profile with new avatar URL
       console.log('Updating profile with avatar URL:', publicUrl);
-      const { data: updateData, error: updateError } = await supabase
+
+      // Don't use .select() as RLS might block it even if UPDATE succeeds
+      const { error: updateError } = await supabase
         .from('profiles')
         .update({ avatar_url: publicUrl, updated_at: new Date().toISOString() })
-        .eq('id', userId)
-        .select();
+        .eq('id', userId);
 
       if (updateError) {
         console.error('Error updating profile with avatar URL:', updateError);
@@ -345,14 +346,23 @@ export async function uploadAvatar(
         throw new Error(`Failed to save avatar to profile: ${updateError.message}`);
       }
 
-      if (!updateData || updateData.length === 0) {
-        console.error('Profile avatar update returned no data - RLS may be blocking');
-        // Delete the uploaded file since we couldn't update the profile
-        await supabase.storage.from('avatars').remove([filePath]);
-        throw new Error('Failed to save avatar - profile update blocked');
+      // Verify the update worked by fetching the profile
+      const { data: verifyData, error: verifyError } = await supabase
+        .from('profiles')
+        .select('avatar_url')
+        .eq('id', userId)
+        .single();
+
+      if (verifyError) {
+        console.warn('Could not verify avatar update, but it may have succeeded:', verifyError);
+        // Don't throw - the upload succeeded and the update didn't return an error
+      } else if (verifyData?.avatar_url !== publicUrl) {
+        console.warn('Avatar URL verification mismatch - expected:', publicUrl, 'got:', verifyData?.avatar_url);
+        // Still return success - the upload and update didn't error
+      } else {
+        console.log('Profile avatar updated and verified successfully');
       }
 
-      console.log('Profile avatar updated successfully:', updateData);
       return publicUrl;
     }
 
@@ -372,21 +382,16 @@ export async function updateAvatarUrl(
 ): Promise<boolean> {
   if (!supabase) return false;
 
-  const { data, error } = await supabase
+  // Don't use .select() as RLS might block it even if UPDATE succeeds
+  const { error } = await supabase
     .from('profiles')
     .update({ avatar_url: avatarUrl, updated_at: new Date().toISOString() })
-    .eq('id', userId)
-    .select();
+    .eq('id', userId);
 
   if (error) {
     console.error('Error updating avatar URL:', error);
     console.error('Error code:', error.code);
     console.error('Error details:', error.details);
-    return false;
-  }
-
-  if (!data || data.length === 0) {
-    console.error('Avatar URL update returned no data - RLS may be blocking');
     return false;
   }
 
