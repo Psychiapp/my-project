@@ -189,12 +189,12 @@ export default function AdminUsers() {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
-            const success = await deleteUser(user.id);
-            if (success) {
+            const result = await deleteUser(user.id);
+            if (result.success) {
               Alert.alert('Deleted', `${user.full_name}'s account has been deleted`);
               fetchUsers();
             } else {
-              Alert.alert('Error', 'Failed to delete account');
+              Alert.alert('Error', result.error || 'Failed to delete account');
             }
           },
         },

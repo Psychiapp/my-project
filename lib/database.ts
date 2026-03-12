@@ -2084,8 +2084,8 @@ export async function suspendUser(userId: string): Promise<boolean> {
  * Calls the delete-user Edge Function which uses service role to delete from auth.users
  * This cascades to profiles -> supporter_details -> all related tables
  */
-export async function deleteUser(userId: string): Promise<boolean> {
-  if (!supabase) return false;
+export async function deleteUser(userId: string): Promise<{ success: boolean; error?: string }> {
+  if (!supabase) return { success: false, error: 'Supabase not initialized' };
 
   try {
     // Call the delete-user Edge Function
@@ -2096,26 +2096,26 @@ export async function deleteUser(userId: string): Promise<boolean> {
 
     if (error) {
       console.error('Error calling delete-user function:', error);
-      return false;
+      return { success: false, error: `Function error: ${error.message}` };
     }
 
     // Check for error in response body
     if (data?.error) {
       console.error('Delete user failed:', data.error, data.details);
-      return false;
+      return { success: false, error: `${data.error}${data.details ? ': ' + data.details : ''}` };
     }
 
     // Verify success
     if (data?.success) {
       console.log('User deleted successfully:', data.message);
-      return true;
+      return { success: true };
     }
 
     console.error('Unexpected response from delete-user:', data);
-    return false;
+    return { success: false, error: 'Unexpected response from server' };
   } catch (error) {
     console.error('Error deleting user:', error);
-    return false;
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }
 
