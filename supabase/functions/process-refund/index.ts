@@ -84,6 +84,34 @@ serve(async (req) => {
             originalPaymentIntent: paymentIntentId,
           },
         });
+
+      // CRITICAL: Reverse supporter's earnings for the refunded amount
+      // Get the original payment intent to find supporter_id
+      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+      const supporterId = paymentIntent.metadata?.supporter_id;
+
+      if (supporterId) {
+        // Calculate the supporter's cut that needs to be reversed (75% of refunded amount)
+        const supporterCutToReverse = Math.floor(amount * 0.75);
+
+        const { data: supporterDetails } = await supabase
+          .from('supporter_details')
+          .select('pending_payout, total_earnings')
+          .eq('supporter_id', supporterId)
+          .single();
+
+        if (supporterDetails) {
+          await supabase
+            .from('supporter_details')
+            .update({
+              pending_payout: Math.max(0, (supporterDetails.pending_payout || 0) - supporterCutToReverse),
+              total_earnings: Math.max(0, (supporterDetails.total_earnings || 0) - supporterCutToReverse),
+            })
+            .eq('supporter_id', supporterId);
+
+          console.log(`Reversed $${(supporterCutToReverse / 100).toFixed(2)} from supporter ${supporterId} due to refund`);
+        }
+      }
     }
 
     return new Response(

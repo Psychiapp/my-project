@@ -194,10 +194,167 @@ serve(async (req) => {
         const charge = event.data.object as Stripe.Charge;
 
         if (charge.payment_intent) {
+          // Update payment status
           await supabase
             .from('payments')
             .update({ status: 'refunded' })
             .eq('stripe_payment_intent_id', charge.payment_intent);
+
+          // Get the original payment intent to find supporter_id and reverse earnings
+          const paymentIntent = await stripe.paymentIntents.retrieve(charge.payment_intent as string);
+          const supporterId = paymentIntent.metadata?.supporter_id;
+
+          if (supporterId) {
+            // Calculate the supporter's cut that needs to be reversed (75% of refunded amount)
+            const refundedAmount = charge.amount_refunded || charge.amount;
+            const supporterCutToReverse = Math.floor(refundedAmount * 0.75);
+
+            const { data: supporterDetails } = await supabase
+              .from('supporter_details')
+              .select('pending_payout, total_earnings')
+              .eq('supporter_id', supporterId)
+              .single();
+
+            if (supporterDetails) {
+              await supabase
+                .from('supporter_details')
+                .update({
+                  pending_payout: Math.max(0, (supporterDetails.pending_payout || 0) - supporterCutToReverse),
+                  total_earnings: Math.max(0, (supporterDetails.total_earnings || 0) - supporterCutToReverse),
+                })
+                .eq('supporter_id', supporterId);
+
+              console.log(`Reversed $${(supporterCutToReverse / 100).toFixed(2)} from supporter ${supporterId} due to refund`);
+            }
+          }
+        }
+        break;
+      }
+
+      // Payment intent canceled (before capture)
+      case 'payment_intent.canceled': {
+        const paymentIntent = event.data.object as Stripe.PaymentIntent;
+
+        // Update payment status
+        await supabase
+          .from('payments')
+          .update({ status: 'failed' })
+          .eq('stripe_payment_intent_id', paymentIntent.id);
+
+        // If earnings were somehow already credited (shouldn't happen for canceled), reverse them
+        const supporterId = paymentIntent.metadata?.supporter_id;
+        if (supporterId) {
+          const supporterCut = Math.floor(paymentIntent.amount * 0.75);
+
+          const { data: supporterDetails } = await supabase
+            .from('supporter_details')
+            .select('pending_payout, total_earnings')
+            .eq('supporter_id', supporterId)
+            .single();
+
+          if (supporterDetails && (supporterDetails.pending_payout || 0) >= supporterCut) {
+            await supabase
+              .from('supporter_details')
+              .update({
+                pending_payout: Math.max(0, (supporterDetails.pending_payout || 0) - supporterCut),
+                total_earnings: Math.max(0, (supporterDetails.total_earnings || 0) - supporterCut),
+              })
+              .eq('supporter_id', supporterId);
+
+            console.log(`Reversed $${(supporterCut / 100).toFixed(2)} from supporter ${supporterId} due to payment cancellation`);
+          }
+        }
+        break;
+      }
+
+      // Dispute/chargeback events
+      case 'charge.dispute.created': {
+        const dispute = event.data.object as Stripe.Dispute;
+
+        // Update payment status to disputed
+        if (dispute.payment_intent) {
+          await supabase
+            .from('payments')
+            .update({ status: 'failed' }) // Mark as failed since funds are held
+            .eq('stripe_payment_intent_id', dispute.payment_intent);
+        }
+
+        // Get the charge to find the payment intent and supporter
+        const paymentIntent = dispute.payment_intent
+          ? await stripe.paymentIntents.retrieve(dispute.payment_intent as string)
+          : null;
+
+        const supporterId = paymentIntent?.metadata?.supporter_id;
+
+        if (supporterId) {
+          // Reverse the supporter's earnings immediately on dispute
+          // (Even if we win the dispute later, we can credit back then)
+          const disputeAmount = dispute.amount;
+          const supporterCutToReverse = Math.floor(disputeAmount * 0.75);
+
+          const { data: supporterDetails } = await supabase
+            .from('supporter_details')
+            .select('pending_payout, total_earnings')
+            .eq('supporter_id', supporterId)
+            .single();
+
+          if (supporterDetails) {
+            await supabase
+              .from('supporter_details')
+              .update({
+                pending_payout: Math.max(0, (supporterDetails.pending_payout || 0) - supporterCutToReverse),
+                total_earnings: Math.max(0, (supporterDetails.total_earnings || 0) - supporterCutToReverse),
+              })
+              .eq('supporter_id', supporterId);
+
+            console.log(`Reversed $${(supporterCutToReverse / 100).toFixed(2)} from supporter ${supporterId} due to dispute`);
+          }
+        }
+        break;
+      }
+
+      // Dispute resolved in our favor - restore earnings
+      case 'charge.dispute.closed': {
+        const dispute = event.data.object as Stripe.Dispute;
+
+        // Only restore earnings if we won the dispute
+        if (dispute.status === 'won') {
+          const paymentIntent = dispute.payment_intent
+            ? await stripe.paymentIntents.retrieve(dispute.payment_intent as string)
+            : null;
+
+          const supporterId = paymentIntent?.metadata?.supporter_id;
+
+          if (supporterId) {
+            const disputeAmount = dispute.amount;
+            const supporterCut = Math.floor(disputeAmount * 0.75);
+
+            const { data: supporterDetails } = await supabase
+              .from('supporter_details')
+              .select('pending_payout, total_earnings')
+              .eq('supporter_id', supporterId)
+              .single();
+
+            if (supporterDetails) {
+              await supabase
+                .from('supporter_details')
+                .update({
+                  pending_payout: (supporterDetails.pending_payout || 0) + supporterCut,
+                  total_earnings: (supporterDetails.total_earnings || 0) + supporterCut,
+                })
+                .eq('supporter_id', supporterId);
+
+              console.log(`Restored $${(supporterCut / 100).toFixed(2)} to supporter ${supporterId} - dispute won`);
+            }
+          }
+
+          // Update payment status back to completed
+          if (dispute.payment_intent) {
+            await supabase
+              .from('payments')
+              .update({ status: 'completed' })
+              .eq('stripe_payment_intent_id', dispute.payment_intent);
+          }
         }
         break;
       }
