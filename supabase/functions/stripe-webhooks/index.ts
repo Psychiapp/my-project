@@ -24,6 +24,37 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Idempotency check: Skip if we've already processed this event
+    const { data: existingEvent } = await supabase
+      .from('processed_webhook_events')
+      .select('id')
+      .eq('stripe_event_id', event.id)
+      .single();
+
+    if (existingEvent) {
+      console.log(`Skipping already processed event: ${event.id}`);
+      return new Response(JSON.stringify({ received: true, skipped: true }), {
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Mark event as being processed (insert before processing to handle race conditions)
+    const { error: insertError } = await supabase
+      .from('processed_webhook_events')
+      .insert({
+        stripe_event_id: event.id,
+        event_type: event.type,
+        processed_at: new Date().toISOString(),
+      });
+
+    // If insert fails due to unique constraint, another instance is processing this event
+    if (insertError?.code === '23505') {
+      console.log(`Event ${event.id} is being processed by another instance`);
+      return new Response(JSON.stringify({ received: true, skipped: true }), {
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
     switch (event.type) {
       // Connect account events
       case 'account.updated': {
