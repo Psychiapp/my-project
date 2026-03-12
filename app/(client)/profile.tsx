@@ -8,6 +8,7 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { Avatar } from '@/components/Avatar';
 import { useAuth } from '@/contexts/AuthContext';

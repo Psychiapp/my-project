@@ -28,6 +28,7 @@ import { getSupporterDetail, getSupporterSessionCount } from '@/lib/database';
 
 interface SupporterProfileData {
   name: string;
+  avatarUrl: string | null;
   education: string;
   totalSessions: number;
   bio: string;

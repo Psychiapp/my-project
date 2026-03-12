@@ -180,3 +180,16 @@ export const createSession = async (
 export const isDailyConfigured = (): boolean => {
   return !!DAILY_API_KEY;
 };
+
+// Extract room name from Daily.co room URL
+// URL format: https://domain.daily.co/room-name
+export const getRoomNameFromUrl = (roomUrl: string): string | null => {
+  try {
+    const url = new URL(roomUrl);
+    const pathname = url.pathname;
+    // Remove leading slash and return room name
+    return pathname.startsWith('/') ? pathname.slice(1) : pathname;
+  } catch {
+    return null;
+  }
+};

@@ -1099,17 +1099,51 @@ export async function createSession(
  */
 export async function updateSessionStatus(
   sessionId: string,
-  status: Session['status']
+  status: Session['status'],
+  additionalFields?: { ended_at?: string; room_url?: string }
+): Promise<boolean> {
+  if (!supabase) return false;
+
+  const updateData: Record<string, unknown> = { status };
+  if (additionalFields?.ended_at) {
+    updateData.ended_at = additionalFields.ended_at;
+  }
+  if (additionalFields?.room_url) {
+    updateData.room_url = additionalFields.room_url;
+  }
+
+  const { error } = await supabase
+    .from('sessions')
+    .update(updateData)
+    .eq('id', sessionId);
+
+  if (error) {
+    console.error('Error updating session status:', error);
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Update session room URL (for video/voice calls)
+ */
+export async function updateSessionRoomUrl(
+  sessionId: string,
+  roomUrl: string
 ): Promise<boolean> {
   if (!supabase) return false;
 
   const { error } = await supabase
     .from('sessions')
-    .update({ status })
+    .update({
+      room_url: roomUrl,
+      status: 'in_progress'
+    })
     .eq('id', sessionId);
 
   if (error) {
-    console.error('Error updating session status:', error);
+    console.error('Error updating session room URL:', error);
     return false;
   }
 

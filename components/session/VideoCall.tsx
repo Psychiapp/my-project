@@ -19,6 +19,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Audio } from 'expo-av';
 import NetInfo, { NetInfoState } from '@react-native-community/netinfo';
 import { PsychiColors, Spacing, BorderRadius } from '@/constants/theme';
 import { Avatar } from '@/components/Avatar';
@@ -349,6 +350,23 @@ export default function VideoCall({
     }
   }, [callObject, isCameraOn, isVideoEnabled]);
 
+  // Toggle speaker/earpiece
+  const toggleSpeaker = useCallback(async () => {
+    try {
+      const newSpeakerState = !isSpeakerOn;
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+        // Use speaker for speakerphone mode, default for earpiece
+        playThroughEarpieceAndroid: !newSpeakerState,
+        staysActiveInBackground: true,
+      });
+      setIsSpeakerOn(newSpeakerState);
+    } catch (error) {
+      console.error('Error toggling speaker:', error);
+    }
+  }, [isSpeakerOn]);
+
   // End call
   const handleEndCall = useCallback(() => {
     Alert.alert(
@@ -628,7 +646,7 @@ export default function VideoCall({
             iconComponent={isSpeakerOn ? <VolumeHighIcon size={24} color={PsychiColors.white} /> : <VolumeLowIcon size={24} color={PsychiColors.white} />}
             label={isSpeakerOn ? 'Speaker' : 'Earpiece'}
             isActive={!isSpeakerOn}
-            onPress={() => setIsSpeakerOn(!isSpeakerOn)}
+            onPress={toggleSpeaker}
           />
         </View>
 

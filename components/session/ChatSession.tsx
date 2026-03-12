@@ -43,6 +43,7 @@ interface ChatSessionProps {
   currentUserName?: string; // Name of the current user for notifications
   onEndSession: () => void;
   useEncryption?: boolean; // Enable E2E encryption
+  sessionDurationMinutes?: number; // Session duration in minutes (default 30)
 }
 
 export default function ChatSession({
@@ -52,6 +53,7 @@ export default function ChatSession({
   currentUserName,
   onEndSession,
   useEncryption = true,
+  sessionDurationMinutes = 30,
 }: ChatSessionProps) {
   // E2E Encrypted chat hook with notification support
   const encryptedChat = useEncryptedChat(sessionId, currentUserId, otherParticipant.id, {
@@ -66,6 +68,26 @@ export default function ChatSession({
   const [isTyping, setIsTyping] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const flatListRef = useRef<FlatList>(null);
+
+  // Session timer state
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
+  // Session timer - counts elapsed time
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setElapsedSeconds(prev => prev + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Format remaining time
+  const formatRemainingTime = () => {
+    const totalSeconds = sessionDurationMinutes * 60;
+    const remainingSeconds = Math.max(0, totalSeconds - elapsedSeconds);
+    const mins = Math.floor(remainingSeconds / 60);
+    const secs = remainingSeconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
 
   // Safety modals state
   const [showReportModal, setShowReportModal] = useState(false);
@@ -216,7 +238,7 @@ export default function ChatSession({
           </View>
         )}
         <Text style={styles.sessionBannerText}>Chat session in progress</Text>
-        <Text style={styles.sessionBannerTime}>25 min</Text>
+        <Text style={styles.sessionBannerTime}>{formatRemainingTime()}</Text>
       </View>
 
       {/* Messages */}

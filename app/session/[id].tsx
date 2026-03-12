@@ -15,8 +15,8 @@ import ChatSession from '@/components/session/ChatSession';
 import VideoCall from '@/components/session/VideoCall';
 import PostCallContact from '@/components/session/PostCallContact';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
-import { createSession as createDailySession, SessionConfig } from '@/lib/daily';
-import { getSession } from '@/lib/database';
+import { createSession as createDailySession, SessionConfig, deleteRoom, getRoomNameFromUrl } from '@/lib/daily';
+import { getSession, updateSessionStatus, updateSessionRoomUrl } from '@/lib/database';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   ensureSessionPermissions,
@@ -151,8 +151,10 @@ export default function SessionScreen() {
       const dailyType = sessionData.type === 'video' ? 'video' : 'voice';
       const config = await createDailySession(dailyType, currentUserName);
 
-      if (config) {
+      if (config && config.roomUrl) {
         setDailySession(config);
+        // Save room URL to database and mark session as in_progress
+        await updateSessionRoomUrl(sessionData.id, config.roomUrl);
       } else {
         Alert.alert('Error', 'Failed to create call session. Please try again.');
       }
@@ -166,13 +168,43 @@ export default function SessionScreen() {
     setShowEndConfirm(true);
   };
 
-  const confirmEndSession = () => {
+  const confirmEndSession = async () => {
     setShowEndConfirm(false);
+
+    // Mark session as completed with ended timestamp
+    if (sessionData?.id) {
+      await updateSessionStatus(sessionData.id, 'completed', {
+        ended_at: new Date().toISOString()
+      });
+    }
+
+    // Clean up Daily.co room if it exists
+    if (dailySession?.roomUrl) {
+      const roomName = getRoomNameFromUrl(dailySession.roomUrl);
+      if (roomName) {
+        await deleteRoom(roomName);
+      }
+    }
+
     setSessionEnded(true);
   };
 
+  // Mark chat session as in_progress when starting
+  useEffect(() => {
+    if (sessionData?.type === 'chat' && sessionData?.id) {
+      updateSessionStatus(sessionData.id, 'in_progress');
+    }
+  }, [sessionData?.id, sessionData?.type]);
+
   // Handle connection issue - show post-call contact window
-  const handleConnectionIssue = (reason: 'timeout' | 'disconnect' | 'network') => {
+  const handleConnectionIssue = async (reason: 'timeout' | 'disconnect' | 'network') => {
+    // Clean up Daily.co room on connection issues
+    if (dailySession?.roomUrl) {
+      const roomName = getRoomNameFromUrl(dailySession.roomUrl);
+      if (roomName) {
+        await deleteRoom(roomName);
+      }
+    }
     setConnectionIssueReason(reason);
     setShowPostCallContact(true);
   };
@@ -313,6 +345,7 @@ export default function SessionScreen() {
             currentUserId={currentUserId}
             currentUserName={currentUserName}
             onEndSession={handleEndSession}
+            sessionDurationMinutes={sessionData.duration}
           />
         );
       case 'phone':
