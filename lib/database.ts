@@ -278,15 +278,14 @@ export async function uploadAvatar(
   if (!supabase) return null;
 
   try {
-    // Import dependencies
-    const FileSystem = require('expo-file-system');
+    // Import dependencies - use new File API (expo-file-system v54+)
+    const { File } = require('expo-file-system');
     const { decode } = require('base64-arraybuffer');
 
-    // Read file as base64 (works reliably in React Native)
-    // Use string 'base64' instead of EncodingType.Base64 for compatibility
-    const base64Data = await FileSystem.readAsStringAsync(imageUri, {
-      encoding: 'base64',
-    });
+    // Read file as base64 using the new File class API
+    // This replaces the deprecated readAsStringAsync method
+    const file = new File(imageUri);
+    const base64Data = await file.base64();
 
     // Generate unique filename
     const fileExt = imageUri.split('.').pop()?.toLowerCase() || 'jpg';
