@@ -23,6 +23,9 @@ export default function TranscriptViewScreen() {
   useEffect(() => {
     if (id) {
       loadTranscript();
+    } else {
+      // No ID provided - stop loading and show error
+      setIsLoading(false);
     }
   }, [id]);
 

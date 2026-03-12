@@ -253,36 +253,54 @@ export default function AdminSupporterDetailScreen() {
       return;
     }
 
+    if (!supabase) {
+      Alert.alert('Error', 'Storage not available.');
+      return;
+    }
+
     try {
-      // Check if URL is a full URL or just a file path
+      let filePath = url;
+
+      // If it's a full URL, extract the file path from it
+      // Old documents may have stored signed URLs which could be expired
       if (url.startsWith('http://') || url.startsWith('https://')) {
-        // Already a full URL (signed URL) - open directly
-        const canOpen = await Linking.canOpenURL(url);
-        if (canOpen) {
-          await Linking.openURL(url);
+        // Try to extract path from signed URL
+        // Format: https://xxx.supabase.co/storage/v1/object/sign/verification-documents/transcripts/userId/timestamp.ext?token=...
+        const pathMatch = url.match(/verification-documents\/(.+?)(\?|$)/);
+        if (pathMatch) {
+          filePath = pathMatch[1];
+          console.log('Extracted file path from URL:', filePath);
         } else {
-          Alert.alert('Cannot Open', 'Unable to open this document URL.');
+          // Can't extract path, try opening the URL directly (might work if not expired)
+          console.log('Could not extract path, trying URL directly');
+          const canOpen = await Linking.canOpenURL(url);
+          if (canOpen) {
+            await Linking.openURL(url);
+            return;
+          } else {
+            Alert.alert('Cannot Open', 'Document URL has expired or is invalid. Please ask the supporter to re-upload.');
+            return;
+          }
         }
-      } else if (supabase) {
-        // It's a file path - generate a new signed URL
-        const { data, error } = await supabase.storage
-          .from('verification-documents')
-          .createSignedUrl(url, 60 * 60); // 1 hour expiry
+      }
 
-        if (error || !data?.signedUrl) {
-          console.error('Error generating signed URL:', error);
-          Alert.alert('Error', 'Failed to access document. Please try again.');
-          return;
-        }
+      // Generate a fresh signed URL from the file path
+      console.log('Generating signed URL for path:', filePath);
+      const { data, error } = await supabase.storage
+        .from('verification-documents')
+        .createSignedUrl(filePath, 60 * 60); // 1 hour expiry
 
-        const canOpen = await Linking.canOpenURL(data.signedUrl);
-        if (canOpen) {
-          await Linking.openURL(data.signedUrl);
-        } else {
-          Alert.alert('Cannot Open', 'Unable to open this document.');
-        }
+      if (error || !data?.signedUrl) {
+        console.error('Error generating signed URL:', error);
+        Alert.alert('Error', `Failed to access ${documentType}. ${error?.message || 'Please try again.'}`);
+        return;
+      }
+
+      const canOpen = await Linking.canOpenURL(data.signedUrl);
+      if (canOpen) {
+        await Linking.openURL(data.signedUrl);
       } else {
-        Alert.alert('Error', 'Storage not available.');
+        Alert.alert('Cannot Open', 'Unable to open this document.');
       }
     } catch (error) {
       console.error('Error opening document:', error);
@@ -526,7 +544,7 @@ export default function AdminSupporterDetailScreen() {
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Transcript</Text>
                 <TouchableOpacity
-                  onPress={() => openDocument(supporter.transcript_url, 'transcript')}
+                  onPress={() => openDocument(supporter.transcript_url ?? null, 'transcript')}
                 >
                   <Text style={[styles.infoValue, { color: PsychiColors.azure }]}>View Document</Text>
                 </TouchableOpacity>
@@ -537,7 +555,7 @@ export default function AdminSupporterDetailScreen() {
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>ID Document</Text>
                 <TouchableOpacity
-                  onPress={() => openDocument(supporter.id_document_url, 'ID document')}
+                  onPress={() => openDocument(supporter.id_document_url ?? null, 'ID document')}
                 >
                   <Text style={[styles.infoValue, { color: PsychiColors.azure }]}>View Document</Text>
                 </TouchableOpacity>

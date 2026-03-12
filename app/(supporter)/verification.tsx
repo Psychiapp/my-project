@@ -142,19 +142,10 @@ export default function VerificationScreen() {
         return { url: null, error: error.message || 'Upload failed. Please try again.' };
       }
 
-      // Get signed URL for private bucket (valid for 1 year)
-      const { data: urlData, error: urlError } = await supabase.storage
-        .from('verification-documents')
-        .createSignedUrl(filePath, 60 * 60 * 24 * 365); // 1 year
-
-      if (urlError || !urlData?.signedUrl) {
-        console.error('Error getting signed URL:', urlError);
-        // File was uploaded but URL generation failed - still usable
-        // Return the path so it can be stored and URL generated later
-        return { url: filePath, error: null };
-      }
-
-      return { url: urlData.signedUrl, error: null };
+      // Return the file path (not a signed URL) so we can generate fresh signed URLs
+      // when viewing documents. This avoids URL expiration issues.
+      console.log('Upload successful, returning file path:', filePath);
+      return { url: filePath, error: null };
     } catch (error) {
       console.error('Error uploading file:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
