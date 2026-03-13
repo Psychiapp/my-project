@@ -47,6 +47,26 @@ export default function AdminLayout() {
         },
       }}
     >
+      {/* Hidden detail routes - defined first so they don't appear in swipe order after visible tabs */}
+      <Tabs.Screen
+        name="supporter"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="transcript"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="verification"
+        options={{
+          href: null,
+        }}
+      />
+      {/* Visible tabs */}
       <Tabs.Screen
         name="index"
         options={{
@@ -73,25 +93,6 @@ export default function AdminLayout() {
         options={{
           title: 'Sessions',
           tabBarIcon: ({ focused }) => <TabIcon name="sessions" focused={focused} />,
-        }}
-      />
-      {/* Hide nested routes from tab bar */}
-      <Tabs.Screen
-        name="supporter"
-        options={{
-          href: null,
-        }}
-      />
-      <Tabs.Screen
-        name="transcript"
-        options={{
-          href: null,
-        }}
-      />
-      <Tabs.Screen
-        name="verification"
-        options={{
-          href: null,
         }}
       />
     </Tabs>
