@@ -66,20 +66,43 @@ export default function ChatSession({
   // Local state for messages (fallback when encryption not available)
   const [localMessages, setLocalMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const flatListRef = useRef<FlatList>(null);
 
   // Session timer state
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [hasAutoEnded, setHasAutoEnded] = useState(false);
 
-  // Session timer - counts elapsed time
+  // Session timer - counts elapsed time and auto-ends at duration limit
   useEffect(() => {
+    const totalSeconds = sessionDurationMinutes * 60;
+
     const interval = setInterval(() => {
-      setElapsedSeconds(prev => prev + 1);
+      setElapsedSeconds(prev => {
+        const newElapsed = prev + 1;
+
+        // Auto-end session when time is up
+        if (newElapsed >= totalSeconds && !hasAutoEnded) {
+          setHasAutoEnded(true);
+          // Log the auto-end event
+          logSessionEvent(sessionId, 'chat', currentUserId, 'session_end', {
+            reason: 'time_limit_reached',
+            duration: sessionDurationMinutes,
+          });
+          // Show alert and end session (non-blocking like VideoCall)
+          Alert.alert(
+            'Session Ended',
+            'Your chat session has reached the maximum duration.',
+            [{ text: 'OK' }]
+          );
+          onEndSession();
+        }
+
+        return newElapsed;
+      });
     }, 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [sessionDurationMinutes, hasAutoEnded, sessionId, currentUserId, onEndSession]);
 
   // Format remaining time
   const formatRemainingTime = () => {
@@ -275,25 +298,6 @@ export default function ChatSession({
           showsVerticalScrollIndicator={false}
           onContentSizeChange={() => flatListRef.current?.scrollToEnd()}
         />
-
-        {/* Typing Indicator */}
-        {isTyping && (
-          <View style={styles.typingContainer}>
-            <Avatar
-              imageUrl={otherParticipant.avatarUrl}
-              name={otherParticipant.name}
-              size={32}
-              colors={[PsychiColors.azure, PsychiColors.deep]}
-            />
-            <View style={styles.typingBubble}>
-              <View style={styles.typingDots}>
-                <View style={[styles.typingDot, styles.typingDot1]} />
-                <View style={[styles.typingDot, styles.typingDot2]} />
-                <View style={[styles.typingDot, styles.typingDot3]} />
-              </View>
-            </View>
-          </View>
-        )}
 
         {/* Input */}
         <View style={styles.inputContainer}>
@@ -531,45 +535,6 @@ const styles = StyleSheet.create({
   },
   messageTimeOwn: {
     color: 'rgba(255, 255, 255, 0.7)',
-  },
-  typingContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    paddingHorizontal: Spacing.md,
-    marginBottom: Spacing.md,
-  },
-  typingBubble: {
-    backgroundColor: 'rgba(255, 255, 255, 0.85)',
-    borderRadius: 18,
-    borderBottomLeftRadius: 4,
-    padding: Spacing.sm + 2,
-    paddingHorizontal: Spacing.md,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.5)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  typingDots: {
-    flexDirection: 'row',
-    gap: 4,
-  },
-  typingDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: PsychiColors.textSoft,
-  },
-  typingDot1: {
-    opacity: 0.4,
-  },
-  typingDot2: {
-    opacity: 0.6,
-  },
-  typingDot3: {
-    opacity: 0.8,
   },
   inputContainer: {
     flexDirection: 'row',
