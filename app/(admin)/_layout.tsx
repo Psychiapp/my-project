@@ -75,29 +75,23 @@ export default function AdminLayout() {
           tabBarIcon: ({ focused }) => <TabIcon name="sessions" focused={focused} />,
         }}
       />
-      {/* Hide nested routes completely from tab bar */}
+      {/* Hide nested routes from tab bar */}
       <Tabs.Screen
         name="supporter"
         options={{
           href: null,
-          tabBarButton: () => null,
-          tabBarStyle: { display: 'none' },
         }}
       />
       <Tabs.Screen
         name="transcript"
         options={{
           href: null,
-          tabBarButton: () => null,
-          tabBarStyle: { display: 'none' },
         }}
       />
       <Tabs.Screen
         name="verification"
         options={{
           href: null,
-          tabBarButton: () => null,
-          tabBarStyle: { display: 'none' },
         }}
       />
     </Tabs>
