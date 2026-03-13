@@ -23,6 +23,12 @@ export default function SignInScreen() {
   const insets = useSafeAreaInsets();
   const { signIn, isAuthenticated, profile } = useAuth();
 
+  // State declarations
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
   // Redirect already authenticated users to their dashboard
   // This prevents confusion when users access sign-in while already logged in
   useEffect(() => {
@@ -36,10 +42,6 @@ export default function SignInScreen() {
       }
     }
   }, [isAuthenticated, profile]);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
 
   const handleSignIn = async () => {
     if (!email || !password) {
