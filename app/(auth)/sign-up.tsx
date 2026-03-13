@@ -31,28 +31,6 @@ export default function SignUpScreen() {
   const { signUp, isAuthenticated, profile } = useAuth();
   const { role: roleParam } = useLocalSearchParams<{ role?: string }>();
 
-  // Redirect already authenticated users to their dashboard
-  // This prevents confusion when users access sign-up while already logged in
-  // Skip redirect if we're currently in signup flow (loading, showing modal, etc.)
-  useEffect(() => {
-    // Don't redirect if signup is in progress or modals are showing
-    if (isLoading || showOnboardingModal || showEquipmentModal) {
-      return;
-    }
-
-    // Only redirect if user was already authenticated before visiting this screen
-    // (not as a result of just signing up - that's handled by handleSignUp)
-    if (isAuthenticated && profile && profile.onboardingCompleted) {
-      if (profile.role === 'supporter') {
-        router.replace('/(supporter)');
-      } else if (profile.role === 'admin') {
-        router.replace('/(admin)');
-      } else {
-        router.replace('/(client)');
-      }
-    }
-  }, [isAuthenticated, profile, isLoading, showOnboardingModal, showEquipmentModal]);
-
   // Pre-select role and skip to credentials if role is passed via URL
   const initialRole = roleParam === 'client' ? 'client' : roleParam === 'supporter' ? 'supporter' : null;
   // For clients coming via URL param, show safety check first
@@ -82,6 +60,28 @@ export default function SignUpScreen() {
 
   // Equipment requirements modal for supporters
   const [showEquipmentModal, setShowEquipmentModal] = useState(false);
+
+  // Redirect already authenticated users to their dashboard
+  // This prevents confusion when users access sign-up while already logged in
+  // Skip redirect if we're currently in signup flow (loading, showing modal, etc.)
+  useEffect(() => {
+    // Don't redirect if signup is in progress or modals are showing
+    if (isLoading || showOnboardingModal || showEquipmentModal) {
+      return;
+    }
+
+    // Only redirect if user was already authenticated before visiting this screen
+    // (not as a result of just signing up - that's handled by handleSignUp)
+    if (isAuthenticated && profile && profile.onboardingCompleted) {
+      if (profile.role === 'supporter') {
+        router.replace('/(supporter)');
+      } else if (profile.role === 'admin') {
+        router.replace('/(admin)');
+      } else {
+        router.replace('/(client)');
+      }
+    }
+  }, [isAuthenticated, profile, isLoading, showOnboardingModal, showEquipmentModal]);
 
   // Check if all required agreements are accepted
   const allAgreementsAccepted = selectedRole === 'client'
