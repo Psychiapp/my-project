@@ -72,20 +72,22 @@ export default function SignUpScreen() {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [agreedToPrivacy, setAgreedToPrivacy] = useState(false);
   const [agreedToDisclaimer, setAgreedToDisclaimer] = useState(false);
+  const [agreedToAge, setAgreedToAge] = useState(false);
 
   // Agreement checkboxes for supporters
   const [supporterAgreedToTerms, setSupporterAgreedToTerms] = useState(false);
   const [supporterAgreedToPrivacy, setSupporterAgreedToPrivacy] = useState(false);
   const [supporterAgreedToConfidentiality, setSupporterAgreedToConfidentiality] = useState(false);
+  const [supporterAgreedToAge, setSupporterAgreedToAge] = useState(false);
 
   // Equipment requirements modal for supporters
   const [showEquipmentModal, setShowEquipmentModal] = useState(false);
 
   // Check if all required agreements are accepted
   const allAgreementsAccepted = selectedRole === 'client'
-    ? agreedToTerms && agreedToPrivacy && agreedToDisclaimer
+    ? agreedToTerms && agreedToPrivacy && agreedToDisclaimer && agreedToAge
     : selectedRole === 'supporter'
-    ? supporterAgreedToTerms && supporterAgreedToPrivacy && supporterAgreedToConfidentiality
+    ? supporterAgreedToTerms && supporterAgreedToPrivacy && supporterAgreedToConfidentiality && supporterAgreedToAge
     : true;
 
   const handleRoleContinue = () => {
@@ -799,6 +801,22 @@ export default function SignUpScreen() {
                       </Text>
                     </Text>
                   </View>
+
+                  {/* Client: Age Confirmation */}
+                  <View style={styles.agreementRow}>
+                    <TouchableOpacity
+                      style={[styles.checkbox, agreedToAge && styles.checkboxChecked]}
+                      onPress={() => setAgreedToAge(!agreedToAge)}
+                      accessibilityRole="checkbox"
+                      accessibilityLabel="Confirm I am 18 years or older"
+                      accessibilityState={{ checked: agreedToAge }}
+                    >
+                      {agreedToAge && <CheckIcon size={14} color={PsychiColors.white} />}
+                    </TouchableOpacity>
+                    <Text style={styles.agreementText}>
+                      I confirm that I am <Text style={styles.ageBold}>18 years of age or older</Text>
+                    </Text>
+                  </View>
                 </>
               ) : (
                 <>
@@ -856,6 +874,22 @@ export default function SignUpScreen() {
                       <Text style={styles.termsLink} onPress={() => router.push('/legal/confidentiality-agreement')} accessibilityRole="link">
                         Confidentiality Agreement
                       </Text>
+                    </Text>
+                  </View>
+
+                  {/* Supporter: Age Confirmation */}
+                  <View style={styles.agreementRow}>
+                    <TouchableOpacity
+                      style={[styles.checkbox, supporterAgreedToAge && styles.checkboxChecked]}
+                      onPress={() => setSupporterAgreedToAge(!supporterAgreedToAge)}
+                      accessibilityRole="checkbox"
+                      accessibilityLabel="Confirm I am 18 years or older"
+                      accessibilityState={{ checked: supporterAgreedToAge }}
+                    >
+                      {supporterAgreedToAge && <CheckIcon size={14} color={PsychiColors.white} />}
+                    </TouchableOpacity>
+                    <Text style={styles.agreementText}>
+                      I confirm that I am <Text style={styles.ageBold}>18 years of age or older</Text>
                     </Text>
                   </View>
                 </>
@@ -1238,6 +1272,10 @@ const styles = StyleSheet.create({
   termsLink: {
     color: PsychiColors.royalBlue,
     fontWeight: '500',
+  },
+  ageBold: {
+    fontWeight: '600',
+    color: PsychiColors.textPrimary,
   },
   // Agreement Checkboxes
   agreementsContainer: {
