@@ -30,6 +30,8 @@ import { createSession, getSupporterDetail, getSupporterAvailability, saveClient
 import { processSessionPayment, stripeAvailable } from '@/lib/stripe';
 import OnboardingModal from '@/components/OnboardingModal';
 import { Avatar } from '@/components/Avatar';
+import { useSessionUsage } from '@/hooks/useSessionUsage';
+import { PAYG_PRICES } from '@/types/liveSupport';
 
 type SessionType = 'chat' | 'phone' | 'video';
 type BookingStep = 'type' | 'date' | 'time' | 'confirm';
@@ -145,6 +147,9 @@ export default function BookSessionScreen() {
   const [isLoadingAssignment, setIsLoadingAssignment] = useState(!params.supporterId);
   const [assignedSupporter, setAssignedSupporter] = useState<{ id: string; name: string; specialty: string; stripe_connect_id: string | null; avatarUrl: string | null } | null>(null);
   const [paramSupporter, setParamSupporter] = useState<{ id: string; name: string; specialty: string; stripe_connect_id: string | null; avatarUrl: string | null } | null>(null);
+
+  // Session usage tracking for quota enforcement
+  const { usage, checkAllowance, recordUsage, refreshUsage } = useSessionUsage(user?.id || null);
 
   // Fetch supporter details (for stripe_connect_id) when supporterId is in params
   React.useEffect(() => {
@@ -297,6 +302,32 @@ export default function BookSessionScreen() {
     setStep('date');
   };
 
+  // Get allowance info for selected session type
+  const allowanceInfo = selectedType ? checkAllowance(selectedType) : null;
+
+  // Calculate effective price based on subscription allowance
+  const getEffectivePrice = (type: SessionType) => {
+    const allowance = checkAllowance(type);
+    if (allowance.hasAllowance) {
+      return 'Included'; // Covered by subscription
+    }
+    return `$${(allowance.paygPrice / 100).toFixed(0)}`; // PAYG price
+  };
+
+  // Get remaining sessions display for a session type
+  const getRemainingDisplay = (type: SessionType) => {
+    const allowance = checkAllowance(type);
+    if (!usage || usage.subscriptionTier === 0) {
+      return null; // No subscription, show PAYG pricing
+    }
+    if (type === 'chat') {
+      if (usage.chatAllowed >= 999) return 'Unlimited';
+      return `${Math.max(0, usage.chatAllowed - usage.chatUsed)} left`;
+    } else {
+      return `${Math.max(0, usage.voiceVideoAllowed - usage.voiceVideoUsed)} left`;
+    }
+  };
+
   const handleSelectDate = (date: Date) => {
     setSelectedDate(date);
     setSelectedSlot(null);
@@ -328,6 +359,10 @@ export default function BookSessionScreen() {
     setIsBooking(true);
 
     try {
+      // Check session allowance
+      const allowance = checkAllowance(selectedType);
+      const requiresPayment = allowance.paygRequired;
+
       // Create scheduled session time
       const [hours, minutes] = selectedSlot.startTime.split(':').map(Number);
       const scheduledTime = new Date(selectedDate);
@@ -340,11 +375,11 @@ export default function BookSessionScreen() {
         day: 'numeric',
       });
 
-      // Process payment first (if Stripe is available)
+      // Process payment first (if PAYG required and Stripe is available)
       // Payment is split 75% to supporter, 25% platform fee (if supporter has Stripe Connect)
       let paymentIntentId: string | undefined;
 
-      if (stripeAvailable) {
+      if (requiresPayment && stripeAvailable) {
         const paymentResult = await processSessionPayment(
           selectedType,
           supporter.id,
@@ -359,7 +394,7 @@ export default function BookSessionScreen() {
         }
 
         paymentIntentId = paymentResult.paymentIntentId;
-      } else {
+      } else if (requiresPayment && !stripeAvailable) {
         // In development/Expo Go, show notice but allow booking for testing
         Alert.alert(
           'Development Mode',
@@ -367,6 +402,7 @@ export default function BookSessionScreen() {
           [{ text: 'Continue' }]
         );
       }
+      // If !requiresPayment, session is covered by subscription - no payment needed
 
       // Payment succeeded (or dev mode) - now create the session with payment intent ID
       const session = await createSession(
@@ -419,6 +455,18 @@ export default function BookSessionScreen() {
         otherPartyName: supporter.name,
         scheduledTime,
       });
+
+      // Record session usage for quota tracking
+      // This records whether it was PAYG or covered by subscription
+      await recordUsage(
+        selectedType,
+        sessionId,
+        requiresPayment, // chargedAsPayg
+        paymentIntentId
+      );
+
+      // Refresh usage data to update UI
+      await refreshUsage();
 
       setIsBooking(false);
 
@@ -564,7 +612,17 @@ export default function BookSessionScreen() {
                     <Text style={styles.typeDescription}>{type.description}</Text>
                     <View style={styles.typeFooter}>
                       <Text style={styles.typeDuration}>{type.duration}</Text>
-                      <Text style={styles.typePrice}>{type.price}</Text>
+                      <View style={styles.typePriceContainer}>
+                        {getRemainingDisplay(type.id) && (
+                          <Text style={styles.typeRemaining}>{getRemainingDisplay(type.id)}</Text>
+                        )}
+                        <Text style={[
+                          styles.typePrice,
+                          checkAllowance(type.id).hasAllowance && styles.typePriceIncluded
+                        ]}>
+                          {getEffectivePrice(type.id)}
+                        </Text>
+                      </View>
                     </View>
                   </View>
                 </TouchableOpacity>
@@ -787,9 +845,20 @@ export default function BookSessionScreen() {
               </View>
 
               <View style={styles.confirmPriceRow}>
-                <Text style={styles.confirmPriceLabel}>Session Total</Text>
-                <Text style={styles.confirmPrice}>
-                  {sessionTypes.find((t) => t.id === selectedType)?.price}
+                <View>
+                  <Text style={styles.confirmPriceLabel}>Session Total</Text>
+                  {allowanceInfo?.hasAllowance && (
+                    <Text style={styles.confirmCoveredText}>Covered by subscription</Text>
+                  )}
+                  {allowanceInfo?.paygRequired && (
+                    <Text style={styles.confirmPaygText}>Pay-as-you-go</Text>
+                  )}
+                </View>
+                <Text style={[
+                  styles.confirmPrice,
+                  allowanceInfo?.hasAllowance && styles.confirmPriceIncluded
+                ]}>
+                  {allowanceInfo?.hasAllowance ? '$0' : getEffectivePrice(selectedType)}
                 </Text>
               </View>
             </View>
@@ -800,14 +869,16 @@ export default function BookSessionScreen() {
               disabled={isBooking}
               activeOpacity={0.8}
               accessibilityRole="button"
-              accessibilityLabel="Confirm and Pay"
+              accessibilityLabel={allowanceInfo?.hasAllowance ? "Confirm Booking" : "Confirm and Pay"}
               accessibilityHint="Confirms your booking and proceeds to payment"
               accessibilityState={{ disabled: isBooking }}
             >
               {isBooking ? (
                 <ActivityIndicator color={PsychiColors.white} />
               ) : (
-                <Text style={styles.confirmButtonText}>Confirm & Pay</Text>
+                <Text style={styles.confirmButtonText}>
+                  {allowanceInfo?.hasAllowance ? 'Confirm Booking' : 'Confirm & Pay'}
+                </Text>
               )}
             </TouchableOpacity>
           </View>
@@ -987,6 +1058,19 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: PsychiColors.deep,
   },
+  typePriceIncluded: {
+    color: PsychiColors.success,
+  },
+  typePriceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+  },
+  typeRemaining: {
+    fontSize: 11,
+    color: PsychiColors.success,
+    fontWeight: '500',
+  },
   dateGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -1149,6 +1233,20 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '700',
     color: PsychiColors.deep,
+  },
+  confirmPriceIncluded: {
+    color: PsychiColors.success,
+  },
+  confirmCoveredText: {
+    fontSize: 12,
+    color: PsychiColors.success,
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  confirmPaygText: {
+    fontSize: 12,
+    color: PsychiColors.textMuted,
+    marginTop: 2,
   },
   confirmButton: {
     backgroundColor: PsychiColors.royalBlue,

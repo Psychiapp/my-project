@@ -1060,7 +1060,42 @@ export async function getSession(sessionId: string): Promise<SessionWithDetails 
 }
 
 /**
+ * Validate session booking server-side
+ * Returns validation result with allowed status and reason
+ */
+export async function validateSessionBooking(
+  clientId: string,
+  sessionType: SessionType,
+  isPayg: boolean = false
+): Promise<{ allowed: boolean; reason: string; remaining: number } | null> {
+  if (!supabase) return null;
+
+  const { data, error } = await supabase
+    .rpc('validate_session_booking', {
+      p_client_id: clientId,
+      p_session_type: sessionType,
+      p_is_payg: isPayg,
+    });
+
+  if (error) {
+    console.error('Error validating session booking:', error);
+    return null;
+  }
+
+  if (data && data.length > 0) {
+    return {
+      allowed: data[0].allowed,
+      reason: data[0].reason,
+      remaining: data[0].remaining_allowance,
+    };
+  }
+
+  return null;
+}
+
+/**
  * Create a new session booking
+ * @param validateQuota - If true, validates quota server-side before creating (optional extra check)
  */
 export async function createSession(
   clientId: string,
@@ -1068,9 +1103,22 @@ export async function createSession(
   sessionType: SessionType,
   scheduledAt: string,
   durationMinutes: number,
-  paymentIntentId?: string
+  paymentIntentId?: string,
+  validateQuota: boolean = false
 ): Promise<Session | null> {
   if (!supabase) return null;
+
+  // Optional server-side quota validation
+  // (The trigger on session_usage also enforces this, but this is an early check)
+  if (validateQuota) {
+    const isPayg = !!paymentIntentId;
+    const validation = await validateSessionBooking(clientId, sessionType, isPayg);
+
+    if (validation && !validation.allowed) {
+      console.error('Session booking rejected:', validation.reason);
+      return null;
+    }
+  }
 
   const { data, error } = await supabase
     .from('sessions')
