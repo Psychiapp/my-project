@@ -120,10 +120,11 @@ export default class ErrorBoundary extends Component<Props, State> {
             <Text style={styles.helpText}>
               If "Try Again" doesn't work, tap "Clear Data & Restart" to reset the app.
             </Text>
-            {__DEV__ && this.state.error && (
+            {this.state.error && (
               <View style={styles.errorDetails}>
-                <Text style={styles.errorTitle}>Error Details (Dev Only):</Text>
+                <Text style={styles.errorTitle}>Error Details:</Text>
                 <Text style={styles.errorText}>{this.state.error.message}</Text>
+                <Text style={styles.errorText}>{this.state.error.stack?.substring(0, 500)}</Text>
               </View>
             )}
           </View>
