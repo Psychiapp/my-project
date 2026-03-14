@@ -22,6 +22,7 @@ import {
   ChevronRightIcon,
   AlertIcon,
   ProfileIcon,
+  CalendarIcon,
 } from '@/components/icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
@@ -33,6 +34,7 @@ interface OnboardingStatus {
   training_complete: boolean;
   onboarding_complete: boolean;
   verification_submitted: boolean; // true if status is 'pending_review' or 'approved'
+  availability_set: boolean; // true if supporter has set their availability schedule
 }
 
 interface ChecklistItemProps {
@@ -84,6 +86,7 @@ export default function SupporterOnboardingChecklist({ onComplete }: SupporterOn
     training_complete: false,
     onboarding_complete: false,
     verification_submitted: false,
+    availability_set: false,
   });
 
   useEffect(() => {
@@ -97,16 +100,33 @@ export default function SupporterOnboardingChecklist({ onComplete }: SupporterOn
     }
 
     try {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('w9_completed, stripe_payouts_enabled, training_complete, onboarding_complete, verification_status')
-        .eq('id', user.id)
-        .single();
+      // Fetch profile and supporter_details in parallel
+      const [profileResult, supporterDetailsResult] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('w9_completed, stripe_payouts_enabled, training_complete, onboarding_complete, verification_status')
+          .eq('id', user.id)
+          .single(),
+        supabase
+          .from('supporter_details')
+          .select('availability')
+          .eq('id', user.id)
+          .single(),
+      ]);
+
+      const profile = profileResult.data;
+      const supporterDetails = supporterDetailsResult.data;
 
       if (profile) {
         // Verification is considered submitted if status is 'pending_review' or 'approved'
         const verificationSubmitted = profile.verification_status === 'pending_review' ||
                                        profile.verification_status === 'approved';
+
+        // Availability is set if there's at least one day with time slots
+        const availability = supporterDetails?.availability as Record<string, string[]> | null;
+        const availabilitySet = availability
+          ? Object.values(availability).some((slots) => Array.isArray(slots) && slots.length > 0)
+          : false;
 
         setStatus({
           w9_completed: profile.w9_completed || false,
@@ -114,6 +134,7 @@ export default function SupporterOnboardingChecklist({ onComplete }: SupporterOn
           training_complete: profile.training_complete || false,
           onboarding_complete: profile.onboarding_complete || false,
           verification_submitted: verificationSubmitted,
+          availability_set: availabilitySet,
         });
 
         // Check if all requirements are met and auto-complete onboarding
@@ -138,8 +159,9 @@ export default function SupporterOnboardingChecklist({ onComplete }: SupporterOn
     status.w9_completed,
     status.stripe_payouts_enabled,
     status.training_complete,
+    status.availability_set,
   ].filter(Boolean).length;
-  const totalSteps = 4;
+  const totalSteps = 5;
   const remainingSteps = totalSteps - completedSteps;
   const progress = completedSteps / totalSteps;
 
@@ -226,6 +248,16 @@ export default function SupporterOnboardingChecklist({ onComplete }: SupporterOn
               subtitle="Finish all training modules"
               completed={false}
               onPress={() => router.push('/(supporter)/training')}
+            />
+          )}
+
+          {!status.availability_set && (
+            <ChecklistItem
+              icon={CalendarIcon}
+              title="Set Availability"
+              subtitle="Set your schedule for sessions"
+              completed={false}
+              onPress={() => router.push('/(supporter)/availability')}
             />
           )}
         </View>
