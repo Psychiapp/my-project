@@ -74,41 +74,47 @@ export default function ClientLayout() {
         return;
       }
 
-      // Check if profile setup was just completed (within last 10 seconds)
-      // This prevents redirect loops when navigating from profile-setup
       try {
-        const completedAt = await AsyncStorage.getItem(PROFILE_SETUP_COMPLETED_KEY);
-        if (completedAt) {
-          const completedTime = parseInt(completedAt, 10);
-          const now = Date.now();
-          // If completed within last 10 seconds, skip the check entirely
-          if (now - completedTime < 10000) {
-            // Clear the flag so future visits will check normally
-            await AsyncStorage.removeItem(PROFILE_SETUP_COMPLETED_KEY);
-            setIsCheckingProfile(false);
-            return;
+        // Check if profile setup was just completed (within last 10 seconds)
+        // This prevents redirect loops when navigating from profile-setup
+        try {
+          const completedAt = await AsyncStorage.getItem(PROFILE_SETUP_COMPLETED_KEY);
+          if (completedAt) {
+            const completedTime = parseInt(completedAt, 10);
+            const now = Date.now();
+            // If completed within last 10 seconds, skip the check entirely
+            if (now - completedTime < 10000) {
+              // Clear the flag so future visits will check normally
+              await AsyncStorage.removeItem(PROFILE_SETUP_COMPLETED_KEY);
+              setIsCheckingProfile(false);
+              return;
+            }
           }
+        } catch (error) {
+          // Ignore AsyncStorage errors
+        }
+
+        // No artificial delay - trust the database has synced
+        const completion = await checkClientProfileCompletion(user.id);
+
+        // Only redirect if profile truly not found or has missing fields (not just a sync issue)
+        if (!completion.isComplete && !completion.missingFields.includes('Profile not found')) {
+          // Redirect to profile setup with missing fields info
+          const missingFieldsParam = encodeURIComponent(completion.missingFields.join(','));
+          router.replace(`/profile-setup?role=client&missing=${missingFieldsParam}` as any);
+        } else if (!completion.isComplete && completion.missingFields.includes('Profile not found')) {
+          // Profile not found after retries - still redirect but this is unusual
+          console.warn('Profile not found after retries for user:', user.id);
+          const missingFieldsParam = encodeURIComponent(completion.missingFields.join(','));
+          router.replace(`/profile-setup?role=client&missing=${missingFieldsParam}` as any);
         }
       } catch (error) {
-        // Ignore AsyncStorage errors
+        // Log error but don't block the user from using the app
+        console.error('Error checking profile completion:', error);
+      } finally {
+        // Always set loading to false, even on error
+        setIsCheckingProfile(false);
       }
-
-      // No artificial delay - trust the database has synced
-      const completion = await checkClientProfileCompletion(user.id);
-
-      // Only redirect if profile truly not found or has missing fields (not just a sync issue)
-      if (!completion.isComplete && !completion.missingFields.includes('Profile not found')) {
-        // Redirect to profile setup with missing fields info
-        const missingFieldsParam = encodeURIComponent(completion.missingFields.join(','));
-        router.replace(`/profile-setup?role=client&missing=${missingFieldsParam}` as any);
-      } else if (!completion.isComplete && completion.missingFields.includes('Profile not found')) {
-        // Profile not found after retries - still redirect but this is unusual
-        console.warn('Profile not found after retries for user:', user.id);
-        const missingFieldsParam = encodeURIComponent(completion.missingFields.join(','));
-        router.replace(`/profile-setup?role=client&missing=${missingFieldsParam}` as any);
-      }
-
-      setIsCheckingProfile(false);
     };
 
     // Run profile check immediately, don't wait for permission check

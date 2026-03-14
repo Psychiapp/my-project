@@ -217,11 +217,20 @@ export default function BookSessionScreen() {
   // Get supporter from route params or fetched assignment
   const supporter = params.supporterId ? paramSupporter : assignedSupporter;
 
+  // Helper function to navigate back safely
+  const navigateBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(client)/sessions');
+    }
+  };
+
   // Handle onboarding completion - save preferences, match supporter, and proceed to booking
   const handleOnboardingComplete = async (preferences: any) => {
     if (!user?.id) {
       setShowOnboardingModal(false);
-      router.replace('/(client)');
+      navigateBack();
       return;
     }
 
@@ -253,21 +262,33 @@ export default function BookSessionScreen() {
           [{ text: 'Continue' }]
         );
       } else {
-        // No supporters available - notify user and go to dashboard
-        setShowOnboardingModal(false);
+        // No supporters available - notify user FIRST, then navigate when they dismiss
+        // Keep modal visible until user acknowledges
         Alert.alert(
           'No Supporters Available',
           result.error || 'No supporters are currently available. We\'ll notify you when one becomes available.',
-          [{ text: 'OK', onPress: () => router.replace('/(client)') }]
+          [{
+            text: 'OK',
+            onPress: () => {
+              setShowOnboardingModal(false);
+              navigateBack();
+            }
+          }]
         );
       }
     } catch (error) {
       console.error('Error during onboarding completion:', error);
-      setShowOnboardingModal(false);
+      // Show error alert FIRST, then navigate when user dismisses
       Alert.alert(
         'Error',
         'Something went wrong. Please try again.',
-        [{ text: 'OK', onPress: () => router.replace('/(client)') }]
+        [{
+          text: 'OK',
+          onPress: () => {
+            setShowOnboardingModal(false);
+            navigateBack();
+          }
+        }]
       );
     }
   };
@@ -539,8 +560,13 @@ export default function BookSessionScreen() {
           onClose={() => {
             // Hide modal and show loading state while navigating
             setShowOnboardingModal(false);
-            // Navigate back to dashboard
-            router.replace('/(client)');
+            // Use router.back() to return to previous screen (sessions/dashboard)
+            // This is more reliable than replace and goes back to where user came from
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace('/(client)/sessions');
+            }
           }}
           onComplete={handleOnboardingComplete}
         />
