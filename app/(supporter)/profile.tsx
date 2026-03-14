@@ -24,7 +24,7 @@ import {
   DocumentIcon,
   CheckIcon,
 } from '@/components/icons';
-import { getSupporterDetail, getSupporterSessionCount } from '@/lib/database';
+import { getSupporterDetail, getSupporterSessionCount, getVerificationStatus } from '@/lib/database';
 
 interface SupporterProfileData {
   name: string;
@@ -36,16 +36,25 @@ interface SupporterProfileData {
   communicationStyles: string[];
 }
 
+type VerificationStatusType = 'not_submitted' | 'pending_review' | 'approved' | 'rejected';
+
 export default function SupporterProfileScreen() {
   const { user, profile, signOut } = useAuth();
   const [supporterData, setSupporterData] = useState<SupporterProfileData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [verificationStatus, setVerificationStatus] = useState<VerificationStatusType>('not_submitted');
 
   useEffect(() => {
     const fetchSupporterData = async () => {
       if (!user?.id) {
         setIsLoading(false);
         return;
+      }
+
+      // Fetch verification status
+      const verificationData = await getVerificationStatus(user.id);
+      if (verificationData) {
+        setVerificationStatus(verificationData.status);
       }
 
       try {
@@ -114,7 +123,10 @@ export default function SupporterProfileScreen() {
     {
       icon: CheckIcon,
       title: 'Verification',
-      subtitle: 'Upload transcript and ID',
+      subtitle: verificationStatus === 'approved' ? 'Approved ✓' :
+                verificationStatus === 'pending_review' ? 'Pending Review' :
+                verificationStatus === 'rejected' ? 'Rejected - Resubmit' :
+                'Upload transcript and ID',
       onPress: () => router.push('/(supporter)/verification'),
     },
     {

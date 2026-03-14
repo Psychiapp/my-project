@@ -110,7 +110,7 @@ export default function SupporterOnboardingChecklist({ onComplete }: SupporterOn
         supabase
           .from('supporter_details')
           .select('availability')
-          .eq('id', user.id)
+          .eq('supporter_id', user.id)
           .single(),
       ]);
 
