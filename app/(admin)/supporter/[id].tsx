@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
-  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
@@ -260,6 +259,7 @@ export default function AdminSupporterDetailScreen() {
 
     try {
       let filePath = url;
+      let signedUrl = url;
 
       // If it's a full URL, extract the file path from it
       // Old documents may have stored signed URLs which could be expired
@@ -271,16 +271,14 @@ export default function AdminSupporterDetailScreen() {
           filePath = pathMatch[1];
           console.log('Extracted file path from URL:', filePath);
         } else {
-          // Can't extract path, try opening the URL directly (might work if not expired)
-          console.log('Could not extract path, trying URL directly');
-          const canOpen = await Linking.canOpenURL(url);
-          if (canOpen) {
-            await Linking.openURL(url);
-            return;
-          } else {
-            Alert.alert('Cannot Open', 'Document URL has expired or is invalid. Please ask the supporter to re-upload.');
-            return;
-          }
+          // Can't extract path, use the URL directly
+          console.log('Could not extract path, using URL directly');
+          // Navigate to in-app document viewer
+          router.push({
+            pathname: '/document/[id]',
+            params: { id: 'remote', url: url, title: documentType },
+          });
+          return;
         }
       }
 
@@ -296,12 +294,13 @@ export default function AdminSupporterDetailScreen() {
         return;
       }
 
-      const canOpen = await Linking.canOpenURL(data.signedUrl);
-      if (canOpen) {
-        await Linking.openURL(data.signedUrl);
-      } else {
-        Alert.alert('Cannot Open', 'Unable to open this document.');
-      }
+      signedUrl = data.signedUrl;
+
+      // Navigate to in-app document viewer
+      router.push({
+        pathname: '/document/[id]',
+        params: { id: 'remote', url: signedUrl, title: documentType },
+      });
     } catch (error) {
       console.error('Error opening document:', error);
       Alert.alert('Error', 'Failed to open document. Please try again.');

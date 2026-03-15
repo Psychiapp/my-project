@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   Dimensions,
   Platform,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
@@ -16,6 +17,7 @@ import { File } from 'expo-file-system/next';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
 import { ArrowLeftIcon, DownloadIcon } from '@/components/icons';
 import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system';
 
 // Import PDF assets
 const handbookPdf = require('@/assets/documents/Supporter Handbook.pdf');
@@ -23,7 +25,7 @@ const diversionPdf = require('@/assets/documents/Supporter Diversion Advice.pdf'
 const conductPdf = require('@/assets/documents/Supporter Code of Conduct.pdf');
 const clientDisclaimerPdf = require('@/assets/documents/Client Disclaimer.pdf');
 
-// Document metadata
+// Document metadata for bundled documents
 const documentInfo: Record<string, { title: string; asset: number }> = {
   handbook: {
     title: 'Supporter Handbook',
@@ -46,30 +48,84 @@ const documentInfo: Record<string, { title: string; asset: number }> = {
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export default function DocumentViewerScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, url, title } = useLocalSearchParams<{ id?: string; url?: string; title?: string }>();
   const [isLoading, setIsLoading] = useState(true);
   const [pdfBase64, setPdfBase64] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [localUri, setLocalUri] = useState<string | null>(null);
+  const [isImage, setIsImage] = useState(false);
+  const [remoteUrl, setRemoteUrl] = useState<string | null>(null);
 
-  const document = id ? documentInfo[id] : null;
+  // Check if this is a bundled document or remote URL
+  const bundledDocument = id ? documentInfo[id] : null;
+  const documentTitle = title || bundledDocument?.title || 'Document';
 
   useEffect(() => {
     loadDocument();
-  }, [id]);
+  }, [id, url]);
 
   const loadDocument = async () => {
-    if (!document) {
+    // Handle remote URL (from Supabase storage)
+    if (url) {
+      try {
+        console.log('Loading remote document:', url);
+
+        // Check if it's an image
+        const lowerUrl = url.toLowerCase();
+        if (lowerUrl.includes('.jpg') || lowerUrl.includes('.jpeg') || lowerUrl.includes('.png') || lowerUrl.includes('.gif') || lowerUrl.includes('.webp')) {
+          setIsImage(true);
+          setRemoteUrl(url);
+          setIsLoading(false);
+          return;
+        }
+
+        // For PDFs, download and convert to base64
+        if (lowerUrl.includes('.pdf')) {
+          const downloadResult = await FileSystem.downloadAsync(
+            url,
+            FileSystem.cacheDirectory + 'temp_document.pdf'
+          );
+
+          if (downloadResult.status !== 200) {
+            throw new Error(`Failed to download document: HTTP ${downloadResult.status}`);
+          }
+
+          setLocalUri(downloadResult.uri);
+
+          // Read as base64
+          const base64 = await FileSystem.readAsStringAsync(downloadResult.uri, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+
+          setPdfBase64(base64);
+          setIsLoading(false);
+          return;
+        }
+
+        // For other file types, just show in WebView
+        setRemoteUrl(url);
+        setIsLoading(false);
+        return;
+      } catch (err: any) {
+        console.error('Error loading remote document:', err);
+        setError(`Failed to load document: ${err.message || 'Unknown error'}`);
+        setIsLoading(false);
+        return;
+      }
+    }
+
+    // Handle bundled document
+    if (!bundledDocument) {
       setError('Document not found');
       setIsLoading(false);
       return;
     }
 
     try {
-      console.log('Loading document:', id, 'asset:', document.asset);
+      console.log('Loading bundled document:', id, 'asset:', bundledDocument.asset);
 
       // Load the asset
-      const asset = Asset.fromModule(document.asset);
+      const asset = Asset.fromModule(bundledDocument.asset);
       console.log('Asset created:', asset.name, asset.type);
 
       await asset.downloadAsync();
@@ -226,7 +282,8 @@ export default function DocumentViewerScreen() {
   `
     : '';
 
-  if (!document) {
+  // Show error if no document source provided
+  if (!bundledDocument && !url) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
@@ -254,14 +311,18 @@ export default function DocumentViewerScreen() {
           <ArrowLeftIcon size={20} color={PsychiColors.azure} />
         </TouchableOpacity>
         <Text style={styles.headerTitle} numberOfLines={1}>
-          {document.title}
+          {documentTitle}
         </Text>
-        <TouchableOpacity onPress={handleShare} style={styles.shareButton}>
-          <DownloadIcon size={20} color={PsychiColors.azure} />
-        </TouchableOpacity>
+        {localUri ? (
+          <TouchableOpacity onPress={handleShare} style={styles.shareButton}>
+            <DownloadIcon size={20} color={PsychiColors.azure} />
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.headerRight} />
+        )}
       </View>
 
-      {/* PDF Viewer */}
+      {/* Document Viewer */}
       {isLoading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={PsychiColors.azure} />
@@ -279,6 +340,36 @@ export default function DocumentViewerScreen() {
             <Text style={styles.goBackButtonText}>Go Back</Text>
           </TouchableOpacity>
         </View>
+      ) : isImage && remoteUrl ? (
+        <View style={styles.imageContainer}>
+          <Image
+            source={{ uri: remoteUrl }}
+            style={styles.image}
+            resizeMode="contain"
+          />
+        </View>
+      ) : remoteUrl && !pdfBase64 ? (
+        <WebView
+          style={styles.webview}
+          source={{ uri: remoteUrl }}
+          originWhitelist={['*']}
+          javaScriptEnabled={true}
+          domStorageEnabled={true}
+          startInLoadingState={true}
+          scalesPageToFit={true}
+          bounces={true}
+          showsVerticalScrollIndicator={true}
+          onError={(syntheticEvent) => {
+            const { nativeEvent } = syntheticEvent;
+            console.error('WebView error:', nativeEvent);
+            setError(`WebView error: ${nativeEvent.description}`);
+          }}
+          renderLoading={() => (
+            <View style={styles.webviewLoading}>
+              <ActivityIndicator size="large" color={PsychiColors.azure} />
+            </View>
+          )}
+        />
       ) : (
         <WebView
           style={styles.webview}
@@ -414,5 +505,15 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: PsychiColors.white,
+  },
+  imageContainer: {
+    flex: 1,
+    backgroundColor: PsychiColors.cream,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  image: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT - 100,
   },
 });
