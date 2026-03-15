@@ -17,7 +17,6 @@ import { File } from 'expo-file-system/next';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
 import { ArrowLeftIcon, DownloadIcon } from '@/components/icons';
 import * as Sharing from 'expo-sharing';
-import * as FileSystem from 'expo-file-system';
 
 // Import PDF assets
 const handbookPdf = require('@/assets/documents/Supporter Handbook.pdf');
@@ -79,22 +78,26 @@ export default function DocumentViewerScreen() {
           return;
         }
 
-        // For PDFs, download and convert to base64
+        // For PDFs, download and convert to base64 using fetch
         if (lowerUrl.includes('.pdf')) {
-          const downloadResult = await FileSystem.downloadAsync(
-            url,
-            FileSystem.cacheDirectory + 'temp_document.pdf'
-          );
-
-          if (downloadResult.status !== 200) {
-            throw new Error(`Failed to download document: HTTP ${downloadResult.status}`);
+          const response = await fetch(url);
+          if (!response.ok) {
+            throw new Error(`Failed to download document: HTTP ${response.status}`);
           }
 
-          setLocalUri(downloadResult.uri);
+          const blob = await response.blob();
 
-          // Read as base64
-          const base64 = await FileSystem.readAsStringAsync(downloadResult.uri, {
-            encoding: FileSystem.EncodingType.Base64,
+          // Convert blob to base64
+          const base64 = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              const result = reader.result as string;
+              // Remove the data URL prefix (e.g., "data:application/pdf;base64,")
+              const base64Data = result.split(',')[1];
+              resolve(base64Data);
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
           });
 
           setPdfBase64(base64);
