@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { Avatar } from '@/components/Avatar';
 import { useAuth } from '@/contexts/AuthContext';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
@@ -44,45 +45,48 @@ export default function SupporterProfileScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [verificationStatus, setVerificationStatus] = useState<VerificationStatusType>('not_submitted');
 
-  useEffect(() => {
-    const fetchSupporterData = async () => {
-      if (!user?.id) {
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        // Fetch verification status and supporter data in parallel
-        const [verificationData, detail, sessionCount] = await Promise.all([
-          getVerificationStatus(user.id),
-          getSupporterDetail(user.id),
-          getSupporterSessionCount(user.id),
-        ]);
-
-        if (verificationData) {
-          setVerificationStatus(verificationData.status);
+  // Refetch data when screen gains focus (e.g., after admin approves verification)
+  useFocusEffect(
+    useCallback(() => {
+      const fetchSupporterData = async () => {
+        if (!user?.id) {
+          setIsLoading(false);
+          return;
         }
 
-        if (detail) {
-          setSupporterData({
-            name: detail.full_name,
-            avatarUrl: detail.avatar_url || null,
-            education: detail.education || '',
-            totalSessions: sessionCount || 0,
-            bio: detail.bio || '',
-            specialties: detail.specialties || [],
-            communicationStyles: [], // Not stored in database yet
-          });
-        }
-      } catch (error) {
-        console.error('Error fetching supporter data:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+        try {
+          // Fetch verification status and supporter data in parallel
+          const [verificationData, detail, sessionCount] = await Promise.all([
+            getVerificationStatus(user.id),
+            getSupporterDetail(user.id),
+            getSupporterSessionCount(user.id),
+          ]);
 
-    fetchSupporterData();
-  }, [user?.id]);
+          if (verificationData) {
+            setVerificationStatus(verificationData.status);
+          }
+
+          if (detail) {
+            setSupporterData({
+              name: detail.full_name,
+              avatarUrl: detail.avatar_url || null,
+              education: detail.education || '',
+              totalSessions: sessionCount || 0,
+              bio: detail.bio || '',
+              specialties: detail.specialties || [],
+              communicationStyles: [], // Not stored in database yet
+            });
+          }
+        } catch (error) {
+          console.error('Error fetching supporter data:', error);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      fetchSupporterData();
+    }, [user?.id])
+  );
 
   const handleSignOut = () => {
     Alert.alert(
