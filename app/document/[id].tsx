@@ -78,34 +78,8 @@ export default function DocumentViewerScreen() {
           return;
         }
 
-        // For PDFs, download and convert to base64 using fetch
-        if (lowerUrl.includes('.pdf')) {
-          const response = await fetch(url);
-          if (!response.ok) {
-            throw new Error(`Failed to download document: HTTP ${response.status}`);
-          }
-
-          const blob = await response.blob();
-
-          // Convert blob to base64
-          const base64 = await new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-              const result = reader.result as string;
-              // Remove the data URL prefix (e.g., "data:application/pdf;base64,")
-              const base64Data = result.split(',')[1];
-              resolve(base64Data);
-            };
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-          });
-
-          setPdfBase64(base64);
-          setIsLoading(false);
-          return;
-        }
-
-        // For other file types, just show in WebView
+        // For PDFs and other documents, use the URL directly
+        // The WebView will handle rendering via Google Docs viewer or native handling
         setRemoteUrl(url);
         setIsLoading(false);
         return;
@@ -354,7 +328,12 @@ export default function DocumentViewerScreen() {
       ) : remoteUrl && !pdfBase64 ? (
         <WebView
           style={styles.webview}
-          source={{ uri: remoteUrl }}
+          source={{
+            // Use Google Docs Viewer for PDFs, direct URL for other files
+            uri: remoteUrl.toLowerCase().includes('.pdf')
+              ? `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(remoteUrl)}`
+              : remoteUrl
+          }}
           originWhitelist={['*']}
           javaScriptEnabled={true}
           domStorageEnabled={true}
