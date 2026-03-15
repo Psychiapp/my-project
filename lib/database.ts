@@ -3848,8 +3848,9 @@ export async function updateVerificationStatus(
  * - Stripe payout setup
  * - Training completion
  * - Verification approval
+ * - Availability set
  *
- * When all 4 requirements are met, sets:
+ * When all 5 requirements are met, sets:
  * - profiles.onboarding_complete = true
  * - supporter_details.accepting_clients = true
  */
@@ -3861,16 +3862,33 @@ export async function checkAndCompleteOnboarding(supporterId: string): Promise<{
 
   try {
     // Fetch current status from profiles and supporter_details
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('w9_completed, stripe_payouts_enabled, training_complete, verification_status, onboarding_complete')
-      .eq('id', supporterId)
-      .single();
+    const [profileResult, supporterDetailsResult] = await Promise.all([
+      supabase
+        .from('profiles')
+        .select('w9_completed, stripe_payouts_enabled, training_complete, verification_status, onboarding_complete')
+        .eq('id', supporterId)
+        .single(),
+      supabase
+        .from('supporter_details')
+        .select('availability')
+        .eq('supporter_id', supporterId)
+        .single(),
+    ]);
+
+    const profile = profileResult.data;
+    const profileError = profileResult.error;
+    const supporterDetails = supporterDetailsResult.data;
 
     if (profileError || !profile) {
       console.error('Error fetching profile for onboarding check:', profileError);
       return { isComplete: false, missingSteps: ['Could not fetch profile'] };
     }
+
+    // Check if availability is set (at least one day with time slots)
+    const availability = supporterDetails?.availability as Record<string, string[]> | null;
+    const hasAvailability = availability
+      ? Object.values(availability).some((slots) => Array.isArray(slots) && slots.length > 0)
+      : false;
 
     // Check each requirement
     const missingSteps: string[] = [];
@@ -3886,6 +3904,9 @@ export async function checkAndCompleteOnboarding(supporterId: string): Promise<{
     }
     if (profile.verification_status !== 'approved') {
       missingSteps.push('Document verification');
+    }
+    if (!hasAvailability) {
+      missingSteps.push('Availability');
     }
 
     const isComplete = missingSteps.length === 0;
