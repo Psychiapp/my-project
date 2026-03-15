@@ -298,9 +298,14 @@ export default function BookSessionScreen() {
     const fetchAvailability = async () => {
       const supporterId = params.supporterId || assignedSupporter?.id;
       if (supporterId) {
-        const data = await getSupporterAvailability(supporterId);
-        if (data?.availability) {
-          setSupporterAvailability(data.availability);
+        try {
+          const data = await getSupporterAvailability(supporterId);
+          if (data?.availability) {
+            setSupporterAvailability(data.availability);
+          }
+        } catch (error) {
+          console.error('Error fetching supporter availability:', error);
+          // Continue with empty availability - user can still see supporter info
         }
       }
       setIsLoadingAvailability(false);

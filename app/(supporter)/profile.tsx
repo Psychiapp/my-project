@@ -51,17 +51,17 @@ export default function SupporterProfileScreen() {
         return;
       }
 
-      // Fetch verification status
-      const verificationData = await getVerificationStatus(user.id);
-      if (verificationData) {
-        setVerificationStatus(verificationData.status);
-      }
-
       try {
-        const [detail, sessionCount] = await Promise.all([
+        // Fetch verification status and supporter data in parallel
+        const [verificationData, detail, sessionCount] = await Promise.all([
+          getVerificationStatus(user.id),
           getSupporterDetail(user.id),
           getSupporterSessionCount(user.id),
         ]);
+
+        if (verificationData) {
+          setVerificationStatus(verificationData.status);
+        }
 
         if (detail) {
           setSupporterData({

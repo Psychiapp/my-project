@@ -3,7 +3,7 @@
  * Shows required steps before supporters can receive clients
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { PsychiColors, Spacing, BorderRadius, Typography, Shadows } from '@/constants/theme';
 import {
   CheckIcon,
@@ -89,9 +90,12 @@ export default function SupporterOnboardingChecklist({ onComplete }: SupporterOn
     availability_set: false,
   });
 
-  useEffect(() => {
-    loadOnboardingStatus();
-  }, [user?.id]);
+  // Refetch when screen gains focus (e.g., returning from availability screen)
+  useFocusEffect(
+    useCallback(() => {
+      loadOnboardingStatus();
+    }, [user?.id])
+  );
 
   const loadOnboardingStatus = async () => {
     if (!user?.id || !supabase) {
