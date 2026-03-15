@@ -26,6 +26,70 @@ import { logDiagnostic, sendDiagnosticReport, captureErrorWithDiagnostics } from
 // Key to track when profile setup was just completed (prevents redirect loop)
 export const PROFILE_SETUP_COMPLETED_KEY = '@psychi_profile_setup_completed';
 
+// Helper to detect server errors (5xx, network issues, timeouts)
+const isServerError = (error: any): boolean => {
+  const message = error?.message?.toLowerCase() || '';
+  const errorString = String(error).toLowerCase();
+
+  // Check for HTTP 5xx errors
+  if (/502|503|504|500|5\d\d/.test(message) || /502|503|504|500|5\d\d/.test(errorString)) {
+    return true;
+  }
+
+  // Check for common server/network error patterns
+  const serverErrorPatterns = [
+    'bad gateway',
+    'service unavailable',
+    'gateway timeout',
+    'internal server error',
+    'network request failed',
+    'network error',
+    'timeout',
+    'econnreset',
+    'econnrefused',
+    'fetch failed',
+    'failed to fetch',
+  ];
+
+  return serverErrorPatterns.some(pattern =>
+    message.includes(pattern) || errorString.includes(pattern)
+  );
+};
+
+// Helper to get user-friendly error message
+const getFriendlyErrorMessage = (error: any): string => {
+  if (isServerError(error)) {
+    return 'Server temporarily unavailable. Please try again in a moment.';
+  }
+
+  const message = error?.message || '';
+
+  // RLS errors
+  if (message.includes('row-level security') || message.includes('RLS_ERROR')) {
+    return 'Permission error. Please sign out and sign back in.';
+  }
+
+  // Network errors
+  if (message.includes('network') || message.includes('Network')) {
+    return 'Network connection issue. Please check your internet and try again.';
+  }
+
+  // Session errors
+  if (message.includes('session') || message.includes('Session')) {
+    return 'Your session has expired. Please sign in again.';
+  }
+
+  // Generic fallback - don't show raw technical errors
+  if (message.length > 100 || message.includes('<html') || message.includes('<!DOCTYPE')) {
+    return 'Something went wrong. Please try again.';
+  }
+
+  return message || 'An unexpected error occurred. Please try again.';
+};
+
+// Delay helper for retry logic
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 const FOCUS_AREAS = [
   'Stress & Worry',
   'Low Mood',
@@ -281,7 +345,7 @@ export default function ProfileSetupScreen() {
     return true;
   };
 
-  const handleSave = async () => {
+  const handleSave = async (retryCount = 0) => {
     if (!validateForm()) return;
     if (!user?.id) {
       Alert.alert('Error', 'Not logged in.');
@@ -507,10 +571,22 @@ export default function ProfileSetupScreen() {
         }
       }
     } catch (error: any) {
-      const errorMessage = error?.message || error?.details || 'Unknown error';
+      const rawErrorMessage = error?.message || error?.details || 'Unknown error';
+
+      // Retry once on server errors (502, 503, timeout, etc.)
+      if (retryCount < 1 && isServerError(error)) {
+        logDiagnostic('PROFILE_SAVE', `Server error detected, retrying (attempt ${retryCount + 1})`, {
+          errorMessage: rawErrorMessage,
+        });
+        setIsSaving(false);
+        await delay(1500); // Wait 1.5 seconds before retry
+        return handleSave(retryCount + 1);
+      }
+
+      const friendlyMessage = getFriendlyErrorMessage(error);
 
       // Capture error with full context to Sentry
-      captureErrorWithDiagnostics(error instanceof Error ? error : new Error(errorMessage), {
+      captureErrorWithDiagnostics(error instanceof Error ? error : new Error(rawErrorMessage), {
         userId: user?.id,
         userEmail: user?.email,
         role: role || (isSupporter ? 'supporter' : 'client'),
@@ -518,10 +594,17 @@ export default function ProfileSetupScreen() {
         lastName,
         email,
         profileNotFound,
-        errorMessage,
+        errorMessage: rawErrorMessage,
+        isServerError: isServerError(error),
+        retryAttempt: retryCount,
       });
 
-      Alert.alert('Error', `Failed to save profile: ${errorMessage}`);
+      // Show user-friendly error message
+      Alert.alert(
+        'Unable to Save Profile',
+        friendlyMessage,
+        [{ text: 'OK' }]
+      );
     } finally {
       setIsSaving(false);
     }
@@ -817,7 +900,7 @@ export default function ProfileSetupScreen() {
           <View style={styles.buttonSection}>
             <TouchableOpacity
               style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
-              onPress={handleSave}
+              onPress={() => handleSave()}
               disabled={isSaving}
             >
               {isSaving ? (
