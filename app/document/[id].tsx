@@ -69,9 +69,13 @@ export default function DocumentViewerScreen() {
       try {
         console.log('Loading remote document:', url);
 
+        // Extract the path before query params to check file extension
+        const urlWithoutParams = url.split('?')[0].toLowerCase();
+
         // Check if it's an image
-        const lowerUrl = url.toLowerCase();
-        if (lowerUrl.includes('.jpg') || lowerUrl.includes('.jpeg') || lowerUrl.includes('.png') || lowerUrl.includes('.gif') || lowerUrl.includes('.webp')) {
+        if (urlWithoutParams.endsWith('.jpg') || urlWithoutParams.endsWith('.jpeg') ||
+            urlWithoutParams.endsWith('.png') || urlWithoutParams.endsWith('.gif') ||
+            urlWithoutParams.endsWith('.webp') || urlWithoutParams.endsWith('.heic')) {
           setIsImage(true);
           setRemoteUrl(url);
           setIsLoading(false);
@@ -79,7 +83,8 @@ export default function DocumentViewerScreen() {
         }
 
         // For PDFs and other documents, use the URL directly
-        // The WebView will handle rendering via Google Docs viewer or native handling
+        // Note: Google Docs Viewer won't work with authenticated URLs
+        // We'll try to render directly in WebView
         setRemoteUrl(url);
         setIsLoading(false);
         return;
@@ -323,17 +328,16 @@ export default function DocumentViewerScreen() {
             source={{ uri: remoteUrl }}
             style={styles.image}
             resizeMode="contain"
+            onError={(e) => {
+              console.error('Image load error:', e.nativeEvent.error);
+              setError('Could not load image. The link may have expired.');
+            }}
           />
         </View>
       ) : remoteUrl && !pdfBase64 ? (
         <WebView
           style={styles.webview}
-          source={{
-            // Use Google Docs Viewer for PDFs, direct URL for other files
-            uri: remoteUrl.toLowerCase().includes('.pdf')
-              ? `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(remoteUrl)}`
-              : remoteUrl
-          }}
+          source={{ uri: remoteUrl }}
           originWhitelist={['*']}
           javaScriptEnabled={true}
           domStorageEnabled={true}
@@ -341,10 +345,20 @@ export default function DocumentViewerScreen() {
           scalesPageToFit={true}
           bounces={true}
           showsVerticalScrollIndicator={true}
+          allowsInlineMediaPlayback={true}
           onError={(syntheticEvent) => {
             const { nativeEvent } = syntheticEvent;
             console.error('WebView error:', nativeEvent);
-            setError(`WebView error: ${nativeEvent.description}`);
+            setError(`Could not display document: ${nativeEvent.description || 'Unknown error'}`);
+          }}
+          onHttpError={(syntheticEvent) => {
+            const { nativeEvent } = syntheticEvent;
+            console.error('WebView HTTP error:', nativeEvent.statusCode);
+            if (nativeEvent.statusCode === 403 || nativeEvent.statusCode === 401) {
+              setError('Document access expired. Please go back and try again.');
+            } else {
+              setError(`Failed to load document (HTTP ${nativeEvent.statusCode})`);
+            }
           }}
           renderLoading={() => (
             <View style={styles.webviewLoading}>
