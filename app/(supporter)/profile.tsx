@@ -172,35 +172,6 @@ export default function SupporterProfileScreen() {
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Profile</Text>
         </View>
-
-        {/* DEBUG BOX - REMOVE AFTER DEBUGGING */}
-        <View style={{
-          backgroundColor: '#FF0000',
-          padding: 12,
-          marginHorizontal: 16,
-          marginBottom: 12,
-          borderRadius: 8,
-        }}>
-          <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 14, marginBottom: 8 }}>
-            🔴 DEBUG INFO
-          </Text>
-          <Text style={{ color: 'white', fontSize: 12, marginBottom: 4 }}>
-            verificationStatus: "{verificationStatus}"
-          </Text>
-          <Text style={{ color: 'white', fontSize: 12, marginBottom: 4 }}>
-            typeof: {typeof verificationStatus}
-          </Text>
-          <Text style={{ color: 'white', fontSize: 12, marginBottom: 4 }}>
-            === 'approved': {String(verificationStatus === 'approved')}
-          </Text>
-          <Text style={{ color: 'white', fontSize: 12, marginBottom: 4 }}>
-            user.id: {user?.id || 'null'}
-          </Text>
-          <Text style={{ color: 'white', fontSize: 10 }}>
-            Raw: {JSON.stringify(debugRawResponse, null, 2)}
-          </Text>
-        </View>
-
         {/* Profile Card */}
         <View style={styles.profileCard}>
           <Avatar
