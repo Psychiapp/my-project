@@ -1,4 +1,9 @@
-import React, { useState, useEffect } from 'react';
+/**
+ * Admin Dashboard - Supporter Detail View
+ * View supporter info, documents, W9 data, and manage verification
+ */
+
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,86 +12,119 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  Image,
+  TextInput,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
-import { Avatar } from '@/components/Avatar';
-import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
+import { PsychiColors, Shadows, Typography } from '@/constants/theme';
+import {
+  ChevronLeftIcon,
+  UserCircleIcon,
+  CheckCircleIcon,
+  ClockIcon,
+  AlertIcon,
+  FileTextIcon,
+  DocumentIcon,
+  MailIcon,
+  BookIcon,
+  CalendarIcon,
+} from '@/components/icons';
+import { getAdminSupporterDetail, updateVerificationStatus } from '@/lib/database';
 import { supabase } from '@/lib/supabase';
-import {
-  getAdminSupporterDetail,
-  getSupporterStats,
-  getPastSessions,
-  approveSupporter,
-  suspendUser,
-  reactivateUser,
-  updateVerificationStatus,
-} from '@/lib/database';
-import {
-  sendVerificationApprovedNotification,
-  sendVerificationRejectedNotification,
-} from '@/lib/notifications';
-import type { SupporterApplication, SessionWithDetails } from '@/types/database';
+import type { SupporterApplication, W9FormData } from '@/types/database';
 
-interface SupporterStats {
-  totalSessions: number;
-  totalEarnings: number;
-  upcomingCount: number;
-}
-
-export default function AdminSupporterDetailScreen() {
+export default function SupporterDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const [supporter, setSupporter] = useState<SupporterApplication | null>(null);
-  const [stats, setStats] = useState<SupporterStats | null>(null);
-  const [recentSessions, setRecentSessions] = useState<SessionWithDetails[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState(false);
-  const [verificationLoading, setVerificationLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [updating, setUpdating] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [showRejectionInput, setShowRejectionInput] = useState(false);
 
-  const loadSupporterData = async () => {
+  const loadSupporter = useCallback(async () => {
     if (!id) return;
-
     try {
-      const [supporterData, supporterStats, sessions] = await Promise.all([
-        getAdminSupporterDetail(id),
-        getSupporterStats(id),
-        getPastSessions(id, 'supporter', 5),
-      ]);
-
-      setSupporter(supporterData);
-      setStats(supporterStats);
-      setRecentSessions(sessions);
+      const data = await getAdminSupporterDetail(id);
+      setSupporter(data);
     } catch (error) {
-      console.error('Error loading supporter data:', error);
+      console.error('Error loading supporter:', error);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
-  };
+  }, [id]);
 
   useEffect(() => {
-    loadSupporterData();
-  }, [id]);
+    loadSupporter();
+  }, [loadSupporter]);
+
+  const handleViewDocument = async (documentUrl: string | null | undefined, docType: string) => {
+    if (!documentUrl) {
+      Alert.alert('No Document', `No ${docType} has been uploaded.`);
+      return;
+    }
+
+    if (!supabase) {
+      Alert.alert('Error', 'Database not configured');
+      return;
+    }
+
+    try {
+      // Generate signed URL from Supabase storage
+      const { data, error } = await supabase.storage
+        .from('verification-documents')
+        .createSignedUrl(documentUrl, 3600); // 1 hour expiry
+
+      if (error) {
+        console.error('Error generating signed URL:', error);
+        Alert.alert('Error', 'Failed to load document. Please try again.');
+        return;
+      }
+
+      if (data?.signedUrl) {
+        // Navigate to document viewer with signed URL
+        router.push({
+          pathname: '/document/[id]',
+          params: {
+            id: encodeURIComponent(documentUrl),
+            url: data.signedUrl,
+            title: docType,
+          },
+        });
+      }
+    } catch (error) {
+      console.error('Error viewing document:', error);
+      Alert.alert('Error', 'Failed to load document. Please try again.');
+    }
+  };
 
   const handleApprove = async () => {
     if (!supporter) return;
 
     Alert.alert(
       'Approve Supporter',
-      `Are you sure you want to approve ${supporter.full_name} as a supporter?`,
+      `Are you sure you want to approve ${supporter.full_name}? They will be able to start accepting clients.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Approve',
           onPress: async () => {
-            setActionLoading(true);
-            const success = await approveSupporter(supporter.id);
-            setActionLoading(false);
-            if (success) {
-              Alert.alert('Success', `${supporter.full_name} has been approved.`);
-              loadSupporterData();
-            } else {
-              Alert.alert('Error', 'Failed to approve supporter.');
+            setUpdating(true);
+            try {
+              const success = await updateVerificationStatus(supporter.id, 'approved');
+              if (success) {
+                Alert.alert('Success', 'Supporter has been approved.');
+                loadSupporter(); // Refresh data
+              } else {
+                Alert.alert('Error', 'Failed to approve supporter. Please try again.');
+              }
+            } catch (error) {
+              console.error('Error approving supporter:', error);
+              Alert.alert('Error', 'Failed to approve supporter. Please try again.');
+            } finally {
+              setUpdating(false);
             }
           },
         },
@@ -94,614 +132,370 @@ export default function AdminSupporterDetailScreen() {
     );
   };
 
-  const handleSuspend = async () => {
+  const handleReject = async () => {
     if (!supporter) return;
+
+    if (!showRejectionInput) {
+      setShowRejectionInput(true);
+      return;
+    }
+
+    if (!rejectionReason.trim()) {
+      Alert.alert('Rejection Reason Required', 'Please provide a reason for rejection.');
+      return;
+    }
 
     Alert.alert(
-      'Suspend Supporter',
-      `Are you sure you want to suspend ${supporter.full_name}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Suspend',
-          style: 'destructive',
-          onPress: async () => {
-            setActionLoading(true);
-            const success = await suspendUser(supporter.id);
-            setActionLoading(false);
-            if (success) {
-              Alert.alert('Success', `${supporter.full_name} has been suspended.`);
-              loadSupporterData();
-            } else {
-              Alert.alert('Error', 'Failed to suspend supporter.');
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  const handleReactivate = async () => {
-    if (!supporter) return;
-
-    Alert.alert(
-      'Reactivate Supporter',
-      `Are you sure you want to reactivate ${supporter.full_name}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Reactivate',
-          onPress: async () => {
-            setActionLoading(true);
-            const success = await reactivateUser(supporter.id);
-            setActionLoading(false);
-            if (success) {
-              Alert.alert('Success', `${supporter.full_name} has been reactivated.`);
-              loadSupporterData();
-            } else {
-              Alert.alert('Error', 'Failed to reactivate supporter.');
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  const handleApproveVerification = async () => {
-    if (!supporter) return;
-
-    Alert.alert(
-      'Approve Verification',
-      `Approve ${supporter.full_name}'s verification documents?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Approve',
-          onPress: async () => {
-            setVerificationLoading(true);
-            const success = await updateVerificationStatus(supporter.id, 'approved');
-
-            if (success) {
-              // Send push notification to supporter
-              const notifResult = await sendVerificationApprovedNotification(supporter.id);
-              console.log('Verification approved notification:', notifResult);
-
-              setVerificationLoading(false);
-              Alert.alert(
-                'Success',
-                `Verification approved.${notifResult.sent ? ' Notification sent to supporter.' : ''}`
-              );
-              loadSupporterData();
-            } else {
-              setVerificationLoading(false);
-              Alert.alert('Error', 'Failed to approve verification.');
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  const handleRejectVerification = async () => {
-    if (!supporter) return;
-
-    Alert.prompt(
-      'Reject Verification',
-      'Please provide a reason for rejection:',
+      'Reject Application',
+      `Are you sure you want to reject ${supporter.full_name}'s application?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Reject',
           style: 'destructive',
-          onPress: async (reason?: string) => {
-            setVerificationLoading(true);
-            const rejectionReason = reason || 'Documents did not meet requirements.';
-            const success = await updateVerificationStatus(
-              supporter.id,
-              'rejected',
-              rejectionReason
-            );
-
-            if (success) {
-              // Send push notification to supporter
-              const notifResult = await sendVerificationRejectedNotification(
-                supporter.id,
-                rejectionReason
-              );
-              console.log('Verification rejected notification:', notifResult);
-
-              setVerificationLoading(false);
-              Alert.alert(
-                'Success',
-                `Verification rejected.${notifResult.sent ? ' Notification sent to supporter.' : ''}`
-              );
-              loadSupporterData();
-            } else {
-              setVerificationLoading(false);
-              Alert.alert('Error', 'Failed to reject verification.');
+          onPress: async () => {
+            setUpdating(true);
+            try {
+              const success = await updateVerificationStatus(supporter.id, 'rejected', rejectionReason);
+              if (success) {
+                Alert.alert('Application Rejected', 'The supporter has been notified.');
+                setShowRejectionInput(false);
+                setRejectionReason('');
+                loadSupporter(); // Refresh data
+              } else {
+                Alert.alert('Error', 'Failed to reject application. Please try again.');
+              }
+            } catch (error) {
+              console.error('Error rejecting supporter:', error);
+              Alert.alert('Error', 'Failed to reject application. Please try again.');
+            } finally {
+              setUpdating(false);
             }
           },
         },
-      ],
-      'plain-text',
-      '',
-      'default'
+      ]
     );
   };
 
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
-  };
-
-  const formatDateTime = (dateStr: string) => {
-    return new Date(dateStr).toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-    });
-  };
-
-  const openDocument = async (url: string | null, documentType: string) => {
-    if (!url) {
-      Alert.alert('No Document', `No ${documentType} has been uploaded.`);
-      return;
-    }
-
-    if (!supabase) {
-      Alert.alert('Error', 'Storage not available.');
-      return;
-    }
-
-    try {
-      let filePath = url;
-      let signedUrl = url;
-
-      // If it's a full URL, extract the file path from it
-      // Old documents may have stored signed URLs which could be expired
-      if (url.startsWith('http://') || url.startsWith('https://')) {
-        // Try to extract path from signed URL
-        // Format: https://xxx.supabase.co/storage/v1/object/sign/verification-documents/transcripts/userId/timestamp.ext?token=...
-        const pathMatch = url.match(/verification-documents\/(.+?)(\?|$)/);
-        if (pathMatch) {
-          filePath = pathMatch[1];
-          console.log('Extracted file path from URL:', filePath);
-        } else {
-          // Can't extract path, use the URL directly
-          console.log('Could not extract path, using URL directly');
-          // Navigate to in-app document viewer
-          router.push({
-            pathname: '/document/[id]',
-            params: { id: 'remote', url: url, title: documentType },
-          });
-          return;
-        }
-      }
-
-      // Generate a fresh signed URL from the file path
-      console.log('Generating signed URL for path:', filePath);
-      const { data, error } = await supabase.storage
-        .from('verification-documents')
-        .createSignedUrl(filePath, 60 * 60); // 1 hour expiry
-
-      if (error || !data?.signedUrl) {
-        console.error('Error generating signed URL:', error);
-        Alert.alert('Error', `Failed to access ${documentType}. ${error?.message || 'Please try again.'}`);
-        return;
-      }
-
-      signedUrl = data.signedUrl;
-
-      // Navigate to in-app document viewer
-      router.push({
-        pathname: '/document/[id]',
-        params: { id: 'remote', url: signedUrl, title: documentType },
-      });
-    } catch (error) {
-      console.error('Error opening document:', error);
-      Alert.alert('Error', 'Failed to open document. Please try again.');
+  const getStatusBadge = () => {
+    const status = supporter?.verification_status || 'not_submitted';
+    switch (status) {
+      case 'approved':
+        return (
+          <View style={[styles.statusBadge, styles.approvedBadge]}>
+            <CheckCircleIcon size={14} color={PsychiColors.success} />
+            <Text style={styles.approvedText}>Approved</Text>
+          </View>
+        );
+      case 'rejected':
+        return (
+          <View style={[styles.statusBadge, styles.rejectedBadge]}>
+            <AlertIcon size={14} color={PsychiColors.error} />
+            <Text style={styles.rejectedText}>Rejected</Text>
+          </View>
+        );
+      case 'pending_review':
+        return (
+          <View style={[styles.statusBadge, styles.pendingBadge]}>
+            <ClockIcon size={14} color={PsychiColors.warning} />
+            <Text style={styles.pendingText}>Pending Review</Text>
+          </View>
+        );
+      default:
+        return (
+          <View style={[styles.statusBadge, styles.notSubmittedBadge]}>
+            <Text style={styles.notSubmittedText}>Not Submitted</Text>
+          </View>
+        );
     }
   };
 
-  if (isLoading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <Stack.Screen options={{ title: 'Loading...' }} />
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={PsychiColors.azure} />
-          <Text style={styles.loadingText}>Loading supporter details...</Text>
+  const renderW9Data = () => {
+    const w9 = supporter?.w9_data as W9FormData | null;
+    if (!w9) {
+      return (
+        <View style={styles.noDataCard}>
+          <Text style={styles.noDataText}>W-9 form not submitted</Text>
         </View>
-      </SafeAreaView>
+      );
+    }
+
+    return (
+      <View style={styles.w9Card}>
+        <View style={styles.w9Row}>
+          <Text style={styles.w9Label}>Legal Name</Text>
+          <Text style={styles.w9Value}>{w9.legal_name || '-'}</Text>
+        </View>
+        <View style={styles.w9Divider} />
+        <View style={styles.w9Row}>
+          <Text style={styles.w9Label}>Business Name</Text>
+          <Text style={styles.w9Value}>{w9.business_name || '-'}</Text>
+        </View>
+        <View style={styles.w9Divider} />
+        <View style={styles.w9Row}>
+          <Text style={styles.w9Label}>Tax Classification</Text>
+          <Text style={styles.w9Value}>{w9.tax_classification || '-'}</Text>
+        </View>
+        <View style={styles.w9Divider} />
+        <View style={styles.w9Row}>
+          <Text style={styles.w9Label}>Address</Text>
+          <Text style={styles.w9Value}>
+            {w9.address_line1 ? `${w9.address_line1}, ${w9.city || ''} ${w9.state || ''} ${w9.zip_code || ''}` : '-'}
+          </Text>
+        </View>
+        <View style={styles.w9Divider} />
+        <View style={styles.w9Row}>
+          <Text style={styles.w9Label}>SSN/EIN</Text>
+          <Text style={styles.w9Value}>
+            {w9.ssn_ein ? `***-**-${w9.ssn_ein.slice(-4)}` : '-'}
+          </Text>
+        </View>
+        <View style={styles.w9Divider} />
+        <View style={styles.w9Row}>
+          <Text style={styles.w9Label}>Submitted</Text>
+          <Text style={styles.w9Value}>
+            {w9.submitted_at ? new Date(w9.submitted_at).toLocaleDateString() : '-'}
+          </Text>
+        </View>
+      </View>
+    );
+  };
+
+  if (loading) {
+    return (
+      <>
+        <Stack.Screen options={{ headerShown: false }} />
+        <SafeAreaView style={styles.container}>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+              <ChevronLeftIcon size={24} color={PsychiColors.midnight} />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Supporter Details</Text>
+            <View style={styles.headerSpacer} />
+          </View>
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={PsychiColors.royalBlue} />
+          </View>
+        </SafeAreaView>
+      </>
     );
   }
 
   if (!supporter) {
     return (
-      <SafeAreaView style={styles.container}>
-        <Stack.Screen options={{ title: 'Not Found' }} />
-        <View style={styles.loadingContainer}>
-          <Text style={styles.errorText}>Supporter not found</Text>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Text style={styles.backButtonText}>Go Back</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
+      <>
+        <Stack.Screen options={{ headerShown: false }} />
+        <SafeAreaView style={styles.container}>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+              <ChevronLeftIcon size={24} color={PsychiColors.midnight} />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Supporter Details</Text>
+            <View style={styles.headerSpacer} />
+          </View>
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>Supporter not found</Text>
+            <TouchableOpacity style={styles.backLink} onPress={() => router.back()}>
+              <Text style={styles.backLinkText}>Go back</Text>
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </>
     );
   }
 
-  const isPending = !supporter.is_verified;
+  const needsReview = supporter.verification_status === 'pending_review';
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Stack.Screen options={{ title: 'Supporter Details' }} />
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Header Card */}
-        <View style={styles.headerCard}>
-          <Avatar
-            imageUrl={supporter.avatar_url}
-            name={supporter.full_name}
-            size={80}
-            colors={[PsychiColors.azure, PsychiColors.deep]}
-          />
-          <Text style={styles.supporterName}>{supporter.full_name}</Text>
-          <Text style={styles.supporterEmail}>{supporter.email}</Text>
-
-          {/* Status Badge */}
-          <View style={[
-            styles.statusBadge,
-            isPending ? styles.pendingBadge : styles.verifiedBadge
-          ]}>
-            <Text style={[
-              styles.statusBadgeText,
-              isPending ? styles.pendingText : styles.verifiedText
-            ]}>
-              {isPending ? 'Pending Verification' : 'Verified'}
-            </Text>
-          </View>
-
-          {/* Action Buttons */}
-          <View style={styles.actionButtons}>
-            {actionLoading ? (
-              <ActivityIndicator size="small" color={PsychiColors.azure} />
-            ) : (
-              <>
-                {isPending && (
-                  <TouchableOpacity style={styles.approveButton} onPress={handleApprove}>
-                    <Text style={styles.approveButtonText}>Approve</Text>
-                  </TouchableOpacity>
-                )}
-                {!isPending && (
-                  <TouchableOpacity style={styles.suspendButton} onPress={handleSuspend}>
-                    <Text style={styles.suspendButtonText}>Suspend</Text>
-                  </TouchableOpacity>
-                )}
-              </>
-            )}
-          </View>
+    <>
+      <Stack.Screen options={{ headerShown: false }} />
+      <SafeAreaView style={styles.container}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <ChevronLeftIcon size={24} color={PsychiColors.midnight} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Supporter Details</Text>
+          <View style={styles.headerSpacer} />
         </View>
 
-        {/* Stats Card */}
-        {stats && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Performance</Text>
-            <View style={styles.statsCard}>
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>{stats.totalSessions}</Text>
-                <Text style={styles.statLabel}>Sessions</Text>
-              </View>
-              <View style={styles.statDivider} />
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>{stats.upcomingCount}</Text>
-                <Text style={styles.statLabel}>Upcoming</Text>
-              </View>
-              <View style={styles.statDivider} />
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>${stats.totalEarnings}</Text>
-                <Text style={styles.statLabel}>Earned</Text>
-              </View>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Profile Card */}
+          <View style={styles.profileCard}>
+            <View style={styles.avatarContainer}>
+              {supporter.avatar_url ? (
+                <Image source={{ uri: supporter.avatar_url }} style={styles.avatar} />
+              ) : (
+                <UserCircleIcon size={80} color={PsychiColors.textMuted} />
+              )}
             </View>
+            <Text style={styles.name}>{supporter.full_name}</Text>
+            <TouchableOpacity onPress={() => Linking.openURL(`mailto:${supporter.email}`)}>
+              <Text style={styles.email}>{supporter.email}</Text>
+            </TouchableOpacity>
+            <View style={styles.statusContainer}>{getStatusBadge()}</View>
           </View>
-        )}
 
-        {/* Training Status */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Training Status</Text>
+          {/* Education Info */}
+          <Text style={styles.sectionTitle}>Education</Text>
           <View style={styles.infoCard}>
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Training Complete</Text>
-              <View style={[
-                styles.trainingBadge,
-                supporter.training_complete ? styles.trainingCompleteBadge : styles.trainingInProgressBadge
-              ]}>
-                <Text style={[
-                  styles.trainingBadgeText,
-                  supporter.training_complete ? styles.trainingCompleteText : styles.trainingInProgressText
-                ]}>
-                  {supporter.training_complete ? 'Complete' : 'In Progress'}
-                </Text>
+              <BookIcon size={18} color={PsychiColors.textMuted} />
+              <View style={styles.infoContent}>
+                <Text style={styles.infoLabel}>School</Text>
+                <Text style={styles.infoValue}>{supporter.school_name || '-'}</Text>
               </View>
             </View>
-            {supporter.training_completed_at && (
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Completed On</Text>
-                <Text style={styles.infoValue}>{formatDate(supporter.training_completed_at)}</Text>
-              </View>
-            )}
+            <View style={styles.infoDivider} />
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Joined</Text>
-              <Text style={styles.infoValue}>{formatDate(supporter.created_at)}</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* W-9 Tax Information */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>W-9 Tax Information</Text>
-          <View style={styles.infoCard}>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>W-9 Status</Text>
-              <View style={[
-                styles.trainingBadge,
-                supporter.w9_completed ? styles.trainingCompleteBadge : styles.trainingInProgressBadge
-              ]}>
-                <Text style={[
-                  styles.trainingBadgeText,
-                  supporter.w9_completed ? styles.trainingCompleteText : styles.trainingInProgressText
-                ]}>
-                  {supporter.w9_completed ? 'Complete' : 'Pending'}
-                </Text>
-              </View>
-            </View>
-            {supporter.w9_completed_at && (
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Submitted On</Text>
-                <Text style={styles.infoValue}>{formatDate(supporter.w9_completed_at)}</Text>
-              </View>
-            )}
-            {supporter.w9_data && (
-              <>
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Legal Name</Text>
-                  <Text style={styles.infoValue}>{supporter.w9_data.legal_name || 'N/A'}</Text>
-                </View>
-                {supporter.w9_data.business_name && (
-                  <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>Business Name</Text>
-                    <Text style={styles.infoValue}>{supporter.w9_data.business_name}</Text>
-                  </View>
-                )}
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Tax Classification</Text>
-                  <Text style={styles.infoValue}>
-                    {supporter.w9_data.tax_classification === 'individual' ? 'Individual/Sole Proprietor' :
-                     supporter.w9_data.tax_classification === 'llc_single' ? 'Single-member LLC' :
-                     supporter.w9_data.tax_classification === 'llc_c' ? 'LLC (C Corp)' :
-                     supporter.w9_data.tax_classification === 'llc_s' ? 'LLC (S Corp)' :
-                     supporter.w9_data.tax_classification === 'llc_p' ? 'LLC (Partnership)' :
-                     supporter.w9_data.tax_classification || 'N/A'}
-                  </Text>
-                </View>
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Address</Text>
-                  <Text style={styles.infoValue}>
-                    {supporter.w9_data.address_line1 || supporter.w9_data.city
-                      ? [
-                          supporter.w9_data.address_line1,
-                          supporter.w9_data.address_line2,
-                          supporter.w9_data.city && supporter.w9_data.state
-                            ? `${supporter.w9_data.city}, ${supporter.w9_data.state} ${supporter.w9_data.zip_code || ''}`
-                            : null
-                        ].filter(Boolean).join('\n')
-                      : 'N/A'}
-                  </Text>
-                </View>
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>SSN/EIN</Text>
-                  <Text style={styles.infoValue}>
-                    {supporter.w9_data.ssn_ein
-                      ? `***-**-${supporter.w9_data.ssn_ein.slice(-4)}`
-                      : 'N/A'}
-                  </Text>
-                </View>
-              </>
-            )}
-          </View>
-        </View>
-
-        {/* Document Verification */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Document Verification</Text>
-          <View style={styles.infoCard}>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Verification Status</Text>
-              <View style={[
-                styles.trainingBadge,
-                supporter.verification_status === 'approved' ? styles.trainingCompleteBadge :
-                supporter.verification_status === 'pending_review' ? styles.trainingInProgressBadge :
-                supporter.verification_status === 'rejected' ? styles.rejectedBadge :
-                styles.trainingInProgressBadge
-              ]}>
-                <Text style={[
-                  styles.trainingBadgeText,
-                  supporter.verification_status === 'approved' ? styles.trainingCompleteText :
-                  supporter.verification_status === 'rejected' ? styles.rejectedText :
-                  styles.trainingInProgressText
-                ]}>
-                  {supporter.verification_status === 'approved' ? 'Approved' :
-                   supporter.verification_status === 'pending_review' ? 'Pending Review' :
-                   supporter.verification_status === 'rejected' ? 'Rejected' :
-                   'Not Submitted'}
-                </Text>
-              </View>
-            </View>
-
-            {supporter.transcript_url && (
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Transcript</Text>
-                <TouchableOpacity
-                  onPress={() => openDocument(supporter.transcript_url ?? null, 'transcript')}
-                >
-                  <Text style={[styles.infoValue, { color: PsychiColors.azure }]}>View Document</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-
-            {supporter.id_document_url && (
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>ID Document</Text>
-                <TouchableOpacity
-                  onPress={() => openDocument(supporter.id_document_url ?? null, 'ID document')}
-                >
-                  <Text style={[styles.infoValue, { color: PsychiColors.azure }]}>View Document</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-
-            {supporter.verification_submitted_at && (
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Submitted On</Text>
-                <Text style={styles.infoValue}>{formatDate(supporter.verification_submitted_at)}</Text>
-              </View>
-            )}
-
-            {supporter.verification_rejection_reason && (
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Rejection Reason</Text>
-                <Text style={[styles.infoValue, { color: PsychiColors.error }]}>
-                  {supporter.verification_rejection_reason}
-                </Text>
-              </View>
-            )}
-
-            {/* Verification Action Buttons */}
-            {supporter.verification_status === 'pending_review' && (
-              <View style={styles.verificationActions}>
-                {verificationLoading ? (
-                  <ActivityIndicator size="small" color={PsychiColors.azure} />
-                ) : (
-                  <>
-                    <TouchableOpacity
-                      style={styles.verifyApproveButton}
-                      onPress={handleApproveVerification}
-                    >
-                      <Text style={styles.verifyApproveText}>Approve</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.verifyRejectButton}
-                      onPress={handleRejectVerification}
-                    >
-                      <Text style={styles.verifyRejectText}>Reject</Text>
-                    </TouchableOpacity>
-                  </>
-                )}
-              </View>
-            )}
-          </View>
-        </View>
-
-        {/* Profile Information */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Profile Information</Text>
-          <View style={styles.infoCard}>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>School</Text>
-              <Text style={styles.infoValue}>{supporter.school_name || supporter.education || 'Not provided'}</Text>
-            </View>
-            {supporter.major && (
-              <View style={styles.infoRow}>
+              <BookIcon size={18} color={PsychiColors.textMuted} />
+              <View style={styles.infoContent}>
                 <Text style={styles.infoLabel}>Major</Text>
-                <Text style={styles.infoValue}>{supporter.major}</Text>
+                <Text style={styles.infoValue}>{supporter.major || '-'}</Text>
               </View>
-            )}
-            {(supporter.years_attending != null && supporter.years_attending > 0) && (
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Years Attending</Text>
-                <Text style={styles.infoValue}>{supporter.years_attending} years</Text>
-              </View>
-            )}
-            {supporter.expected_graduation && (
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Expected Graduation</Text>
-                <Text style={styles.infoValue}>{supporter.expected_graduation}</Text>
-              </View>
-            )}
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Support Experience</Text>
-              <Text style={styles.infoValue}>{supporter.years_experience} years</Text>
             </View>
+            <View style={styles.infoDivider} />
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Languages</Text>
-              <Text style={styles.infoValue}>{supporter.languages.join(', ')}</Text>
+              <CalendarIcon size={18} color={PsychiColors.textMuted} />
+              <View style={styles.infoContent}>
+                <Text style={styles.infoLabel}>Expected Graduation</Text>
+                <Text style={styles.infoValue}>{supporter.expected_graduation || '-'}</Text>
+              </View>
             </View>
           </View>
 
-          {supporter.specialties.length > 0 && (
-            <View style={styles.specialtiesSection}>
-              <Text style={styles.infoLabel}>Specialties</Text>
-              <View style={styles.specialtiesList}>
+          {/* Verification Documents */}
+          <Text style={styles.sectionTitle}>Verification Documents</Text>
+          <View style={styles.documentsCard}>
+            <TouchableOpacity
+              style={styles.documentRow}
+              onPress={() => handleViewDocument(supporter.transcript_url, 'Transcript')}
+            >
+              <View style={styles.documentIcon}>
+                <FileTextIcon size={24} color={supporter.transcript_url ? PsychiColors.royalBlue : PsychiColors.textMuted} />
+              </View>
+              <View style={styles.documentInfo}>
+                <Text style={styles.documentLabel}>Academic Transcript</Text>
+                <Text style={styles.documentStatus}>
+                  {supporter.transcript_url ? 'Uploaded - Tap to view' : 'Not uploaded'}
+                </Text>
+              </View>
+            </TouchableOpacity>
+            <View style={styles.documentDivider} />
+            <TouchableOpacity
+              style={styles.documentRow}
+              onPress={() => handleViewDocument(supporter.id_document_url, 'ID Document')}
+            >
+              <View style={styles.documentIcon}>
+                <DocumentIcon size={24} color={supporter.id_document_url ? PsychiColors.royalBlue : PsychiColors.textMuted} />
+              </View>
+              <View style={styles.documentInfo}>
+                <Text style={styles.documentLabel}>ID Document</Text>
+                <Text style={styles.documentStatus}>
+                  {supporter.id_document_url ? 'Uploaded - Tap to view' : 'Not uploaded'}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+
+          {/* W-9 Form Data */}
+          <Text style={styles.sectionTitle}>W-9 Tax Information</Text>
+          {renderW9Data()}
+
+          {/* Bio */}
+          {supporter.bio && (
+            <>
+              <Text style={styles.sectionTitle}>Bio</Text>
+              <View style={styles.bioCard}>
+                <Text style={styles.bioText}>{supporter.bio}</Text>
+              </View>
+            </>
+          )}
+
+          {/* Specialties */}
+          {supporter.specialties && supporter.specialties.length > 0 && (
+            <>
+              <Text style={styles.sectionTitle}>Specialties</Text>
+              <View style={styles.specialtiesContainer}>
                 {supporter.specialties.map((specialty, index) => (
-                  <View key={index} style={styles.specialtyTag}>
+                  <View key={index} style={styles.specialtyBadge}>
                     <Text style={styles.specialtyText}>{specialty}</Text>
                   </View>
                 ))}
               </View>
-            </View>
+            </>
           )}
 
-          {supporter.bio && (
-            <View style={styles.bioSection}>
-              <Text style={styles.infoLabel}>Bio</Text>
-              <Text style={styles.bioText}>{supporter.bio}</Text>
-            </View>
+          {/* Rejection Reason (if rejected) */}
+          {supporter.verification_status === 'rejected' && supporter.verification_rejection_reason && (
+            <>
+              <Text style={styles.sectionTitle}>Rejection Reason</Text>
+              <View style={styles.rejectionCard}>
+                <Text style={styles.rejectionText}>{supporter.verification_rejection_reason}</Text>
+              </View>
+            </>
           )}
-        </View>
 
-        {/* Recent Sessions */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Recent Sessions</Text>
-          {recentSessions.length > 0 ? (
-            <View style={styles.sessionsCard}>
-              {recentSessions.map((session, index) => (
-                <View
-                  key={session.id}
-                  style={[
-                    styles.sessionItem,
-                    index < recentSessions.length - 1 && styles.sessionItemBorder
-                  ]}
+          {/* Action Buttons (only show for pending review) */}
+          {needsReview && (
+            <View style={styles.actionContainer}>
+              {showRejectionInput && (
+                <TextInput
+                  style={styles.rejectionInput}
+                  placeholder="Enter rejection reason..."
+                  placeholderTextColor={PsychiColors.textMuted}
+                  value={rejectionReason}
+                  onChangeText={setRejectionReason}
+                  multiline
+                  numberOfLines={3}
+                />
+              )}
+              <View style={styles.actionButtons}>
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.rejectButton]}
+                  onPress={handleReject}
+                  disabled={updating}
                 >
-                  <View style={styles.sessionInfo}>
-                    <Text style={styles.sessionClient}>
-                      {(session.client as any)?.full_name || 'Client'}
+                  {updating ? (
+                    <ActivityIndicator size="small" color={PsychiColors.white} />
+                  ) : (
+                    <Text style={styles.rejectButtonText}>
+                      {showRejectionInput ? 'Confirm Rejection' : 'Reject'}
                     </Text>
-                    <Text style={styles.sessionDate}>{formatDateTime(session.scheduled_at)}</Text>
-                  </View>
-                  <View style={styles.sessionMeta}>
-                    <Text style={styles.sessionType}>{session.session_type}</Text>
-                    <View style={[
-                      styles.sessionStatusBadge,
-                      session.status === 'completed' && styles.sessionCompletedBadge,
-                      session.status === 'cancelled' && styles.sessionCancelledBadge,
-                    ]}>
-                      <Text style={styles.sessionStatusText}>{session.status}</Text>
-                    </View>
-                  </View>
-                </View>
-              ))}
-            </View>
-          ) : (
-            <View style={styles.emptyCard}>
-              <Text style={styles.emptyText}>No sessions yet</Text>
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.approveButton]}
+                  onPress={handleApprove}
+                  disabled={updating}
+                >
+                  {updating ? (
+                    <ActivityIndicator size="small" color={PsychiColors.white} />
+                  ) : (
+                    <Text style={styles.approveButtonText}>Approve</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+              {showRejectionInput && (
+                <TouchableOpacity
+                  style={styles.cancelButton}
+                  onPress={() => {
+                    setShowRejectionInput(false);
+                    setRejectionReason('');
+                  }}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+              )}
             </View>
           )}
-        </View>
-
-        <View style={{ height: 32 }} />
-      </ScrollView>
-    </SafeAreaView>
+        </ScrollView>
+      </SafeAreaView>
+    </>
   );
 }
 
@@ -710,326 +504,333 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: PsychiColors.cream,
   },
-  scrollView: {
-    flex: 1,
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: PsychiColors.white,
+    borderBottomWidth: 1,
+    borderBottomColor: PsychiColors.divider,
+  },
+  backButton: {
+    padding: 8,
+  },
+  headerTitle: {
+    fontSize: Typography.fontSize.lg,
+    fontWeight: Typography.fontWeight.semibold,
+    color: PsychiColors.midnight,
+  },
+  headerSpacer: {
+    width: 40,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  loadingText: {
-    marginTop: Spacing.md,
-    fontSize: 16,
-    color: PsychiColors.textSecondary,
-  },
-  errorText: {
-    fontSize: 18,
-    color: PsychiColors.textSecondary,
-    marginBottom: Spacing.md,
-  },
-  backButton: {
-    backgroundColor: PsychiColors.azure,
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.md,
-  },
-  backButtonText: {
-    color: PsychiColors.white,
-    fontWeight: '600',
-  },
-  headerCard: {
-    backgroundColor: PsychiColors.white,
-    margin: Spacing.lg,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.lg,
-    alignItems: 'center',
-    ...Shadows.medium,
-  },
-  avatarGradient: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+  errorContainer: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: Spacing.md,
   },
-  avatarText: {
-    fontSize: 32,
-    fontWeight: '600',
-    color: PsychiColors.white,
+  errorText: {
+    fontSize: Typography.fontSize.lg,
+    color: PsychiColors.textSecondary,
+    marginBottom: 16,
   },
-  supporterName: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#2A2A2A',
-    marginBottom: 4,
+  backLink: {
+    padding: 12,
   },
-  supporterEmail: {
-    fontSize: 14,
-    color: PsychiColors.textMuted,
-    marginBottom: Spacing.md,
+  backLinkText: {
+    fontSize: Typography.fontSize.base,
+    color: PsychiColors.royalBlue,
+    fontWeight: Typography.fontWeight.medium,
   },
-  statusBadge: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs,
-    borderRadius: BorderRadius.full,
-    marginBottom: Spacing.md,
+  scrollView: {
+    flex: 1,
   },
-  pendingBadge: {
-    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 48,
   },
-  verifiedBadge: {
-    backgroundColor: 'rgba(34, 197, 94, 0.1)',
-  },
-  statusBadgeText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  pendingText: {
-    color: '#F59E0B',
-  },
-  verifiedText: {
-    color: PsychiColors.success,
-  },
-  actionButtons: {
-    flexDirection: 'row',
-    gap: Spacing.sm,
-  },
-  approveButton: {
-    backgroundColor: PsychiColors.success,
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.md,
-  },
-  approveButtonText: {
-    color: PsychiColors.white,
-    fontWeight: '600',
-    fontSize: 15,
-  },
-  suspendButton: {
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.md,
-  },
-  suspendButtonText: {
-    color: PsychiColors.error,
-    fontWeight: '600',
-    fontSize: 15,
-  },
-  section: {
-    paddingHorizontal: Spacing.lg,
-    marginBottom: Spacing.lg,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#2A2A2A',
-    marginBottom: Spacing.sm,
-    fontFamily: 'Georgia',
-  },
-  statsCard: {
+  profileCard: {
     backgroundColor: PsychiColors.white,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
-    flexDirection: 'row',
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
     ...Shadows.soft,
   },
-  statItem: {
-    flex: 1,
+  avatarContainer: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: PsychiColors.frost,
+    justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
+    marginBottom: 16,
   },
-  statValue: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: PsychiColors.azure,
+  avatar: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
   },
-  statLabel: {
-    fontSize: 13,
-    color: PsychiColors.textMuted,
+  name: {
+    fontSize: Typography.fontSize.xl,
+    fontWeight: Typography.fontWeight.bold,
+    color: PsychiColors.midnight,
+    marginBottom: 4,
+  },
+  email: {
+    fontSize: Typography.fontSize.base,
+    color: PsychiColors.royalBlue,
+    marginBottom: 12,
+  },
+  statusContainer: {
     marginTop: 4,
   },
-  statDivider: {
-    width: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.1)',
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 6,
+  },
+  approvedBadge: {
+    backgroundColor: PsychiColors.successMuted,
+  },
+  approvedText: {
+    fontSize: Typography.fontSize.sm,
+    color: PsychiColors.success,
+    fontWeight: Typography.fontWeight.medium,
+  },
+  rejectedBadge: {
+    backgroundColor: PsychiColors.errorMuted,
+  },
+  rejectedText: {
+    fontSize: Typography.fontSize.sm,
+    color: PsychiColors.error,
+    fontWeight: Typography.fontWeight.medium,
+  },
+  pendingBadge: {
+    backgroundColor: PsychiColors.warningMuted,
+  },
+  pendingText: {
+    fontSize: Typography.fontSize.sm,
+    color: PsychiColors.warning,
+    fontWeight: Typography.fontWeight.medium,
+  },
+  notSubmittedBadge: {
+    backgroundColor: PsychiColors.frost,
+  },
+  notSubmittedText: {
+    fontSize: Typography.fontSize.sm,
+    color: PsychiColors.textMuted,
+  },
+  sectionTitle: {
+    fontSize: Typography.fontSize.base,
+    fontWeight: Typography.fontWeight.semibold,
+    color: PsychiColors.midnight,
+    marginTop: 24,
+    marginBottom: 12,
   },
   infoCard: {
     backgroundColor: PsychiColors.white,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
+    borderRadius: 12,
+    padding: 16,
     ...Shadows.soft,
   },
   infoRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: Spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 0, 0, 0.05)',
+    paddingVertical: 8,
+  },
+  infoContent: {
+    marginLeft: 12,
+    flex: 1,
   },
   infoLabel: {
-    fontSize: 14,
+    fontSize: Typography.fontSize.xs,
     color: PsychiColors.textMuted,
+    marginBottom: 2,
   },
   infoValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#2A2A2A',
+    fontSize: Typography.fontSize.base,
+    color: PsychiColors.textPrimary,
   },
-  trainingBadge: {
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 4,
-    borderRadius: BorderRadius.full,
+  infoDivider: {
+    height: 1,
+    backgroundColor: PsychiColors.divider,
+    marginVertical: 4,
   },
-  trainingCompleteBadge: {
-    backgroundColor: 'rgba(34, 197, 94, 0.1)',
-  },
-  trainingInProgressBadge: {
-    backgroundColor: 'rgba(245, 158, 11, 0.1)',
-  },
-  trainingBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  trainingCompleteText: {
-    color: PsychiColors.success,
-  },
-  trainingInProgressText: {
-    color: '#F59E0B',
-  },
-  specialtiesSection: {
-    marginTop: Spacing.md,
-  },
-  specialtiesList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.xs,
-    marginTop: Spacing.sm,
-  },
-  specialtyTag: {
-    backgroundColor: 'rgba(74, 144, 226, 0.1)',
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 4,
-    borderRadius: BorderRadius.full,
-  },
-  specialtyText: {
-    fontSize: 13,
-    color: PsychiColors.azure,
-    fontWeight: '500',
-  },
-  bioSection: {
-    marginTop: Spacing.md,
-  },
-  bioText: {
-    fontSize: 14,
-    color: '#2A2A2A',
-    lineHeight: 22,
-    marginTop: Spacing.sm,
-  },
-  sessionsCard: {
+  documentsCard: {
     backgroundColor: PsychiColors.white,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
+    borderRadius: 12,
+    padding: 16,
     ...Shadows.soft,
   },
-  sessionItem: {
+  documentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  documentIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: PsychiColors.frost,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  documentInfo: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  documentLabel: {
+    fontSize: Typography.fontSize.base,
+    fontWeight: Typography.fontWeight.medium,
+    color: PsychiColors.midnight,
+    marginBottom: 2,
+  },
+  documentStatus: {
+    fontSize: Typography.fontSize.sm,
+    color: PsychiColors.textMuted,
+  },
+  documentDivider: {
+    height: 1,
+    backgroundColor: PsychiColors.divider,
+  },
+  w9Card: {
+    backgroundColor: PsychiColors.white,
+    borderRadius: 12,
+    padding: 16,
+    ...Shadows.soft,
+  },
+  w9Row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: Spacing.sm,
+    paddingVertical: 10,
   },
-  sessionItemBorder: {
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 0, 0, 0.05)',
+  w9Label: {
+    fontSize: Typography.fontSize.sm,
+    color: PsychiColors.textMuted,
   },
-  sessionInfo: {
+  w9Value: {
+    fontSize: Typography.fontSize.sm,
+    color: PsychiColors.textPrimary,
+    fontWeight: Typography.fontWeight.medium,
+    textAlign: 'right',
     flex: 1,
+    marginLeft: 16,
   },
-  sessionClient: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#2A2A2A',
+  w9Divider: {
+    height: 1,
+    backgroundColor: PsychiColors.divider,
   },
-  sessionDate: {
-    fontSize: 12,
-    color: PsychiColors.textMuted,
-    marginTop: 2,
-  },
-  sessionMeta: {
-    alignItems: 'flex-end',
-  },
-  sessionType: {
-    fontSize: 12,
-    color: PsychiColors.textMuted,
-    textTransform: 'capitalize',
-  },
-  sessionStatusBadge: {
-    paddingHorizontal: Spacing.xs,
-    paddingVertical: 2,
-    borderRadius: 4,
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
-    marginTop: 4,
-  },
-  sessionCompletedBadge: {
-    backgroundColor: 'rgba(34, 197, 94, 0.1)',
-  },
-  sessionCancelledBadge: {
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-  },
-  sessionStatusText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: PsychiColors.textMuted,
-    textTransform: 'capitalize',
-  },
-  emptyCard: {
-    backgroundColor: PsychiColors.white,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.lg,
+  noDataCard: {
+    backgroundColor: PsychiColors.frost,
+    borderRadius: 12,
+    padding: 24,
     alignItems: 'center',
+  },
+  noDataText: {
+    fontSize: Typography.fontSize.sm,
+    color: PsychiColors.textMuted,
+  },
+  bioCard: {
+    backgroundColor: PsychiColors.white,
+    borderRadius: 12,
+    padding: 16,
     ...Shadows.soft,
   },
-  emptyText: {
-    fontSize: 14,
-    color: PsychiColors.textMuted,
+  bioText: {
+    fontSize: Typography.fontSize.base,
+    color: PsychiColors.textPrimary,
+    lineHeight: 22,
   },
-  rejectedBadge: {
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-  },
-  rejectedText: {
-    color: PsychiColors.error,
-  },
-  verificationActions: {
+  specialtiesContainer: {
     flexDirection: 'row',
-    gap: Spacing.sm,
-    marginTop: Spacing.md,
-    paddingTop: Spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(0, 0, 0, 0.05)',
+    flexWrap: 'wrap',
+    gap: 8,
   },
-  verifyApproveButton: {
-    flex: 1,
-    backgroundColor: PsychiColors.success,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.md,
-    alignItems: 'center',
+  specialtyBadge: {
+    backgroundColor: `${PsychiColors.royalBlue}15`,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
   },
-  verifyApproveText: {
-    color: PsychiColors.white,
-    fontWeight: '600',
-    fontSize: 14,
+  specialtyText: {
+    fontSize: Typography.fontSize.sm,
+    color: PsychiColors.royalBlue,
+    fontWeight: Typography.fontWeight.medium,
   },
-  verifyRejectButton: {
-    flex: 1,
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.md,
-    alignItems: 'center',
+  rejectionCard: {
+    backgroundColor: PsychiColors.errorMuted,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: `${PsychiColors.error}30`,
   },
-  verifyRejectText: {
+  rejectionText: {
+    fontSize: Typography.fontSize.sm,
     color: PsychiColors.error,
-    fontWeight: '600',
-    fontSize: 14,
+  },
+  actionContainer: {
+    marginTop: 32,
+    paddingTop: 24,
+    borderTopWidth: 1,
+    borderTopColor: PsychiColors.divider,
+  },
+  rejectionInput: {
+    backgroundColor: PsychiColors.white,
+    borderRadius: 12,
+    padding: 16,
+    fontSize: Typography.fontSize.base,
+    color: PsychiColors.textPrimary,
+    borderWidth: 1,
+    borderColor: PsychiColors.borderMedium,
+    minHeight: 80,
+    textAlignVertical: 'top',
+    marginBottom: 16,
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  actionButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rejectButton: {
+    backgroundColor: PsychiColors.error,
+  },
+  rejectButtonText: {
+    fontSize: Typography.fontSize.base,
+    fontWeight: Typography.fontWeight.semibold,
+    color: PsychiColors.white,
+  },
+  approveButton: {
+    backgroundColor: PsychiColors.success,
+  },
+  approveButtonText: {
+    fontSize: Typography.fontSize.base,
+    fontWeight: Typography.fontWeight.semibold,
+    color: PsychiColors.white,
+  },
+  cancelButton: {
+    alignItems: 'center',
+    paddingVertical: 12,
+    marginTop: 8,
+  },
+  cancelButtonText: {
+    fontSize: Typography.fontSize.sm,
+    color: PsychiColors.textMuted,
   },
 });

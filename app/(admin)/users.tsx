@@ -1,387 +1,231 @@
-import React, { useState, useEffect } from 'react';
+/**
+ * Admin Dashboard - Users Tab
+ * User management with Clients/Supporters sub-tabs
+ */
+
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
+  FlatList,
   TouchableOpacity,
-  TextInput,
-  Alert,
-  ActivityIndicator,
   RefreshControl,
+  ActivityIndicator,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
-import { CheckIcon, CloseIcon, TrashIcon, DocumentIcon } from '@/components/icons';
-import { Avatar } from '@/components/Avatar';
-import { getAllUsers, approveSupporter, deleteUser } from '@/lib/database';
-import { useAuth } from '@/contexts/AuthContext';
-import {
-  sendVerificationApprovedNotification,
-  sendVerificationRejectedNotification,
-} from '@/lib/notifications';
-import type { AdminUserListing } from '@/types/database';
+import { PsychiColors, Shadows, Typography } from '@/constants/theme';
+import { UserCircleIcon, CheckCircleIcon, ClockIcon, AlertIcon, ChevronRightIcon } from '@/components/icons';
+import { getAllUsers, getPendingSupporters } from '@/lib/database';
+import type { AdminUserListing, SupporterApplication } from '@/types/database';
 
-type UserFilter = 'all' | 'clients' | 'supporters' | 'pending';
+type TabType = 'clients' | 'supporters' | 'pending';
 
-export default function AdminUsers() {
+export default function AdminUsersScreen() {
   const router = useRouter();
-  const { isDemoMode } = useAuth();
-  const [filter, setFilter] = useState<UserFilter>('all');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState<TabType>('supporters');
   const [users, setUsers] = useState<AdminUserListing[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [pendingSupporters, setPendingSupporters] = useState<SupporterApplication[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const fetchUsers = async (showRefresh = false) => {
-    if (showRefresh) {
-      setIsRefreshing(true);
-    } else {
-      setIsLoading(true);
-    }
-
+  const loadUsers = useCallback(async () => {
     try {
-      if (isDemoMode) {
-        // Demo data
-        setUsers([
-          {
-            id: 'demo-client-1',
-            email: 'john.doe@example.com',
-            full_name: 'John Doe',
-            role: 'client',
-            created_at: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-            is_verified: true,
-            training_complete: false,
-            total_sessions_completed: 12,
-          },
-          {
-            id: 'demo-client-2',
-            email: 'jane.smith@example.com',
-            full_name: 'Jane Smith',
-            role: 'client',
-            created_at: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
-            is_verified: true,
-            training_complete: false,
-            total_sessions_completed: 5,
-          },
-          {
-            id: 'demo-supporter-1',
-            email: 'sarah.supporter@example.com',
-            full_name: 'Sarah Thompson',
-            role: 'supporter',
-            created_at: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(),
-            is_verified: true,
-            training_complete: true,
-            total_sessions_completed: 45,
-          },
-          {
-            id: 'demo-supporter-2',
-            email: 'mike.supporter@example.com',
-            full_name: 'Michael Chen',
-            role: 'supporter',
-            created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-            is_verified: false,
-            training_complete: true,
-            total_sessions_completed: 0,
-          },
-        ]);
+      if (activeTab === 'pending') {
+        const data = await getPendingSupporters();
+        // Filter to only show pending verification
+        const pending = data.filter(s => s.verification_status === 'pending_review');
+        setPendingSupporters(pending);
       } else {
+        const filter = activeTab === 'clients' ? 'clients' : 'supporters';
         const data = await getAllUsers(filter);
         setUsers(data);
       }
     } catch (error) {
-      console.error('Error fetching users:', error);
-      Alert.alert('Error', 'Failed to load users');
+      console.error('Error loading users:', error);
     } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
+      setLoading(false);
+      setRefreshing(false);
     }
-  };
+  }, [activeTab]);
 
   useEffect(() => {
-    fetchUsers();
-  }, [filter, isDemoMode]);
+    setLoading(true);
+    loadUsers();
+  }, [loadUsers, activeTab]);
 
-  const filteredUsers = users.filter(user => {
-    if (!searchQuery) return true;
-    const query = searchQuery.toLowerCase();
-    return (
-      user.full_name.toLowerCase().includes(query) ||
-      user.email.toLowerCase().includes(query)
-    );
-  });
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    loadUsers();
+  }, [loadUsers]);
 
-  const stats = {
-    total: users.length,
-    clients: users.filter(u => u.role === 'client').length,
-    supporters: users.filter(u => u.role === 'supporter').length,
-    pending: users.filter(u => u.role === 'supporter' && !u.is_verified).length,
-  };
-
-  const handleViewSupporter = (user: AdminUserListing) => {
-    router.push(`/(admin)/supporter/${user.id}` as any);
-  };
-
-  const handleApprove = async (user: AdminUserListing) => {
-    if (isDemoMode) {
-      Alert.alert('Demo Mode', 'Cannot approve users in demo mode');
+  const handleUserPress = (userId: string) => {
+    if (activeTab === 'clients') {
+      // Could navigate to client detail if needed
       return;
     }
-
-    Alert.alert(
-      'Approve Supporter',
-      `Approve ${user.full_name} as a verified supporter?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Approve',
-          onPress: async () => {
-            const success = await approveSupporter(user.id);
-            if (success) {
-              await sendVerificationApprovedNotification(user.id);
-              Alert.alert('Success', `${user.full_name} has been approved`);
-              fetchUsers();
-            } else {
-              Alert.alert('Error', 'Failed to approve supporter');
-            }
-          },
-        },
-      ]
-    );
+    // Navigate to supporter detail view
+    router.push(`/(admin)/supporter/${userId}`);
   };
 
-  const handleReject = async (user: AdminUserListing) => {
-    if (isDemoMode) {
-      Alert.alert('Demo Mode', 'Cannot reject users in demo mode');
-      return;
-    }
-
-    Alert.alert(
-      'Reject Application',
-      `Reject ${user.full_name}'s supporter application? They will be notified.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Reject',
-          style: 'destructive',
-          onPress: async () => {
-            await sendVerificationRejectedNotification(user.id, 'Application did not meet requirements');
-            Alert.alert('Rejected', `${user.full_name}'s application has been rejected`);
-            fetchUsers();
-          },
-        },
-      ]
-    );
+  const handlePendingPress = (supporterId: string) => {
+    router.push(`/(admin)/supporter/${supporterId}`);
   };
 
-  const handleDelete = async (user: AdminUserListing) => {
-    if (isDemoMode) {
-      Alert.alert('Demo Mode', 'Cannot delete users in demo mode');
-      return;
-    }
+  const renderUserItem = ({ item }: { item: AdminUserListing }) => (
+    <TouchableOpacity
+      style={styles.userCard}
+      onPress={() => handleUserPress(item.id)}
+      activeOpacity={0.7}
+    >
+      <View style={styles.userAvatar}>
+        {item.avatar_url ? (
+          <Image source={{ uri: item.avatar_url }} style={styles.avatarImage} />
+        ) : (
+          <UserCircleIcon size={40} color={PsychiColors.textMuted} />
+        )}
+      </View>
+      <View style={styles.userInfo}>
+        <Text style={styles.userName}>{item.full_name}</Text>
+        <Text style={styles.userEmail}>{item.email}</Text>
+        {activeTab === 'supporters' && (
+          <View style={styles.statusRow}>
+            {item.is_verified ? (
+              <View style={[styles.statusBadge, styles.verifiedBadge]}>
+                <CheckCircleIcon size={12} color={PsychiColors.success} />
+                <Text style={styles.verifiedText}>Verified</Text>
+              </View>
+            ) : (
+              <View style={[styles.statusBadge, styles.pendingBadge]}>
+                <ClockIcon size={12} color={PsychiColors.warning} />
+                <Text style={styles.pendingText}>Pending</Text>
+              </View>
+            )}
+            {item.total_sessions !== undefined && item.total_sessions > 0 && (
+              <Text style={styles.sessionsText}>{item.total_sessions} sessions</Text>
+            )}
+          </View>
+        )}
+      </View>
+      {activeTab === 'supporters' && (
+        <ChevronRightIcon size={20} color={PsychiColors.textMuted} />
+      )}
+    </TouchableOpacity>
+  );
 
-    Alert.alert(
-      'Delete Account',
-      `Permanently delete ${user.full_name}'s account? This cannot be undone.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            const result = await deleteUser(user.id);
-            if (result.success) {
-              Alert.alert('Deleted', `${user.full_name}'s account has been deleted`);
-              fetchUsers();
-            } else {
-              Alert.alert('Error', result.error || 'Failed to delete account');
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
-  };
-
-  if (isLoading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={PsychiColors.azure} />
+  const renderPendingItem = ({ item }: { item: SupporterApplication }) => (
+    <TouchableOpacity
+      style={styles.userCard}
+      onPress={() => handlePendingPress(item.id)}
+      activeOpacity={0.7}
+    >
+      <View style={styles.userAvatar}>
+        {item.avatar_url ? (
+          <Image source={{ uri: item.avatar_url }} style={styles.avatarImage} />
+        ) : (
+          <UserCircleIcon size={40} color={PsychiColors.textMuted} />
+        )}
+      </View>
+      <View style={styles.userInfo}>
+        <Text style={styles.userName}>{item.full_name}</Text>
+        <Text style={styles.userEmail}>{item.email}</Text>
+        <View style={styles.statusRow}>
+          <View style={[styles.statusBadge, styles.reviewBadge]}>
+            <AlertIcon size={12} color={PsychiColors.coral} />
+            <Text style={styles.reviewText}>Needs Review</Text>
+          </View>
+          {item.verification_submitted_at && (
+            <Text style={styles.submittedText}>
+              Submitted {new Date(item.verification_submitted_at).toLocaleDateString()}
+            </Text>
+          )}
         </View>
-      </SafeAreaView>
-    );
-  }
+      </View>
+      <ChevronRightIcon size={20} color={PsychiColors.textMuted} />
+    </TouchableOpacity>
+  );
+
+  const renderEmptyState = () => (
+    <View style={styles.emptyState}>
+      <UserCircleIcon size={48} color={PsychiColors.textMuted} />
+      <Text style={styles.emptyTitle}>
+        {activeTab === 'pending' ? 'No pending applications' : `No ${activeTab} found`}
+      </Text>
+      <Text style={styles.emptySubtitle}>
+        {activeTab === 'pending'
+          ? 'All supporter applications have been reviewed'
+          : `${activeTab === 'clients' ? 'Clients' : 'Supporters'} will appear here`}
+      </Text>
+    </View>
+  );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={() => fetchUsers(true)}
-            tintColor={PsychiColors.azure}
-          />
-        }
-      >
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Users</Text>
-          <Text style={styles.headerSubtitle}>{stats.total} total</Text>
-        </View>
-
-        {/* Search */}
-        <View style={styles.searchContainer}>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search by name or email..."
-            placeholderTextColor={PsychiColors.textMuted}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-        </View>
-
-        {/* Filters */}
-        <View style={styles.filterContainer}>
-          {[
-            { key: 'all', label: 'All', count: stats.total },
-            { key: 'clients', label: 'Clients', count: stats.clients },
-            { key: 'supporters', label: 'Supporters', count: stats.supporters },
-            { key: 'pending', label: 'Pending', count: stats.pending },
-          ].map((f) => (
-            <TouchableOpacity
-              key={f.key}
-              style={[styles.filterButton, filter === f.key && styles.filterButtonActive]}
-              onPress={() => setFilter(f.key as UserFilter)}
-            >
-              <Text style={[styles.filterText, filter === f.key && styles.filterTextActive]}>
-                {f.label}
-              </Text>
-              {f.count > 0 && (
-                <View style={[styles.filterBadge, filter === f.key && styles.filterBadgeActive]}>
-                  <Text style={[styles.filterBadgeText, filter === f.key && styles.filterBadgeTextActive]}>
-                    {f.count}
-                  </Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* User List */}
-        {filteredUsers.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>
-              {searchQuery ? 'No users match your search' : 'No users found'}
-            </Text>
-          </View>
-        ) : (
-          filteredUsers.map((user) => (
-            <View key={user.id} style={styles.userCard}>
-              {/* User Header */}
-              <View style={styles.userHeader}>
-                <Avatar
-                  imageUrl={user.avatar_url}
-                  name={user.full_name}
-                  size={48}
-                  colors={user.role === 'supporter' ? [PsychiColors.coral, PsychiColors.coral] : [PsychiColors.azure, PsychiColors.azure]}
-                />
-                <View style={styles.userInfo}>
-                  <View style={styles.nameRow}>
-                    <Text style={styles.userName}>{user.full_name}</Text>
-                    <View style={[styles.roleBadge, user.role === 'supporter' && styles.roleBadgeSupporter]}>
-                      <Text style={[styles.roleBadgeText, user.role === 'supporter' && styles.roleBadgeTextSupporter]}>
-                        {user.role}
-                      </Text>
-                    </View>
-                  </View>
-                  <Text style={styles.userEmail}>{user.email}</Text>
-                </View>
-              </View>
-
-              {/* User Stats */}
-              <View style={styles.userStats}>
-                <View style={styles.stat}>
-                  <Text style={styles.statLabel}>Joined</Text>
-                  <Text style={styles.statValue}>{formatDate(user.created_at)}</Text>
-                </View>
-                {user.role === 'supporter' ? (
-                  <>
-                    <View style={styles.stat}>
-                      <Text style={styles.statLabel}>Status</Text>
-                      <Text style={[styles.statValue, { color: user.is_verified ? PsychiColors.success : '#F59E0B' }]}>
-                        {user.is_verified ? 'Verified' : 'Pending'}
-                      </Text>
-                    </View>
-                    <View style={styles.stat}>
-                      <Text style={styles.statLabel}>Training</Text>
-                      <Text style={[styles.statValue, { color: user.training_complete ? PsychiColors.success : '#F59E0B' }]}>
-                        {user.training_complete ? 'Complete' : 'Incomplete'}
-                      </Text>
-                    </View>
-                  </>
-                ) : (
-                  <View style={styles.stat}>
-                    <Text style={styles.statLabel}>Sessions</Text>
-                    <Text style={styles.statValue}>{user.total_sessions_completed || 0}</Text>
-                  </View>
-                )}
-              </View>
-
-              {/* Actions */}
-              <View style={styles.actions}>
-                {user.role === 'supporter' && (
-                  <TouchableOpacity
-                    style={styles.actionButton}
-                    onPress={() => handleViewSupporter(user)}
-                  >
-                    <DocumentIcon size={16} color={PsychiColors.azure} />
-                    <Text style={styles.actionButtonText}>View Docs</Text>
-                  </TouchableOpacity>
-                )}
-
-                {user.role === 'supporter' && !user.is_verified && (
-                  <>
-                    <TouchableOpacity
-                      style={[styles.actionButton, styles.actionButtonApprove]}
-                      onPress={() => handleApprove(user)}
-                    >
-                      <CheckIcon size={16} color={PsychiColors.success} />
-                      <Text style={[styles.actionButtonText, { color: PsychiColors.success }]}>Approve</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={[styles.actionButton, styles.actionButtonReject]}
-                      onPress={() => handleReject(user)}
-                    >
-                      <CloseIcon size={16} color={PsychiColors.error} />
-                      <Text style={[styles.actionButtonText, { color: PsychiColors.error }]}>Reject</Text>
-                    </TouchableOpacity>
-                  </>
-                )}
-
-                <TouchableOpacity
-                  style={[styles.actionButton, styles.actionButtonDelete]}
-                  onPress={() => handleDelete(user)}
-                >
-                  <TrashIcon size={16} color={PsychiColors.error} />
-                </TouchableOpacity>
-              </View>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
+      {/* Sub-tabs */}
+      <View style={styles.tabContainer}>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'supporters' && styles.activeTab]}
+          onPress={() => setActiveTab('supporters')}
+        >
+          <Text style={[styles.tabText, activeTab === 'supporters' && styles.activeTabText]}>
+            Supporters
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'clients' && styles.activeTab]}
+          onPress={() => setActiveTab('clients')}
+        >
+          <Text style={[styles.tabText, activeTab === 'clients' && styles.activeTabText]}>
+            Clients
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'pending' && styles.activeTab]}
+          onPress={() => setActiveTab('pending')}
+        >
+          <Text style={[styles.tabText, activeTab === 'pending' && styles.activeTabText]}>
+            Pending
+          </Text>
+          {pendingSupporters.length > 0 && activeTab !== 'pending' && (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{pendingSupporters.length}</Text>
             </View>
-          ))
-        )}
-      </ScrollView>
+          )}
+        </TouchableOpacity>
+      </View>
+
+      {/* User List */}
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={PsychiColors.royalBlue} />
+        </View>
+      ) : activeTab === 'pending' ? (
+        <FlatList
+          data={pendingSupporters}
+          keyExtractor={(item) => item.id}
+          renderItem={renderPendingItem}
+          contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+          ListEmptyComponent={renderEmptyState}
+          showsVerticalScrollIndicator={false}
+        />
+      ) : (
+        <FlatList
+          data={users}
+          keyExtractor={(item) => item.id}
+          renderItem={renderUserItem}
+          contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+          ListEmptyComponent={renderEmptyState}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -391,217 +235,158 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: PsychiColors.cream,
   },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: 32,
-  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  header: {
+  tabContainer: {
     flexDirection: 'row',
-    alignItems: 'baseline',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.md,
-    paddingBottom: Spacing.sm,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#2A2A2A',
-    fontFamily: 'Georgia',
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: PsychiColors.textMuted,
-  },
-  searchContainer: {
-    paddingHorizontal: Spacing.lg,
-    marginBottom: Spacing.sm,
-  },
-  searchInput: {
     backgroundColor: PsychiColors.white,
-    borderRadius: BorderRadius.md,
-    padding: Spacing.md,
-    fontSize: 15,
-    color: '#2A2A2A',
-    ...Shadows.soft,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: PsychiColors.divider,
   },
-  filterContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: Spacing.lg,
-    marginBottom: Spacing.md,
-    gap: Spacing.xs,
-  },
-  filterButton: {
+  tab: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: PsychiColors.white,
-    borderRadius: BorderRadius.md,
-    paddingVertical: Spacing.sm,
-    gap: 4,
-    ...Shadows.soft,
-  },
-  filterButtonActive: {
-    backgroundColor: PsychiColors.deep,
-  },
-  filterText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: PsychiColors.textSecondary,
-  },
-  filterTextActive: {
-    color: PsychiColors.white,
-  },
-  filterBadge: {
-    backgroundColor: 'rgba(0, 0, 0, 0.08)',
+    paddingVertical: 10,
     borderRadius: 8,
-    paddingHorizontal: 5,
-    paddingVertical: 1,
   },
-  filterBadgeActive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  activeTab: {
+    backgroundColor: `${PsychiColors.royalBlue}15`,
   },
-  filterBadgeText: {
-    fontSize: 10,
-    fontWeight: '600',
+  tabText: {
+    fontSize: Typography.fontSize.sm,
+    fontWeight: Typography.fontWeight.medium,
     color: PsychiColors.textMuted,
   },
-  filterBadgeTextActive: {
-    color: PsychiColors.white,
+  activeTabText: {
+    color: PsychiColors.royalBlue,
+    fontWeight: Typography.fontWeight.semibold,
   },
-  emptyState: {
-    padding: Spacing.xl,
-    alignItems: 'center',
-  },
-  emptyText: {
-    fontSize: 14,
-    color: PsychiColors.textMuted,
-  },
-  userCard: {
-    backgroundColor: PsychiColors.white,
-    marginHorizontal: Spacing.lg,
-    marginBottom: Spacing.sm,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
-    ...Shadows.soft,
-  },
-  userHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: Spacing.md,
-  },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: PsychiColors.azure,
+  badge: {
+    backgroundColor: PsychiColors.coral,
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: Spacing.md,
+    marginLeft: 6,
   },
-  avatarSupporter: {
-    backgroundColor: PsychiColors.coral,
-  },
-  avatarText: {
-    fontSize: 18,
-    fontWeight: '600',
+  badgeText: {
     color: PsychiColors.white,
+    fontSize: 11,
+    fontWeight: Typography.fontWeight.semibold,
+  },
+  listContent: {
+    padding: 16,
+    paddingBottom: 32,
+    flexGrow: 1,
+  },
+  userCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: PsychiColors.white,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    ...Shadows.soft,
+  },
+  userAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: PsychiColors.frost,
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
   },
   userInfo: {
     flex: 1,
-  },
-  nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
+    marginLeft: 12,
   },
   userName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#2A2A2A',
+    fontSize: Typography.fontSize.base,
+    fontWeight: Typography.fontWeight.semibold,
+    color: PsychiColors.midnight,
+    marginBottom: 2,
   },
   userEmail: {
-    fontSize: 13,
+    fontSize: Typography.fontSize.sm,
     color: PsychiColors.textMuted,
-    marginTop: 2,
+    marginBottom: 6,
   },
-  roleBadge: {
-    backgroundColor: 'rgba(74, 144, 226, 0.1)',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: BorderRadius.full,
-  },
-  roleBadgeSupporter: {
-    backgroundColor: 'rgba(251, 146, 60, 0.1)',
-  },
-  roleBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: PsychiColors.azure,
-    textTransform: 'capitalize',
-  },
-  roleBadgeTextSupporter: {
-    color: PsychiColors.coral,
-  },
-  userStats: {
-    flexDirection: 'row',
-    paddingTop: Spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(0, 0, 0, 0.05)',
-    marginBottom: Spacing.md,
-  },
-  stat: {
-    flex: 1,
-  },
-  statLabel: {
-    fontSize: 11,
-    color: PsychiColors.textMuted,
-  },
-  statValue: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#2A2A2A',
-    marginTop: 2,
-  },
-  actions: {
-    flexDirection: 'row',
-    gap: Spacing.xs,
-    paddingTop: Spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(0, 0, 0, 0.05)',
-  },
-  actionButton: {
+  statusRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.md,
-    borderRadius: BorderRadius.md,
-    backgroundColor: 'rgba(74, 144, 226, 0.1)',
+    gap: 8,
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
     gap: 4,
   },
-  actionButtonApprove: {
-    backgroundColor: 'rgba(52, 199, 89, 0.1)',
+  verifiedBadge: {
+    backgroundColor: PsychiColors.successMuted,
   },
-  actionButtonReject: {
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+  verifiedText: {
+    fontSize: Typography.fontSize.xs,
+    color: PsychiColors.success,
+    fontWeight: Typography.fontWeight.medium,
   },
-  actionButtonDelete: {
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    marginLeft: 'auto',
-    paddingHorizontal: Spacing.sm,
+  pendingBadge: {
+    backgroundColor: PsychiColors.warningMuted,
   },
-  actionButtonText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: PsychiColors.azure,
+  pendingText: {
+    fontSize: Typography.fontSize.xs,
+    color: PsychiColors.warning,
+    fontWeight: Typography.fontWeight.medium,
+  },
+  reviewBadge: {
+    backgroundColor: `${PsychiColors.coral}15`,
+  },
+  reviewText: {
+    fontSize: Typography.fontSize.xs,
+    color: PsychiColors.coral,
+    fontWeight: Typography.fontWeight.medium,
+  },
+  sessionsText: {
+    fontSize: Typography.fontSize.xs,
+    color: PsychiColors.textMuted,
+  },
+  submittedText: {
+    fontSize: Typography.fontSize.xs,
+    color: PsychiColors.textMuted,
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 48,
+  },
+  emptyTitle: {
+    fontSize: Typography.fontSize.lg,
+    fontWeight: Typography.fontWeight.semibold,
+    color: PsychiColors.textSecondary,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontSize: Typography.fontSize.sm,
+    color: PsychiColors.textMuted,
+    textAlign: 'center',
+    paddingHorizontal: 32,
   },
 });

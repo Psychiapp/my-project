@@ -1,249 +1,271 @@
-import React, { useState, useEffect } from 'react';
+/**
+ * Admin Dashboard - Revenue Tab
+ * Revenue analytics and payout tracking
+ */
+
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
-  ActivityIndicator,
   RefreshControl,
-  Alert,
+  ActivityIndicator,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
-import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
-import { DollarIcon } from '@/components/icons';
-import { getAdminStats } from '@/lib/database';
-import { useAuth } from '@/contexts/AuthContext';
-import { Config } from '@/constants/config';
-import type { AdminStats } from '@/types/database';
+import { PsychiColors, Shadows, Typography } from '@/constants/theme';
+import { DollarIcon, ChartIcon, UsersIcon, ArrowUpIcon, ArrowDownIcon } from '@/components/icons';
+import { getRevenueReports, getAdminStats } from '@/lib/database';
+import type { RevenueReport, AdminStats } from '@/types/database';
 
-// Stripe fee: 2.9% + $0.30 per transaction
-const STRIPE_PERCENTAGE = 0.029;
-const STRIPE_FIXED_FEE = 0.30;
+const { width } = Dimensions.get('window');
 
-export default function AdminRevenue() {
-  const { isDemoMode } = useAuth();
+interface RevenueCardProps {
+  title: string;
+  value: string;
+  subtitle?: string;
+  icon: React.ReactNode;
+  color?: string;
+  trend?: 'up' | 'down' | 'neutral';
+  trendValue?: string;
+}
+
+function RevenueCard({
+  title,
+  value,
+  subtitle,
+  icon,
+  color = PsychiColors.royalBlue,
+  trend,
+  trendValue,
+}: RevenueCardProps) {
+  return (
+    <View style={styles.revenueCard}>
+      <View style={styles.cardHeader}>
+        <View style={[styles.iconContainer, { backgroundColor: `${color}15` }]}>
+          {icon}
+        </View>
+        {trend && trendValue && (
+          <View style={[styles.trendBadge, trend === 'up' ? styles.trendUp : styles.trendDown]}>
+            {trend === 'up' ? (
+              <ArrowUpIcon size={12} color={PsychiColors.success} />
+            ) : (
+              <ArrowDownIcon size={12} color={PsychiColors.error} />
+            )}
+            <Text style={[styles.trendText, trend === 'up' ? styles.trendTextUp : styles.trendTextDown]}>
+              {trendValue}
+            </Text>
+          </View>
+        )}
+      </View>
+      <Text style={styles.cardValue}>{value}</Text>
+      <Text style={styles.cardTitle}>{title}</Text>
+      {subtitle && <Text style={styles.cardSubtitle}>{subtitle}</Text>}
+    </View>
+  );
+}
+
+export default function AdminRevenueScreen() {
+  const [reports, setReports] = useState<RevenueReport[]>([]);
   const [stats, setStats] = useState<AdminStats | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const fetchData = async (showRefresh = false) => {
-    if (showRefresh) {
-      setIsRefreshing(true);
-    } else {
-      setIsLoading(true);
-    }
-
+  const loadData = useCallback(async () => {
     try {
-      if (isDemoMode) {
-        setStats({
-          totalUsers: 156,
-          totalClients: 142,
-          totalSupporters: 14,
-          activeSupporters: 12,
-          pendingSupporters: 2,
-          totalSessions: 847,
-          activeSessions: 3,
-          completedSessions: 820,
-          totalRevenue: 28450,
-          monthlyRevenue: 4250,
-        });
-      } else {
-        const adminStats = await getAdminStats();
-        setStats(adminStats);
-      }
+      const [revenueData, statsData] = await Promise.all([
+        getRevenueReports('monthly'),
+        getAdminStats(),
+      ]);
+      setReports(revenueData);
+      setStats(statsData);
     } catch (error) {
-      console.error('Error fetching revenue data:', error);
+      console.error('Error loading revenue data:', error);
     } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
+      setLoading(false);
+      setRefreshing(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchData();
-  }, [isDemoMode]);
+    loadData();
+  }, [loadData]);
 
-  // Calculate revenue distribution
-  const totalRevenue = stats?.totalRevenue || 0;
-  const completedSessions = stats?.completedSessions || 0;
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    loadData();
+  }, [loadData]);
 
-  // Estimate Stripe fees (2.9% + $0.30 per transaction)
-  const stripeFees = (totalRevenue * STRIPE_PERCENTAGE) + (completedSessions * STRIPE_FIXED_FEE);
-  const revenueAfterStripe = totalRevenue - stripeFees;
-
-  // Distribution after Stripe fees
-  const psychiShare = revenueAfterStripe * Config.platformCommission;
-  const supportersShare = revenueAfterStripe * Config.supporterCommission;
-
-  const handleRequestPayout = () => {
-    if (psychiShare < 100) {
-      Alert.alert(
-        'Minimum Not Met',
-        'Minimum payout amount is $100. Current Psychi balance: $' + psychiShare.toFixed(2)
-      );
-      return;
-    }
-
-    Alert.alert(
-      'Request Payout',
-      `Request payout of $${psychiShare.toFixed(2)} to Psychi's account?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Request Payout',
-          onPress: () => {
-            Alert.alert('Success', 'Payout request submitted. Funds will arrive in 2-3 business days.');
-          },
-        },
-      ]
-    );
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
   };
 
-  if (isLoading) {
+  // Calculate totals from reports
+  const totalRevenue = reports.reduce((sum, r) => sum + r.total_revenue, 0);
+  const totalPayouts = reports.reduce((sum, r) => sum + r.supporter_payouts, 0);
+  const netRevenue = reports.reduce((sum, r) => sum + r.net_revenue, 0);
+  const subscriptionRevenue = reports.reduce((sum, r) => sum + r.subscription_revenue, 0);
+  const sessionRevenue = reports.reduce((sum, r) => sum + r.session_revenue, 0);
+
+  // Calculate current month vs previous month for trends
+  const currentMonth = reports[0];
+  const previousMonth = reports[1];
+  const revenueTrend = currentMonth && previousMonth && previousMonth.total_revenue > 0
+    ? ((currentMonth.total_revenue - previousMonth.total_revenue) / previousMonth.total_revenue) * 100
+    : 0;
+
+  if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['bottom']}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={PsychiColors.azure} />
+          <ActivityIndicator size="large" color={PsychiColors.royalBlue} />
+          <Text style={styles.loadingText}>Loading revenue data...</Text>
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
       <ScrollView
         style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
         refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={() => fetchData(true)}
-            tintColor={PsychiColors.azure}
-          />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
+        showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Revenue</Text>
-          {isDemoMode && (
-            <View style={styles.demoBadge}>
-              <Text style={styles.demoBadgeText}>Demo</Text>
-            </View>
-          )}
+        {/* Summary Cards */}
+        <Text style={styles.sectionTitle}>Revenue Summary</Text>
+        <View style={styles.summaryGrid}>
+          <RevenueCard
+            title="Total Revenue"
+            value={formatCurrency(stats?.totalRevenue || 0)}
+            subtitle="All time"
+            icon={<DollarIcon size={24} color={PsychiColors.success} />}
+            color={PsychiColors.success}
+          />
+          <RevenueCard
+            title="This Month"
+            value={formatCurrency(stats?.monthlyRevenue || 0)}
+            icon={<ChartIcon size={24} color={PsychiColors.royalBlue} />}
+            color={PsychiColors.royalBlue}
+            trend={revenueTrend > 0 ? 'up' : revenueTrend < 0 ? 'down' : undefined}
+            trendValue={revenueTrend !== 0 ? `${Math.abs(revenueTrend).toFixed(0)}%` : undefined}
+          />
         </View>
 
-        {/* Total Revenue Card */}
-        <View style={styles.totalCard}>
-          <LinearGradient
-            colors={[PsychiColors.deep, PsychiColors.azure]}
-            style={styles.totalGradient}
-          >
-            <Text style={styles.totalLabel}>Total Revenue</Text>
-            <Text style={styles.totalAmount}>
-              ${totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        {/* Revenue Breakdown */}
+        <Text style={styles.sectionTitle}>Revenue Breakdown (Last 6 Months)</Text>
+        <View style={styles.breakdownCard}>
+          <View style={styles.breakdownRow}>
+            <View style={styles.breakdownLabel}>
+              <View style={[styles.breakdownDot, { backgroundColor: PsychiColors.royalBlue }]} />
+              <Text style={styles.breakdownText}>Subscription Revenue</Text>
+            </View>
+            <Text style={styles.breakdownValue}>{formatCurrency(subscriptionRevenue)}</Text>
+          </View>
+          <View style={styles.breakdownDivider} />
+          <View style={styles.breakdownRow}>
+            <View style={styles.breakdownLabel}>
+              <View style={[styles.breakdownDot, { backgroundColor: PsychiColors.coral }]} />
+              <Text style={styles.breakdownText}>Session Revenue</Text>
+            </View>
+            <Text style={styles.breakdownValue}>{formatCurrency(sessionRevenue)}</Text>
+          </View>
+          <View style={styles.breakdownDivider} />
+          <View style={styles.breakdownRow}>
+            <View style={styles.breakdownLabel}>
+              <View style={[styles.breakdownDot, { backgroundColor: PsychiColors.warning }]} />
+              <Text style={styles.breakdownText}>Supporter Payouts</Text>
+            </View>
+            <Text style={[styles.breakdownValue, { color: PsychiColors.warning }]}>
+              -{formatCurrency(totalPayouts)}
             </Text>
-            <Text style={styles.totalSessions}>
-              from {completedSessions} completed sessions
-            </Text>
-          </LinearGradient>
-        </View>
-
-        {/* Revenue Distribution */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Revenue Distribution</Text>
-          <View style={styles.distributionCard}>
-            {/* Gross Revenue */}
-            <View style={styles.distRow}>
-              <Text style={styles.distLabel}>Gross Revenue</Text>
-              <Text style={styles.distValue}>${totalRevenue.toFixed(2)}</Text>
+          </View>
+          <View style={styles.breakdownDivider} />
+          <View style={[styles.breakdownRow, styles.breakdownTotal]}>
+            <View style={styles.breakdownLabel}>
+              <View style={[styles.breakdownDot, { backgroundColor: PsychiColors.success }]} />
+              <Text style={[styles.breakdownText, styles.totalText]}>Net Revenue</Text>
             </View>
-
-            <View style={styles.distDivider} />
-
-            {/* Stripe Fees */}
-            <View style={styles.distRow}>
-              <View>
-                <Text style={styles.distLabel}>Stripe Fees</Text>
-                <Text style={styles.distSub}>2.9% + $0.30/transaction</Text>
-              </View>
-              <Text style={[styles.distValue, { color: PsychiColors.error }]}>
-                -${stripeFees.toFixed(2)}
-              </Text>
-            </View>
-
-            <View style={styles.distDivider} />
-
-            {/* Net Revenue */}
-            <View style={styles.distRow}>
-              <Text style={[styles.distLabel, { fontWeight: '600' }]}>Net Revenue</Text>
-              <Text style={[styles.distValue, { fontWeight: '700' }]}>${revenueAfterStripe.toFixed(2)}</Text>
-            </View>
-
-            <View style={styles.distSpacer} />
-
-            {/* Psychi Share */}
-            <View style={styles.distRow}>
-              <View>
-                <Text style={styles.distLabel}>Psychi ({(Config.platformCommission * 100).toFixed(0)}%)</Text>
-                <Text style={styles.distSub}>Platform commission</Text>
-              </View>
-              <Text style={[styles.distValue, { color: PsychiColors.success }]}>
-                ${psychiShare.toFixed(2)}
-              </Text>
-            </View>
-
-            <View style={styles.distDivider} />
-
-            {/* Supporters Share */}
-            <View style={styles.distRow}>
-              <View>
-                <Text style={styles.distLabel}>Supporters ({(Config.supporterCommission * 100).toFixed(0)}%)</Text>
-                <Text style={styles.distSub}>Paid to supporters</Text>
-              </View>
-              <Text style={[styles.distValue, { color: PsychiColors.coral }]}>
-                ${supportersShare.toFixed(2)}
-              </Text>
-            </View>
+            <Text style={[styles.breakdownValue, styles.totalValue]}>{formatCurrency(netRevenue)}</Text>
           </View>
         </View>
 
-        {/* Psychi Payout */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Psychi Payout</Text>
-          <View style={styles.payoutCard}>
-            <View style={styles.payoutBalance}>
-              <Text style={styles.payoutLabel}>Available Balance</Text>
-              <Text style={styles.payoutAmount}>${psychiShare.toFixed(2)}</Text>
-            </View>
-            <TouchableOpacity
-              style={[styles.payoutButton, psychiShare < 100 && styles.payoutButtonDisabled]}
-              onPress={handleRequestPayout}
-            >
-              <DollarIcon size={18} color={PsychiColors.white} />
-              <Text style={styles.payoutButtonText}>Request Payout</Text>
-            </TouchableOpacity>
-            <Text style={styles.payoutNote}>Minimum payout: $100</Text>
+        {/* Monthly Breakdown */}
+        <Text style={styles.sectionTitle}>Monthly Breakdown</Text>
+        {reports.length > 0 ? (
+          <View style={styles.monthlyList}>
+            {reports.map((report, index) => (
+              <View key={report.period} style={styles.monthlyCard}>
+                <View style={styles.monthlyHeader}>
+                  <Text style={styles.monthlyPeriod}>{report.period}</Text>
+                  <Text style={styles.monthlyRevenue}>{formatCurrency(report.total_revenue)}</Text>
+                </View>
+                <View style={styles.monthlyDetails}>
+                  <View style={styles.monthlyDetail}>
+                    <Text style={styles.monthlyDetailLabel}>Subscriptions</Text>
+                    <Text style={styles.monthlyDetailValue}>{formatCurrency(report.subscription_revenue)}</Text>
+                  </View>
+                  <View style={styles.monthlyDetail}>
+                    <Text style={styles.monthlyDetailLabel}>Sessions</Text>
+                    <Text style={styles.monthlyDetailValue}>{formatCurrency(report.session_revenue)}</Text>
+                  </View>
+                  <View style={styles.monthlyDetail}>
+                    <Text style={styles.monthlyDetailLabel}>Payouts</Text>
+                    <Text style={[styles.monthlyDetailValue, { color: PsychiColors.warning }]}>
+                      -{formatCurrency(report.supporter_payouts)}
+                    </Text>
+                  </View>
+                  <View style={styles.monthlyDetail}>
+                    <Text style={styles.monthlyDetailLabel}>Net</Text>
+                    <Text style={[styles.monthlyDetailValue, { color: PsychiColors.success, fontWeight: '600' }]}>
+                      {formatCurrency(report.net_revenue)}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.monthlyFooter}>
+                  <Text style={styles.monthlyTransactions}>{report.transaction_count} transactions</Text>
+                </View>
+              </View>
+            ))}
           </View>
-        </View>
+        ) : (
+          <View style={styles.emptyState}>
+            <ChartIcon size={48} color={PsychiColors.textMuted} />
+            <Text style={styles.emptyTitle}>No revenue data</Text>
+            <Text style={styles.emptySubtitle}>Revenue data will appear here once transactions are recorded</Text>
+          </View>
+        )}
 
-        {/* Monthly Revenue */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>This Month</Text>
-          <View style={styles.monthCard}>
-            <View style={styles.monthRow}>
-              <Text style={styles.monthLabel}>Monthly Revenue</Text>
-              <Text style={styles.monthValue}>${(stats?.monthlyRevenue || 0).toFixed(2)}</Text>
-            </View>
-            <View style={styles.monthDivider} />
-            <View style={styles.monthRow}>
-              <Text style={styles.monthLabel}>Psychi's Share</Text>
-              <Text style={[styles.monthValue, { color: PsychiColors.success }]}>
-                ${((stats?.monthlyRevenue || 0) * Config.platformCommission * (1 - STRIPE_PERCENTAGE)).toFixed(2)}
-              </Text>
-            </View>
+        {/* Platform Stats */}
+        <Text style={styles.sectionTitle}>Platform Stats</Text>
+        <View style={styles.statsCard}>
+          <View style={styles.statRow}>
+            <Text style={styles.statLabel}>Total Sessions</Text>
+            <Text style={styles.statValue}>{stats?.totalSessions || 0}</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statRow}>
+            <Text style={styles.statLabel}>Completed Sessions</Text>
+            <Text style={styles.statValue}>{stats?.completedSessions || 0}</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statRow}>
+            <Text style={styles.statLabel}>Active Supporters</Text>
+            <Text style={styles.statValue}>{stats?.activeSupporters || 0}</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statRow}>
+            <Text style={styles.statLabel}>Total Clients</Text>
+            <Text style={styles.statValue}>{stats?.totalClients || 0}</Text>
           </View>
         </View>
       </ScrollView>
@@ -256,181 +278,241 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: PsychiColors.cream,
   },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: 32,
-  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.md,
-    paddingBottom: Spacing.lg,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#2A2A2A',
-    fontFamily: 'Georgia',
-  },
-  demoBadge: {
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 4,
-    borderRadius: BorderRadius.full,
-  },
-  demoBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#F59E0B',
-  },
-  totalCard: {
-    marginHorizontal: Spacing.lg,
-    borderRadius: BorderRadius.lg,
-    overflow: 'hidden',
-    marginBottom: Spacing.lg,
-  },
-  totalGradient: {
-    padding: Spacing.lg,
-    alignItems: 'center',
-  },
-  totalLabel: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.8)',
-  },
-  totalAmount: {
-    fontSize: 36,
-    fontWeight: '700',
-    color: PsychiColors.white,
-    marginTop: 4,
-  },
-  totalSessions: {
-    fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.7)',
-    marginTop: Spacing.xs,
-  },
-  section: {
-    paddingHorizontal: Spacing.lg,
-    marginBottom: Spacing.lg,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#2A2A2A',
-    marginBottom: Spacing.sm,
-  },
-  distributionCard: {
-    backgroundColor: PsychiColors.white,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
-    ...Shadows.soft,
-  },
-  distRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: Spacing.sm,
-  },
-  distLabel: {
-    fontSize: 14,
+  loadingText: {
+    marginTop: 12,
+    fontSize: Typography.fontSize.base,
     color: PsychiColors.textSecondary,
   },
-  distSub: {
-    fontSize: 11,
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 32,
+  },
+  sectionTitle: {
+    fontSize: Typography.fontSize.lg,
+    fontWeight: Typography.fontWeight.semibold,
+    color: PsychiColors.midnight,
+    marginTop: 20,
+    marginBottom: 12,
+  },
+  summaryGrid: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  revenueCard: {
+    flex: 1,
+    backgroundColor: PsychiColors.white,
+    borderRadius: 16,
+    padding: 16,
+    ...Shadows.soft,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  iconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  trendBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 2,
+  },
+  trendUp: {
+    backgroundColor: PsychiColors.successMuted,
+  },
+  trendDown: {
+    backgroundColor: PsychiColors.errorMuted,
+  },
+  trendText: {
+    fontSize: Typography.fontSize.xs,
+    fontWeight: Typography.fontWeight.medium,
+  },
+  trendTextUp: {
+    color: PsychiColors.success,
+  },
+  trendTextDown: {
+    color: PsychiColors.error,
+  },
+  cardValue: {
+    fontSize: Typography.fontSize['2xl'],
+    fontWeight: Typography.fontWeight.bold,
+    color: PsychiColors.midnight,
+    marginBottom: 4,
+  },
+  cardTitle: {
+    fontSize: Typography.fontSize.sm,
+    fontWeight: Typography.fontWeight.medium,
+    color: PsychiColors.textSecondary,
+  },
+  cardSubtitle: {
+    fontSize: Typography.fontSize.xs,
     color: PsychiColors.textMuted,
     marginTop: 2,
   },
-  distValue: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#2A2A2A',
-  },
-  distDivider: {
-    height: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
-  },
-  distSpacer: {
-    height: Spacing.sm,
-    borderTopWidth: 2,
-    borderTopColor: 'rgba(0, 0, 0, 0.1)',
-    marginVertical: Spacing.xs,
-  },
-  payoutCard: {
+  breakdownCard: {
     backgroundColor: PsychiColors.white,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
-    alignItems: 'center',
+    borderRadius: 16,
+    padding: 16,
     ...Shadows.soft,
   },
-  payoutBalance: {
-    alignItems: 'center',
-    marginBottom: Spacing.md,
-  },
-  payoutLabel: {
-    fontSize: 13,
-    color: PsychiColors.textMuted,
-  },
-  payoutAmount: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: PsychiColors.success,
-    marginTop: 4,
-  },
-  payoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: PsychiColors.deep,
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.xl,
-    borderRadius: BorderRadius.md,
-    gap: Spacing.sm,
-    width: '100%',
-  },
-  payoutButtonDisabled: {
-    backgroundColor: PsychiColors.textMuted,
-  },
-  payoutButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: PsychiColors.white,
-  },
-  payoutNote: {
-    fontSize: 12,
-    color: PsychiColors.textMuted,
-    marginTop: Spacing.sm,
-  },
-  monthCard: {
-    backgroundColor: PsychiColors.white,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
-    ...Shadows.soft,
-  },
-  monthRow: {
+  breakdownRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: Spacing.sm,
+    paddingVertical: 12,
   },
-  monthLabel: {
-    fontSize: 14,
+  breakdownLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  breakdownDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  breakdownText: {
+    fontSize: Typography.fontSize.base,
     color: PsychiColors.textSecondary,
   },
-  monthValue: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#2A2A2A',
+  breakdownValue: {
+    fontSize: Typography.fontSize.base,
+    fontWeight: Typography.fontWeight.medium,
+    color: PsychiColors.midnight,
   },
-  monthDivider: {
+  breakdownDivider: {
     height: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    backgroundColor: PsychiColors.divider,
+  },
+  breakdownTotal: {
+    paddingTop: 16,
+    marginTop: 4,
+    borderTopWidth: 2,
+    borderTopColor: PsychiColors.divider,
+  },
+  totalText: {
+    fontWeight: Typography.fontWeight.semibold,
+    color: PsychiColors.midnight,
+  },
+  totalValue: {
+    fontSize: Typography.fontSize.lg,
+    fontWeight: Typography.fontWeight.bold,
+    color: PsychiColors.success,
+  },
+  monthlyList: {
+    gap: 12,
+  },
+  monthlyCard: {
+    backgroundColor: PsychiColors.white,
+    borderRadius: 12,
+    padding: 16,
+    ...Shadows.soft,
+  },
+  monthlyHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: PsychiColors.divider,
+  },
+  monthlyPeriod: {
+    fontSize: Typography.fontSize.base,
+    fontWeight: Typography.fontWeight.semibold,
+    color: PsychiColors.midnight,
+  },
+  monthlyRevenue: {
+    fontSize: Typography.fontSize.lg,
+    fontWeight: Typography.fontWeight.bold,
+    color: PsychiColors.royalBlue,
+  },
+  monthlyDetails: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  monthlyDetail: {
+    width: '50%',
+    paddingVertical: 6,
+  },
+  monthlyDetailLabel: {
+    fontSize: Typography.fontSize.xs,
+    color: PsychiColors.textMuted,
+    marginBottom: 2,
+  },
+  monthlyDetailValue: {
+    fontSize: Typography.fontSize.sm,
+    color: PsychiColors.textPrimary,
+  },
+  monthlyFooter: {
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: PsychiColors.divider,
+  },
+  monthlyTransactions: {
+    fontSize: Typography.fontSize.xs,
+    color: PsychiColors.textMuted,
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 48,
+    backgroundColor: PsychiColors.white,
+    borderRadius: 16,
+  },
+  emptyTitle: {
+    fontSize: Typography.fontSize.lg,
+    fontWeight: Typography.fontWeight.semibold,
+    color: PsychiColors.textSecondary,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontSize: Typography.fontSize.sm,
+    color: PsychiColors.textMuted,
+    textAlign: 'center',
+    paddingHorizontal: 32,
+  },
+  statsCard: {
+    backgroundColor: PsychiColors.white,
+    borderRadius: 16,
+    padding: 16,
+    ...Shadows.soft,
+  },
+  statRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  statLabel: {
+    fontSize: Typography.fontSize.base,
+    color: PsychiColors.textSecondary,
+  },
+  statValue: {
+    fontSize: Typography.fontSize.base,
+    fontWeight: Typography.fontWeight.semibold,
+    color: PsychiColors.midnight,
+  },
+  statDivider: {
+    height: 1,
+    backgroundColor: PsychiColors.divider,
   },
 });

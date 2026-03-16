@@ -1,236 +1,202 @@
-import React, { useState, useEffect } from 'react';
+/**
+ * Admin Dashboard - Home Tab
+ * Platform metrics and overview
+ */
+
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
-  ActivityIndicator,
   RefreshControl,
-  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
-import { UsersIcon, DollarIcon, ChartIcon, CheckIcon, CloseIcon, LogoutIcon } from '@/components/icons';
+import { PsychiColors, Shadows, Typography } from '@/constants/theme';
+import { UsersIcon, ChartIcon, DollarIcon, ClockIcon, CheckCircleIcon, AlertIcon } from '@/components/icons';
 import { getAdminStats } from '@/lib/database';
-import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabase';
 import type { AdminStats } from '@/types/database';
 
-interface HealthStatus {
-  database: 'online' | 'offline' | 'checking';
-  lastChecked: Date | null;
+interface MetricCardProps {
+  title: string;
+  value: string | number;
+  subtitle?: string;
+  icon: React.ReactNode;
+  color?: string;
 }
 
-export default function AdminHome() {
-  const router = useRouter();
-  const { isDemoMode, signOut } = useAuth();
+function MetricCard({ title, value, subtitle, icon, color = PsychiColors.royalBlue }: MetricCardProps) {
+  return (
+    <View style={styles.metricCard}>
+      <View style={[styles.iconContainer, { backgroundColor: `${color}15` }]}>
+        {icon}
+      </View>
+      <Text style={styles.metricValue}>{value}</Text>
+      <Text style={styles.metricTitle}>{title}</Text>
+      {subtitle && <Text style={styles.metricSubtitle}>{subtitle}</Text>}
+    </View>
+  );
+}
+
+export default function AdminHomeScreen() {
   const [stats, setStats] = useState<AdminStats | null>(null);
-  const [health, setHealth] = useState<HealthStatus>({ database: 'checking', lastChecked: null });
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const checkHealth = async () => {
+  const loadStats = useCallback(async () => {
     try {
-      // Test database connection with a simple query
-      const { error } = await supabase.from('profiles').select('id').limit(1);
-      setHealth({
-        database: error ? 'offline' : 'online',
-        lastChecked: new Date(),
-      });
-    } catch {
-      setHealth({ database: 'offline', lastChecked: new Date() });
-    }
-  };
-
-  const fetchData = async (showRefresh = false) => {
-    if (showRefresh) {
-      setIsRefreshing(true);
-    } else {
-      setIsLoading(true);
-    }
-
-    try {
-      if (isDemoMode) {
-        setStats({
-          totalUsers: 156,
-          totalClients: 142,
-          totalSupporters: 14,
-          activeSupporters: 12,
-          pendingSupporters: 2,
-          totalSessions: 847,
-          activeSessions: 3,
-          completedSessions: 820,
-          totalRevenue: 28450,
-          monthlyRevenue: 4250,
-        });
-        setHealth({ database: 'online', lastChecked: new Date() });
-      } else {
-        const [adminStats] = await Promise.all([
-          getAdminStats(),
-          checkHealth(),
-        ]);
-        setStats(adminStats);
-      }
+      const data = await getAdminStats();
+      setStats(data);
     } catch (error) {
-      console.error('Error fetching admin stats:', error);
+      console.error('Error loading admin stats:', error);
     } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
+      setLoading(false);
+      setRefreshing(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchData();
-  }, [isDemoMode]);
+    loadStats();
+  }, [loadStats]);
 
-  const handleLogout = () => {
-    Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Sign Out',
-          style: 'destructive',
-          onPress: async () => {
-            await signOut();
-            router.replace('/(auth)/welcome');
-          },
-        },
-      ]
-    );
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    loadStats();
+  }, [loadStats]);
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
   };
 
-  const formatTime = (date: Date | null) => {
-    if (!date) return 'Never';
-    return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-  };
-
-  if (isLoading) {
+  if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['bottom']}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={PsychiColors.azure} />
+          <ActivityIndicator size="large" color={PsychiColors.royalBlue} />
+          <Text style={styles.loadingText}>Loading dashboard...</Text>
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
       <ScrollView
         style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
         refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={() => fetchData(true)}
-            tintColor={PsychiColors.azure}
-          />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
+        showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Admin</Text>
-          {isDemoMode && (
-            <View style={styles.demoBadge}>
-              <Text style={styles.demoBadgeText}>Demo</Text>
-            </View>
-          )}
+        {/* User Metrics Section */}
+        <Text style={styles.sectionTitle}>Users</Text>
+        <View style={styles.metricsGrid}>
+          <MetricCard
+            title="Total Users"
+            value={stats?.totalUsers || 0}
+            icon={<UsersIcon size={24} color={PsychiColors.royalBlue} />}
+            color={PsychiColors.royalBlue}
+          />
+          <MetricCard
+            title="Clients"
+            value={stats?.totalClients || 0}
+            icon={<UsersIcon size={24} color={PsychiColors.azure} />}
+            color={PsychiColors.azure}
+          />
+          <MetricCard
+            title="Supporters"
+            value={stats?.totalSupporters || 0}
+            subtitle={`${stats?.activeSupporters || 0} active`}
+            icon={<UsersIcon size={24} color={PsychiColors.coral} />}
+            color={PsychiColors.coral}
+          />
+          <MetricCard
+            title="Pending"
+            value={stats?.pendingSupporters || 0}
+            subtitle="awaiting review"
+            icon={<AlertIcon size={24} color={PsychiColors.warning} />}
+            color={PsychiColors.warning}
+          />
         </View>
 
-        {/* Snapshot Cards */}
-        <View style={styles.snapshotGrid}>
-          <View style={styles.snapshotCard}>
-            <UsersIcon size={24} color={PsychiColors.azure} />
-            <Text style={styles.snapshotValue}>{stats?.totalUsers || 0}</Text>
-            <Text style={styles.snapshotLabel}>Total Users</Text>
-          </View>
+        {/* Sessions Section */}
+        <Text style={styles.sectionTitle}>Sessions</Text>
+        <View style={styles.metricsGrid}>
+          <MetricCard
+            title="Total Sessions"
+            value={stats?.totalSessions || 0}
+            icon={<ChartIcon size={24} color={PsychiColors.royalBlue} />}
+            color={PsychiColors.royalBlue}
+          />
+          <MetricCard
+            title="Active"
+            value={stats?.activeSessions || 0}
+            subtitle="in progress"
+            icon={<ClockIcon size={24} color={PsychiColors.success} />}
+            color={PsychiColors.success}
+          />
+          <MetricCard
+            title="Completed"
+            value={stats?.completedSessions || 0}
+            icon={<CheckCircleIcon size={24} color={PsychiColors.coral} />}
+            color={PsychiColors.coral}
+          />
+        </View>
 
-          <View style={styles.snapshotCard}>
-            <DollarIcon size={24} color={PsychiColors.success} />
-            <Text style={[styles.snapshotValue, { color: PsychiColors.success }]}>
-              ${(stats?.totalRevenue || 0).toLocaleString()}
-            </Text>
-            <Text style={styles.snapshotLabel}>Total Revenue</Text>
-          </View>
-
-          <View style={styles.snapshotCard}>
-            <ChartIcon size={24} color={PsychiColors.violet} />
-            <Text style={styles.snapshotValue}>{stats?.totalSessions || 0}</Text>
-            <Text style={styles.snapshotLabel}>Total Sessions</Text>
-          </View>
+        {/* Revenue Section */}
+        <Text style={styles.sectionTitle}>Revenue</Text>
+        <View style={styles.metricsGrid}>
+          <MetricCard
+            title="Total Revenue"
+            value={formatCurrency(stats?.totalRevenue || 0)}
+            icon={<DollarIcon size={24} color={PsychiColors.success} />}
+            color={PsychiColors.success}
+          />
+          <MetricCard
+            title="This Month"
+            value={formatCurrency(stats?.monthlyRevenue || 0)}
+            icon={<DollarIcon size={24} color={PsychiColors.royalBlue} />}
+            color={PsychiColors.royalBlue}
+          />
         </View>
 
         {/* Platform Health */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Platform Health</Text>
-          <View style={styles.healthCard}>
-            <View style={styles.healthRow}>
-              <Text style={styles.healthLabel}>Database</Text>
-              <View style={styles.healthStatus}>
-                {health.database === 'checking' ? (
-                  <ActivityIndicator size="small" color={PsychiColors.azure} />
-                ) : health.database === 'online' ? (
-                  <>
-                    <View style={[styles.healthDot, styles.healthOnline]} />
-                    <Text style={[styles.healthText, { color: PsychiColors.success }]}>Online</Text>
-                  </>
-                ) : (
-                  <>
-                    <View style={[styles.healthDot, styles.healthOffline]} />
-                    <Text style={[styles.healthText, { color: PsychiColors.error }]}>Offline</Text>
-                  </>
-                )}
-              </View>
-            </View>
-            <View style={styles.healthDivider} />
-            <View style={styles.healthRow}>
-              <Text style={styles.healthLabel}>Last Checked</Text>
-              <Text style={styles.healthText}>{formatTime(health.lastChecked)}</Text>
-            </View>
-            <TouchableOpacity style={styles.healthRefresh} onPress={checkHealth}>
-              <Text style={styles.healthRefreshText}>Refresh Status</Text>
-            </TouchableOpacity>
+        <Text style={styles.sectionTitle}>Platform Health</Text>
+        <View style={styles.healthCard}>
+          <View style={styles.healthRow}>
+            <Text style={styles.healthLabel}>Supporter Approval Rate</Text>
+            <Text style={styles.healthValue}>
+              {stats?.totalSupporters && stats.totalSupporters > 0
+                ? `${Math.round(((stats.totalSupporters - (stats.pendingSupporters || 0)) / stats.totalSupporters) * 100)}%`
+                : 'N/A'}
+            </Text>
+          </View>
+          <View style={styles.healthDivider} />
+          <View style={styles.healthRow}>
+            <Text style={styles.healthLabel}>Session Completion Rate</Text>
+            <Text style={styles.healthValue}>
+              {stats?.totalSessions && stats.totalSessions > 0
+                ? `${Math.round(((stats.completedSessions || 0) / stats.totalSessions) * 100)}%`
+                : 'N/A'}
+            </Text>
+          </View>
+          <View style={styles.healthDivider} />
+          <View style={styles.healthRow}>
+            <Text style={styles.healthLabel}>Active Supporter Ratio</Text>
+            <Text style={styles.healthValue}>
+              {stats?.totalSupporters && stats.totalSupporters > 0
+                ? `${Math.round(((stats.activeSupporters || 0) / stats.totalSupporters) * 100)}%`
+                : 'N/A'}
+            </Text>
           </View>
         </View>
-
-        {/* Quick Stats */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quick Stats</Text>
-          <View style={styles.statsCard}>
-            <View style={styles.statRow}>
-              <Text style={styles.statLabel}>Clients</Text>
-              <Text style={styles.statValue}>{stats?.totalClients || 0}</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statRow}>
-              <Text style={styles.statLabel}>Supporters</Text>
-              <Text style={styles.statValue}>{stats?.totalSupporters || 0}</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statRow}>
-              <Text style={styles.statLabel}>Active Sessions</Text>
-              <Text style={styles.statValue}>{stats?.activeSessions || 0}</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statRow}>
-              <Text style={styles.statLabel}>Pending Verification</Text>
-              <Text style={[styles.statValue, (stats?.pendingSupporters || 0) > 0 && { color: '#F59E0B' }]}>
-                {stats?.pendingSupporters || 0}
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Logout Button */}
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <LogoutIcon size={20} color={PsychiColors.error} />
-          <Text style={styles.logoutText}>Sign Out</Text>
-        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
@@ -241,170 +207,86 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: PsychiColors.cream,
   },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: 32,
-  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.md,
-    paddingBottom: Spacing.lg,
+  loadingText: {
+    marginTop: 12,
+    fontSize: Typography.fontSize.base,
+    color: PsychiColors.textSecondary,
   },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#2A2A2A',
-    fontFamily: 'Georgia',
-  },
-  demoBadge: {
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 4,
-    borderRadius: BorderRadius.full,
-  },
-  demoBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#F59E0B',
-  },
-  snapshotGrid: {
-    flexDirection: 'row',
-    paddingHorizontal: Spacing.lg,
-    gap: Spacing.sm,
-    marginBottom: Spacing.lg,
-  },
-  snapshotCard: {
+  scrollView: {
     flex: 1,
-    backgroundColor: PsychiColors.white,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
-    alignItems: 'center',
-    ...Shadows.soft,
   },
-  snapshotValue: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#2A2A2A',
-    marginTop: Spacing.sm,
-  },
-  snapshotLabel: {
-    fontSize: 11,
-    color: PsychiColors.textMuted,
-    marginTop: 4,
-    textAlign: 'center',
-  },
-  section: {
-    paddingHorizontal: Spacing.lg,
-    marginBottom: Spacing.lg,
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 32,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#2A2A2A',
-    marginBottom: Spacing.sm,
+    fontSize: Typography.fontSize.lg,
+    fontWeight: Typography.fontWeight.semibold,
+    color: PsychiColors.midnight,
+    marginTop: 20,
+    marginBottom: 12,
+  },
+  metricsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginHorizontal: -6,
+  },
+  metricCard: {
+    width: '50%',
+    padding: 6,
+  },
+  iconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  metricValue: {
+    fontSize: Typography.fontSize['2xl'],
+    fontWeight: Typography.fontWeight.bold,
+    color: PsychiColors.midnight,
+    marginBottom: 4,
+  },
+  metricTitle: {
+    fontSize: Typography.fontSize.sm,
+    fontWeight: Typography.fontWeight.medium,
+    color: PsychiColors.textSecondary,
+  },
+  metricSubtitle: {
+    fontSize: Typography.fontSize.xs,
+    color: PsychiColors.textMuted,
+    marginTop: 2,
   },
   healthCard: {
     backgroundColor: PsychiColors.white,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
+    borderRadius: 16,
+    padding: 16,
     ...Shadows.soft,
   },
   healthRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: Spacing.sm,
+    paddingVertical: 12,
   },
   healthLabel: {
-    fontSize: 14,
+    fontSize: Typography.fontSize.base,
     color: PsychiColors.textSecondary,
   },
-  healthStatus: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  healthDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  healthOnline: {
-    backgroundColor: PsychiColors.success,
-  },
-  healthOffline: {
-    backgroundColor: PsychiColors.error,
-  },
-  healthText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#2A2A2A',
+  healthValue: {
+    fontSize: Typography.fontSize.base,
+    fontWeight: Typography.fontWeight.semibold,
+    color: PsychiColors.midnight,
   },
   healthDivider: {
     height: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
-  },
-  healthRefresh: {
-    marginTop: Spacing.sm,
-    paddingTop: Spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(0, 0, 0, 0.05)',
-    alignItems: 'center',
-  },
-  healthRefreshText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: PsychiColors.azure,
-  },
-  statsCard: {
-    backgroundColor: PsychiColors.white,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
-    ...Shadows.soft,
-  },
-  statRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: Spacing.sm,
-  },
-  statLabel: {
-    fontSize: 14,
-    color: PsychiColors.textSecondary,
-  },
-  statValue: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#2A2A2A',
-  },
-  statDivider: {
-    height: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
-  },
-  logoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginHorizontal: Spacing.lg,
-    marginTop: Spacing.md,
-    paddingVertical: Spacing.md,
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    borderRadius: BorderRadius.md,
-    gap: Spacing.sm,
-  },
-  logoutText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: PsychiColors.error,
+    backgroundColor: PsychiColors.divider,
   },
 });

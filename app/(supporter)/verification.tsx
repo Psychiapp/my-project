@@ -543,9 +543,6 @@ export default function VerificationScreen() {
               <CheckIcon size={32} color={PsychiColors.white} />
             </LinearGradient>
             <Text style={styles.approvedTitle}>You're Verified!</Text>
-            <Text style={styles.approvedText}>
-              You can now be matched with clients and start conducting sessions.
-            </Text>
           </View>
         )}
 
