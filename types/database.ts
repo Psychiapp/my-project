@@ -119,6 +119,9 @@ export interface SupporterProfile extends UserProfile {
   in_session: boolean;
   available_for_live_support: boolean;
   expo_push_token: string | null;
+  // Suspension fields
+  suspension_reason: string | null;
+  suspended_at: string | null;
 }
 
 // Live Support Request Status
@@ -432,6 +435,9 @@ export interface SupporterApplication {
   has_graduated?: boolean;
   years_attending?: number | null;
   expected_graduation?: string | null;
+  // Suspension fields
+  suspension_reason?: string | null;
+  suspended_at?: string | null;
 }
 
 // Admin user listing (for user management)

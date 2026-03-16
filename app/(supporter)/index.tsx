@@ -27,7 +27,9 @@ import {
   EditIcon,
   ChevronRightIcon,
   DocumentIcon,
+  AlertIcon,
 } from '@/components/icons';
+import { getSupporterProfile } from '@/lib/database';
 import DashboardTutorial from '@/components/DashboardTutorial';
 import SupporterOnboardingChecklist from '@/components/SupporterOnboardingChecklist';
 import LiveSupportAvailabilityToggle from '@/components/LiveSupportAvailabilityToggle';
@@ -45,6 +47,13 @@ export default function SupporterHomeScreen() {
 
   // Dashboard tutorial state
   const [showTutorial, setShowTutorial] = useState(false);
+
+  // Suspension state
+  const [suspensionInfo, setSuspensionInfo] = useState<{
+    isSuspended: boolean;
+    reason: string | null;
+    suspendedAt: string | null;
+  }>({ isSuspended: false, reason: null, suspendedAt: null });
 
   // Live support hooks
   const {
@@ -86,6 +95,26 @@ export default function SupporterHomeScreen() {
   const handleDeclineRequest = async (requestId: string): Promise<boolean> => {
     return await declineRequest(requestId);
   };
+
+  // Check suspension status on mount
+  useEffect(() => {
+    const checkSuspensionStatus = async () => {
+      if (!user?.id) return;
+      try {
+        const supporterProfile = await getSupporterProfile(user.id);
+        if (supporterProfile && !supporterProfile.is_verified && supporterProfile.suspension_reason) {
+          setSuspensionInfo({
+            isSuspended: true,
+            reason: supporterProfile.suspension_reason,
+            suspendedAt: supporterProfile.suspended_at,
+          });
+        }
+      } catch (error) {
+        console.error('Error checking suspension status:', error);
+      }
+    };
+    checkSuspensionStatus();
+  }, [user?.id]);
 
   // Check if tutorial has been completed on mount
   useEffect(() => {
@@ -148,6 +177,39 @@ export default function SupporterHomeScreen() {
           <Text style={styles.userName} accessibilityRole="header">{profile?.firstName || 'there'}</Text>
           <Text style={styles.headerSubtitle}>Your support dashboard</Text>
         </View>
+
+        {/* Suspension Banner */}
+        {suspensionInfo.isSuspended && (
+          <View style={styles.suspensionBanner}>
+            <View style={styles.suspensionIconContainer}>
+              <AlertIcon size={24} color={PsychiColors.error} />
+            </View>
+            <View style={styles.suspensionContent}>
+              <Text style={styles.suspensionTitle}>Account Suspended</Text>
+              <Text style={styles.suspensionMessage}>
+                Your account has been suspended by an administrator.
+              </Text>
+              {suspensionInfo.reason && (
+                <View style={styles.suspensionReasonBox}>
+                  <Text style={styles.suspensionReasonLabel}>Reason:</Text>
+                  <Text style={styles.suspensionReasonText}>{suspensionInfo.reason}</Text>
+                </View>
+              )}
+              {suspensionInfo.suspendedAt && (
+                <Text style={styles.suspensionDate}>
+                  Suspended on {new Date(suspensionInfo.suspendedAt).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                  })}
+                </Text>
+              )}
+              <Text style={styles.suspensionContact}>
+                If you believe this is an error, please contact support at support@psychi.app
+              </Text>
+            </View>
+          </View>
+        )}
 
         {/* Onboarding Checklist - Shows required steps before receiving clients */}
         <SupporterOnboardingChecklist />
@@ -442,6 +504,70 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.base,
     color: PsychiColors.textSecondary,
     letterSpacing: Typography.letterSpacing.normal,
+  },
+
+  // Suspension Banner
+  suspensionBanner: {
+    marginHorizontal: Spacing['6'],
+    marginBottom: Spacing['6'],
+    backgroundColor: PsychiColors.errorMuted,
+    borderRadius: 16,
+    padding: Spacing['4'],
+    borderWidth: 1,
+    borderColor: `${PsychiColors.error}30`,
+    flexDirection: 'row',
+  },
+  suspensionIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: `${PsychiColors.error}15`,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: Spacing['3'],
+  },
+  suspensionContent: {
+    flex: 1,
+  },
+  suspensionTitle: {
+    fontSize: Typography.fontSize.base,
+    fontWeight: Typography.fontWeight.bold,
+    color: PsychiColors.error,
+    marginBottom: Spacing['1'],
+  },
+  suspensionMessage: {
+    fontSize: Typography.fontSize.sm,
+    color: PsychiColors.textSecondary,
+    marginBottom: Spacing['2'],
+  },
+  suspensionReasonBox: {
+    backgroundColor: PsychiColors.white,
+    borderRadius: 8,
+    padding: Spacing['3'],
+    marginBottom: Spacing['2'],
+  },
+  suspensionReasonLabel: {
+    fontSize: Typography.fontSize.xs,
+    fontWeight: Typography.fontWeight.semibold,
+    color: PsychiColors.textMuted,
+    marginBottom: Spacing['1'],
+    textTransform: 'uppercase',
+    letterSpacing: Typography.letterSpacing.wide,
+  },
+  suspensionReasonText: {
+    fontSize: Typography.fontSize.sm,
+    color: PsychiColors.textPrimary,
+    lineHeight: Typography.fontSize.sm * Typography.lineHeight.relaxed,
+  },
+  suspensionDate: {
+    fontSize: Typography.fontSize.xs,
+    color: PsychiColors.textMuted,
+    marginBottom: Spacing['2'],
+  },
+  suspensionContact: {
+    fontSize: Typography.fontSize.xs,
+    color: PsychiColors.textMuted,
+    fontStyle: 'italic',
   },
 
   // Live Support Section

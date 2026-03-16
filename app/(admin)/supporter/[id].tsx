@@ -43,6 +43,8 @@ export default function SupporterDetailScreen() {
   const [updating, setUpdating] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [showRejectionInput, setShowRejectionInput] = useState(false);
+  const [suspensionReason, setSuspensionReason] = useState('');
+  const [showSuspensionInput, setShowSuspensionInput] = useState(false);
 
   const loadSupporter = useCallback(async () => {
     if (!id) return;
@@ -158,6 +160,18 @@ export default function SupporterDetailScreen() {
   const handleSuspend = async () => {
     if (!supporter) return;
 
+    // First click shows the input
+    if (!showSuspensionInput) {
+      setShowSuspensionInput(true);
+      return;
+    }
+
+    // Require a reason
+    if (!suspensionReason.trim()) {
+      Alert.alert('Suspension Reason Required', 'Please provide a reason for suspension.');
+      return;
+    }
+
     Alert.alert(
       'Suspend Supporter',
       `Are you sure you want to suspend ${supporter.full_name}? They will no longer be able to accept clients.`,
@@ -169,9 +183,11 @@ export default function SupporterDetailScreen() {
           onPress: async () => {
             setUpdating(true);
             try {
-              const success = await suspendUser(supporter.id);
+              const success = await suspendUser(supporter.id, suspensionReason.trim());
               if (success) {
                 Alert.alert('Success', 'Supporter has been suspended.');
+                setShowSuspensionInput(false);
+                setSuspensionReason('');
                 loadSupporter(); // Refresh data
               } else {
                 Alert.alert('Error', 'Failed to suspend supporter. Please try again.');
@@ -517,6 +533,25 @@ export default function SupporterDetailScreen() {
             </>
           )}
 
+          {/* Suspension Reason (if suspended) */}
+          {supporter.verification_status === 'approved' && !supporter.is_verified && supporter.suspension_reason && (
+            <>
+              <Text style={styles.sectionTitle}>Suspension Reason</Text>
+              <View style={styles.suspensionCard}>
+                <Text style={styles.suspensionText}>{supporter.suspension_reason}</Text>
+                {supporter.suspended_at && (
+                  <Text style={styles.suspensionDate}>
+                    Suspended on {new Date(supporter.suspended_at).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                    })}
+                  </Text>
+                )}
+              </View>
+            </>
+          )}
+
           {/* Action Buttons - Show based on status */}
           <View style={styles.actionContainer}>
             {/* Pending Review: Approve + Deny */}
@@ -575,17 +610,43 @@ export default function SupporterDetailScreen() {
 
             {/* Approved and Active: Show Suspend */}
             {supporter?.verification_status === 'approved' && supporter?.is_verified && (
-              <TouchableOpacity
-                style={[styles.actionButton, styles.suspendButton]}
-                onPress={handleSuspend}
-                disabled={updating}
-              >
-                {updating ? (
-                  <ActivityIndicator size="small" color={PsychiColors.white} />
-                ) : (
-                  <Text style={styles.suspendButtonText}>Suspend Supporter</Text>
+              <>
+                {showSuspensionInput && (
+                  <TextInput
+                    style={styles.rejectionInput}
+                    placeholder="Enter suspension reason..."
+                    placeholderTextColor={PsychiColors.textMuted}
+                    value={suspensionReason}
+                    onChangeText={setSuspensionReason}
+                    multiline
+                    numberOfLines={3}
+                  />
                 )}
-              </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.suspendButton]}
+                  onPress={handleSuspend}
+                  disabled={updating}
+                >
+                  {updating ? (
+                    <ActivityIndicator size="small" color={PsychiColors.white} />
+                  ) : (
+                    <Text style={styles.suspendButtonText}>
+                      {showSuspensionInput ? 'Confirm Suspension' : 'Suspend Supporter'}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+                {showSuspensionInput && (
+                  <TouchableOpacity
+                    style={styles.cancelButton}
+                    onPress={() => {
+                      setShowSuspensionInput(false);
+                      setSuspensionReason('');
+                    }}
+                  >
+                    <Text style={styles.cancelButtonText}>Cancel</Text>
+                  </TouchableOpacity>
+                )}
+              </>
             )}
 
             {/* Suspended (approved but is_verified=false) or Rejected: Show Reactivate */}
@@ -902,6 +963,22 @@ const styles = StyleSheet.create({
   rejectionText: {
     fontSize: Typography.fontSize.sm,
     color: PsychiColors.error,
+  },
+  suspensionCard: {
+    backgroundColor: PsychiColors.warningMuted,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: `${PsychiColors.warning}30`,
+  },
+  suspensionText: {
+    fontSize: Typography.fontSize.sm,
+    color: PsychiColors.warning,
+  },
+  suspensionDate: {
+    fontSize: Typography.fontSize.xs,
+    color: PsychiColors.textMuted,
+    marginTop: 8,
   },
   actionContainer: {
     marginTop: 32,

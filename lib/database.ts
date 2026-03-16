@@ -2145,9 +2145,9 @@ export async function approveSupporter(supporterId: string): Promise<boolean> {
 }
 
 /**
- * Reject/suspend a supporter
+ * Suspend a supporter with a reason
  */
-export async function suspendUser(userId: string): Promise<boolean> {
+export async function suspendUser(userId: string, reason?: string): Promise<boolean> {
   if (!supabase) return false;
 
   // For supporters, mark as not verified and not accepting clients
@@ -2155,7 +2155,9 @@ export async function suspendUser(userId: string): Promise<boolean> {
     .from('supporter_details')
     .update({
       is_verified: false,
-      accepting_clients: false
+      accepting_clients: false,
+      suspension_reason: reason || null,
+      suspended_at: new Date().toISOString(),
     })
     .eq('supporter_id', userId);
 
@@ -2496,7 +2498,9 @@ export async function getAdminSupporterDetail(supporterId: string): Promise<Supp
         verification_submitted_at,
         verification_rejection_reason,
         transcript_url,
-        id_document_url
+        id_document_url,
+        suspension_reason,
+        suspended_at
       )
     `)
     .eq('id', supporterId)
@@ -2539,6 +2543,8 @@ export async function getAdminSupporterDetail(supporterId: string): Promise<Supp
     major: details.major,
     years_attending: details.years_attending,
     expected_graduation: details.expected_graduation,
+    suspension_reason: details.suspension_reason,
+    suspended_at: details.suspended_at,
   };
 }
 
