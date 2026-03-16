@@ -326,10 +326,11 @@ export default function ProfileSetupScreen() {
           return false;
         }
         if (!yearsAttending.trim()) {
-          Alert.alert('Required', 'Please enter how many years you have been attending.');
+          Alert.alert('Required', hasGraduated ? 'Please enter how many years you attended.' : 'Please enter how many years you have been attending.');
           return false;
         }
-        if (!expectedGraduation.trim()) {
+        // Only require expected graduation if NOT graduated
+        if (!hasGraduated && !expectedGraduation.trim()) {
           Alert.alert('Required', 'Please enter your expected graduation date.');
           return false;
         }

@@ -17,6 +17,7 @@ import { File } from 'expo-file-system/next';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
 import { ArrowLeftIcon, DownloadIcon } from '@/components/icons';
 import * as Sharing from 'expo-sharing';
+import { supabase } from '@/lib/supabase';
 
 // Import PDF assets
 const handbookPdf = require('@/assets/documents/Supporter Handbook.pdf');
@@ -47,7 +48,7 @@ const documentInfo: Record<string, { title: string; asset: number }> = {
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export default function DocumentViewerScreen() {
-  const { id, url, title } = useLocalSearchParams<{ id?: string; url?: string; title?: string }>();
+  const { id, filePath, title } = useLocalSearchParams<{ id?: string; filePath?: string; title?: string }>();
   const [isLoading, setIsLoading] = useState(true);
   const [pdfBase64, setPdfBase64] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -56,36 +57,55 @@ export default function DocumentViewerScreen() {
   const [remoteUrl, setRemoteUrl] = useState<string | null>(null);
 
   // Check if this is a bundled document or remote URL
-  const bundledDocument = id ? documentInfo[id] : null;
+  const bundledDocument = id && id !== 'remote' ? documentInfo[id] : null;
   const documentTitle = title || bundledDocument?.title || 'Document';
 
   useEffect(() => {
     loadDocument();
-  }, [id, url]);
+  }, [id, filePath]);
 
   const loadDocument = async () => {
-    // Handle remote URL (from Supabase storage)
-    if (url) {
+    // Handle remote file path (from Supabase storage)
+    // Generate signed URL on this screen to avoid URL encoding issues with route params
+    if (filePath) {
       try {
-        console.log('Loading remote document:', url);
+        console.log('Generating signed URL for file path:', filePath);
 
-        // Extract the path before query params to check file extension
-        const urlWithoutParams = url.split('?')[0].toLowerCase();
-
-        // Check if it's an image
-        if (urlWithoutParams.endsWith('.jpg') || urlWithoutParams.endsWith('.jpeg') ||
-            urlWithoutParams.endsWith('.png') || urlWithoutParams.endsWith('.gif') ||
-            urlWithoutParams.endsWith('.webp') || urlWithoutParams.endsWith('.heic')) {
-          setIsImage(true);
-          setRemoteUrl(url);
+        if (!supabase) {
+          setError('Database not configured');
           setIsLoading(false);
           return;
         }
 
-        // For PDFs and other documents, use the URL directly
-        // Note: Google Docs Viewer won't work with authenticated URLs
-        // We'll try to render directly in WebView
-        setRemoteUrl(url);
+        // Generate signed URL from the file path
+        const { data, error: signedUrlError } = await supabase.storage
+          .from('verification-documents')
+          .createSignedUrl(filePath, 3600); // 1 hour expiry
+
+        if (signedUrlError) {
+          console.error('Error generating signed URL:', signedUrlError);
+          setError(`Failed to generate document URL: ${signedUrlError.message}`);
+          setIsLoading(false);
+          return;
+        }
+
+        if (!data?.signedUrl) {
+          setError('Failed to generate document URL: No URL returned');
+          setIsLoading(false);
+          return;
+        }
+
+        console.log('Signed URL generated successfully');
+
+        // Check file extension to determine if it's an image
+        const filePathLower = filePath.toLowerCase();
+        if (filePathLower.endsWith('.jpg') || filePathLower.endsWith('.jpeg') ||
+            filePathLower.endsWith('.png') || filePathLower.endsWith('.gif') ||
+            filePathLower.endsWith('.webp') || filePathLower.endsWith('.heic')) {
+          setIsImage(true);
+        }
+
+        setRemoteUrl(data.signedUrl);
         setIsLoading(false);
         return;
       } catch (err: any) {
@@ -265,7 +285,7 @@ export default function DocumentViewerScreen() {
     : '';
 
   // Show error if no document source provided
-  if (!bundledDocument && !url) {
+  if (!bundledDocument && !filePath) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
@@ -330,7 +350,7 @@ export default function DocumentViewerScreen() {
             resizeMode="contain"
             onError={(e) => {
               console.error('Image load error:', e.nativeEvent.error);
-              setError('Could not load image. The link may have expired.');
+              setError(`Failed to load image: ${e.nativeEvent.error || 'Unknown error'}`);
             }}
           />
         </View>

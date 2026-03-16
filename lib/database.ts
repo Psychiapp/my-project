@@ -196,7 +196,7 @@ export async function checkSupporterProfileCompletion(
   // Fetch supporter details (no retry needed - may not exist yet for new users)
   const { data: detailsData } = await supabase
     .from('supporter_details')
-    .select('bio, specialties, availability, school_name, major, years_attending, expected_graduation')
+    .select('bio, specialties, availability, school_name, major, years_attending, expected_graduation, has_graduated')
     .eq('supporter_id', userId)
     .single();
 
@@ -233,6 +233,7 @@ export async function checkSupporterProfileCompletion(
   const major = detailsData?.major || null;
   const yearsAttending = detailsData?.years_attending || null;
   const expectedGraduation = detailsData?.expected_graduation || null;
+  const hasGraduated = detailsData?.has_graduated || false;
 
   const missingFields: string[] = [];
   if (!firstName?.trim()) missingFields.push('First Name');
@@ -247,7 +248,8 @@ export async function checkSupporterProfileCompletion(
   if (!schoolName?.trim()) missingFields.push('School Name');
   if (!major?.trim()) missingFields.push('Major');
   if (!yearsAttending) missingFields.push('Years Attending');
-  if (!expectedGraduation?.trim()) missingFields.push('Expected Graduation');
+  // Only require expected graduation if NOT graduated
+  if (!hasGraduated && !expectedGraduation?.trim()) missingFields.push('Expected Graduation');
 
   return {
     isComplete: missingFields.length === 0,

@@ -31,7 +31,7 @@ import {
   BookIcon,
   CalendarIcon,
 } from '@/components/icons';
-import { getAdminSupporterDetail, updateVerificationStatus } from '@/lib/database';
+import { getAdminSupporterDetail, updateVerificationStatus, suspendUser, reactivateUser, deleteUser } from '@/lib/database';
 import { supabase } from '@/lib/supabase';
 import type { SupporterApplication, W9FormData } from '@/types/database';
 
@@ -66,38 +66,16 @@ export default function SupporterDetailScreen() {
       return;
     }
 
-    if (!supabase) {
-      Alert.alert('Error', 'Database not configured');
-      return;
-    }
-
-    try {
-      // Generate signed URL from Supabase storage
-      const { data, error } = await supabase.storage
-        .from('verification-documents')
-        .createSignedUrl(documentUrl, 3600); // 1 hour expiry
-
-      if (error) {
-        console.error('Error generating signed URL:', error);
-        Alert.alert('Error', 'Failed to load document. Please try again.');
-        return;
-      }
-
-      if (data?.signedUrl) {
-        // Navigate to document viewer with signed URL
-        router.push({
-          pathname: '/document/[id]',
-          params: {
-            id: encodeURIComponent(documentUrl),
-            url: data.signedUrl,
-            title: docType,
-          },
-        });
-      }
-    } catch (error) {
-      console.error('Error viewing document:', error);
-      Alert.alert('Error', 'Failed to load document. Please try again.');
-    }
+    // Navigate to document viewer with file path only
+    // The viewer screen will generate the signed URL itself to avoid URL encoding issues
+    router.push({
+      pathname: '/document/[id]',
+      params: {
+        id: 'remote',
+        filePath: documentUrl,
+        title: docType,
+      },
+    });
   };
 
   const handleApprove = async () => {
@@ -168,6 +146,105 @@ export default function SupporterDetailScreen() {
             } catch (error) {
               console.error('Error rejecting supporter:', error);
               Alert.alert('Error', 'Failed to reject application. Please try again.');
+            } finally {
+              setUpdating(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleSuspend = async () => {
+    if (!supporter) return;
+
+    Alert.alert(
+      'Suspend Supporter',
+      `Are you sure you want to suspend ${supporter.full_name}? They will no longer be able to accept clients.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Suspend',
+          style: 'destructive',
+          onPress: async () => {
+            setUpdating(true);
+            try {
+              const success = await suspendUser(supporter.id);
+              if (success) {
+                Alert.alert('Success', 'Supporter has been suspended.');
+                loadSupporter(); // Refresh data
+              } else {
+                Alert.alert('Error', 'Failed to suspend supporter. Please try again.');
+              }
+            } catch (error: any) {
+              console.error('Error suspending supporter:', error);
+              Alert.alert('Error', `Failed to suspend supporter: ${error.message || 'Unknown error'}`);
+            } finally {
+              setUpdating(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleReactivate = async () => {
+    if (!supporter) return;
+
+    Alert.alert(
+      'Reactivate Supporter',
+      `Are you sure you want to reactivate ${supporter.full_name}? They will be able to accept clients again.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reactivate',
+          onPress: async () => {
+            setUpdating(true);
+            try {
+              const success = await reactivateUser(supporter.id);
+              if (success) {
+                Alert.alert('Success', 'Supporter has been reactivated.');
+                loadSupporter(); // Refresh data
+              } else {
+                Alert.alert('Error', 'Failed to reactivate supporter. Please try again.');
+              }
+            } catch (error: any) {
+              console.error('Error reactivating supporter:', error);
+              Alert.alert('Error', `Failed to reactivate supporter: ${error.message || 'Unknown error'}`);
+            } finally {
+              setUpdating(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDelete = async () => {
+    if (!supporter) return;
+
+    Alert.alert(
+      'Delete User Account',
+      `This action is permanent. Are you sure you want to delete ${supporter.full_name}'s account? All their data will be permanently removed.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete Permanently',
+          style: 'destructive',
+          onPress: async () => {
+            setUpdating(true);
+            try {
+              const result = await deleteUser(supporter.id);
+              if (result.success) {
+                Alert.alert('Success', 'User account has been permanently deleted.', [
+                  { text: 'OK', onPress: () => router.back() }
+                ]);
+              } else {
+                Alert.alert('Error', `Failed to delete user: ${result.error || 'Unknown error'}`);
+              }
+            } catch (error: any) {
+              console.error('Error deleting user:', error);
+              Alert.alert('Error', `Failed to delete user: ${error.message || 'Unknown error'}`);
             } finally {
               setUpdating(false);
             }
@@ -440,59 +517,106 @@ export default function SupporterDetailScreen() {
             </>
           )}
 
-          {/* Action Buttons (only show for pending review) */}
-          {needsReview && (
-            <View style={styles.actionContainer}>
-              {showRejectionInput && (
-                <TextInput
-                  style={styles.rejectionInput}
-                  placeholder="Enter rejection reason..."
-                  placeholderTextColor={PsychiColors.textMuted}
-                  value={rejectionReason}
-                  onChangeText={setRejectionReason}
-                  multiline
-                  numberOfLines={3}
-                />
+          {/* Action Buttons - Show based on status */}
+          <View style={styles.actionContainer}>
+            {/* Pending Review: Approve + Deny */}
+            {needsReview && (
+              <>
+                {showRejectionInput && (
+                  <TextInput
+                    style={styles.rejectionInput}
+                    placeholder="Enter rejection reason..."
+                    placeholderTextColor={PsychiColors.textMuted}
+                    value={rejectionReason}
+                    onChangeText={setRejectionReason}
+                    multiline
+                    numberOfLines={3}
+                  />
+                )}
+                <View style={styles.actionButtons}>
+                  <TouchableOpacity
+                    style={[styles.actionButton, styles.rejectButton]}
+                    onPress={handleReject}
+                    disabled={updating}
+                  >
+                    {updating ? (
+                      <ActivityIndicator size="small" color={PsychiColors.white} />
+                    ) : (
+                      <Text style={styles.rejectButtonText}>
+                        {showRejectionInput ? 'Confirm Rejection' : 'Deny'}
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.actionButton, styles.approveButton]}
+                    onPress={handleApprove}
+                    disabled={updating}
+                  >
+                    {updating ? (
+                      <ActivityIndicator size="small" color={PsychiColors.white} />
+                    ) : (
+                      <Text style={styles.approveButtonText}>Approve</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+                {showRejectionInput && (
+                  <TouchableOpacity
+                    style={styles.cancelButton}
+                    onPress={() => {
+                      setShowRejectionInput(false);
+                      setRejectionReason('');
+                    }}
+                  >
+                    <Text style={styles.cancelButtonText}>Cancel</Text>
+                  </TouchableOpacity>
+                )}
+              </>
+            )}
+
+            {/* Approved and Active: Show Suspend */}
+            {supporter?.verification_status === 'approved' && supporter?.is_verified && (
+              <TouchableOpacity
+                style={[styles.actionButton, styles.suspendButton]}
+                onPress={handleSuspend}
+                disabled={updating}
+              >
+                {updating ? (
+                  <ActivityIndicator size="small" color={PsychiColors.white} />
+                ) : (
+                  <Text style={styles.suspendButtonText}>Suspend Supporter</Text>
+                )}
+              </TouchableOpacity>
+            )}
+
+            {/* Suspended (approved but is_verified=false) or Rejected: Show Reactivate */}
+            {((supporter?.verification_status === 'approved' && !supporter?.is_verified) ||
+              supporter?.verification_status === 'rejected') && (
+              <TouchableOpacity
+                style={[styles.actionButton, styles.reactivateButton]}
+                onPress={handleReactivate}
+                disabled={updating}
+              >
+                {updating ? (
+                  <ActivityIndicator size="small" color={PsychiColors.white} />
+                ) : (
+                  <Text style={styles.reactivateButtonText}>Reactivate Supporter</Text>
+                )}
+              </TouchableOpacity>
+            )}
+
+            {/* Delete - Available for all statuses */}
+            <TouchableOpacity
+              style={[styles.actionButton, styles.deleteButton, { marginTop: 16 }]}
+              onPress={handleDelete}
+              disabled={updating}
+            >
+              {updating ? (
+                <ActivityIndicator size="small" color={PsychiColors.white} />
+              ) : (
+                <Text style={styles.deleteButtonText}>Delete Account</Text>
               )}
-              <View style={styles.actionButtons}>
-                <TouchableOpacity
-                  style={[styles.actionButton, styles.rejectButton]}
-                  onPress={handleReject}
-                  disabled={updating}
-                >
-                  {updating ? (
-                    <ActivityIndicator size="small" color={PsychiColors.white} />
-                  ) : (
-                    <Text style={styles.rejectButtonText}>
-                      {showRejectionInput ? 'Confirm Rejection' : 'Reject'}
-                    </Text>
-                  )}
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.actionButton, styles.approveButton]}
-                  onPress={handleApprove}
-                  disabled={updating}
-                >
-                  {updating ? (
-                    <ActivityIndicator size="small" color={PsychiColors.white} />
-                  ) : (
-                    <Text style={styles.approveButtonText}>Approve</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-              {showRejectionInput && (
-                <TouchableOpacity
-                  style={styles.cancelButton}
-                  onPress={() => {
-                    setShowRejectionInput(false);
-                    setRejectionReason('');
-                  }}
-                >
-                  <Text style={styles.cancelButtonText}>Cancel</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          )}
+            </TouchableOpacity>
+          </View>
         </ScrollView>
       </SafeAreaView>
     </>
@@ -832,5 +956,29 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     fontSize: Typography.fontSize.sm,
     color: PsychiColors.textMuted,
+  },
+  suspendButton: {
+    backgroundColor: PsychiColors.warning,
+  },
+  suspendButtonText: {
+    fontSize: Typography.fontSize.base,
+    fontWeight: Typography.fontWeight.semibold,
+    color: PsychiColors.white,
+  },
+  reactivateButton: {
+    backgroundColor: PsychiColors.royalBlue,
+  },
+  reactivateButtonText: {
+    fontSize: Typography.fontSize.base,
+    fontWeight: Typography.fontWeight.semibold,
+    color: PsychiColors.white,
+  },
+  deleteButton: {
+    backgroundColor: PsychiColors.error,
+  },
+  deleteButtonText: {
+    fontSize: Typography.fontSize.base,
+    fontWeight: Typography.fontWeight.semibold,
+    color: PsychiColors.white,
   },
 });
