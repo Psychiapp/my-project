@@ -429,6 +429,7 @@ export interface SupporterApplication {
   // Education fields
   school_name?: string | null;
   major?: string | null;
+  has_graduated?: boolean;
   years_attending?: number | null;
   expected_graduation?: string | null;
 }

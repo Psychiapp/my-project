@@ -126,6 +126,7 @@ export default function ProfileSetupScreen() {
   // Education fields (supporters only)
   const [schoolName, setSchoolName] = useState('');
   const [major, setMajor] = useState('');
+  const [hasGraduated, setHasGraduated] = useState(false);
   const [yearsAttending, setYearsAttending] = useState('');
   const [expectedGraduation, setExpectedGraduation] = useState('');
 
@@ -510,11 +511,14 @@ export default function ProfileSetupScreen() {
           if (major.trim()) {
             supporterUpdates.major = major.trim();
           }
+          supporterUpdates.has_graduated = hasGraduated;
           if (yearsAttending.trim()) {
             supporterUpdates.years_attending = parseInt(yearsAttending.trim(), 10) || 0;
           }
-          if (expectedGraduation.trim()) {
+          if (!hasGraduated && expectedGraduation.trim()) {
             supporterUpdates.expected_graduation = expectedGraduation.trim();
+          } else if (hasGraduated) {
+            supporterUpdates.expected_graduation = null;
           }
 
           if (Object.keys(supporterUpdates).length > 0) {
@@ -810,30 +814,43 @@ export default function ProfileSetupScreen() {
                 />
               </View>
 
+              <TouchableOpacity
+                style={styles.checkboxRow}
+                onPress={() => setHasGraduated(!hasGraduated)}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.checkbox, hasGraduated && styles.checkboxChecked]}>
+                  {hasGraduated && <CheckIcon size={14} color={PsychiColors.white} />}
+                </View>
+                <Text style={styles.checkboxLabel}>Graduated?</Text>
+              </TouchableOpacity>
+
               <View style={styles.educationRow}>
                 <View style={[styles.inputGroup, { flex: 1 }]}>
-                  <Text style={styles.inputLabel}>Years Attending</Text>
+                  <Text style={styles.inputLabel}>{hasGraduated ? 'Years Attended' : 'Years Attending'}</Text>
                   <TextInput
                     style={styles.input}
                     value={yearsAttending}
                     onChangeText={setYearsAttending}
-                    placeholder="e.g., 2"
+                    placeholder="e.g., 4"
                     placeholderTextColor={PsychiColors.textMuted}
                     keyboardType="number-pad"
                     maxLength={2}
                   />
                 </View>
-                <View style={[styles.inputGroup, { flex: 1.5 }]}>
-                  <Text style={styles.inputLabel}>Expected Graduation</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={expectedGraduation}
-                    onChangeText={setExpectedGraduation}
-                    placeholder="e.g., May 2026"
-                    placeholderTextColor={PsychiColors.textMuted}
-                    autoCapitalize="words"
-                  />
-                </View>
+                {!hasGraduated && (
+                  <View style={[styles.inputGroup, { flex: 1.5 }]}>
+                    <Text style={styles.inputLabel}>Expected Graduation</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={expectedGraduation}
+                      onChangeText={setExpectedGraduation}
+                      placeholder="e.g., May 2026"
+                      placeholderTextColor={PsychiColors.textMuted}
+                      autoCapitalize="words"
+                    />
+                  </View>
+                )}
               </View>
             </View>
           )}
@@ -1096,6 +1113,31 @@ const styles = StyleSheet.create({
   educationRow: {
     flexDirection: 'row',
     gap: Spacing.md,
+  },
+  checkboxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: Spacing.md,
+    paddingVertical: Spacing.sm,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: PsychiColors.borderMedium,
+    backgroundColor: PsychiColors.white,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: Spacing.sm,
+  },
+  checkboxChecked: {
+    backgroundColor: PsychiColors.royalBlue,
+    borderColor: PsychiColors.royalBlue,
+  },
+  checkboxLabel: {
+    fontSize: Typography.fontSize.base,
+    color: PsychiColors.textPrimary,
   },
   tagsContainer: {
     flexDirection: 'row',
