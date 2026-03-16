@@ -66,10 +66,12 @@ export default function DocumentViewerScreen() {
 
   const loadDocument = async () => {
     // Handle remote file path (from Supabase storage)
-    // Generate signed URL on this screen to avoid URL encoding issues with route params
+    // Use Edge Function to generate signed URL with service role (bypasses RLS)
     if (filePath) {
       try {
-        console.log('Generating signed URL for file path:', filePath);
+        // Decode the file path in case expo-router URL-encoded it
+        const decodedFilePath = decodeURIComponent(filePath);
+        console.log('Loading document for path:', decodedFilePath);
 
         if (!supabase) {
           setError('Database not configured');
@@ -77,14 +79,21 @@ export default function DocumentViewerScreen() {
           return;
         }
 
-        // Generate signed URL from the file path
-        const { data, error: signedUrlError } = await supabase.storage
-          .from('verification-documents')
-          .createSignedUrl(filePath, 3600); // 1 hour expiry
+        // Call Edge Function to generate signed URL with service role
+        const { data, error: funcError } = await supabase.functions.invoke('get-signed-url', {
+          body: { filePath: decodedFilePath },
+        });
 
-        if (signedUrlError) {
-          console.error('Error generating signed URL:', signedUrlError);
-          setError(`Failed to generate document URL: ${signedUrlError.message}`);
+        if (funcError) {
+          console.error('Error calling get-signed-url function:', funcError);
+          setError(`Failed to generate document URL: ${funcError.message}`);
+          setIsLoading(false);
+          return;
+        }
+
+        if (data?.error) {
+          console.error('Error from get-signed-url:', data.error);
+          setError(`Failed to generate document URL: ${data.error}`);
           setIsLoading(false);
           return;
         }
@@ -98,7 +107,7 @@ export default function DocumentViewerScreen() {
         console.log('Signed URL generated successfully');
 
         // Check file extension to determine if it's an image
-        const filePathLower = filePath.toLowerCase();
+        const filePathLower = decodedFilePath.toLowerCase();
         if (filePathLower.endsWith('.jpg') || filePathLower.endsWith('.jpeg') ||
             filePathLower.endsWith('.png') || filePathLower.endsWith('.gif') ||
             filePathLower.endsWith('.webp') || filePathLower.endsWith('.heic')) {
@@ -342,19 +351,8 @@ export default function DocumentViewerScreen() {
             <Text style={styles.goBackButtonText}>Go Back</Text>
           </TouchableOpacity>
         </View>
-      ) : isImage && remoteUrl ? (
-        <View style={styles.imageContainer}>
-          <Image
-            source={{ uri: remoteUrl }}
-            style={styles.image}
-            resizeMode="contain"
-            onError={(e) => {
-              console.error('Image load error:', e.nativeEvent.error);
-              setError(`Failed to load image: ${e.nativeEvent.error || 'Unknown error'}`);
-            }}
-          />
-        </View>
       ) : remoteUrl && !pdfBase64 ? (
+        // Use WebView for both images and PDFs - more reliable with signed URLs
         <WebView
           style={styles.webview}
           source={{ uri: remoteUrl }}
