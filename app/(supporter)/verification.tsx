@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
@@ -91,37 +92,50 @@ export default function VerificationScreen() {
         return { url: null, error: 'Session expired. Please sign in again.' };
       }
 
-      // Fetch the file as a blob (required for React Native)
-      let blob: Blob;
+      // Read the file using expo-file-system (fetch doesn't work with local URIs in RN)
+      let base64Data: string;
       try {
-        const response = await fetch(uri);
-        if (!response.ok) {
-          return { url: null, error: 'Failed to read selected file. Please try selecting it again.' };
+        // Get file info first to check size
+        const fileInfo = await FileSystem.getInfoAsync(uri);
+        if (!fileInfo.exists) {
+          return { url: null, error: 'File not found. Please try selecting it again.' };
         }
-        blob = await response.blob();
-      } catch (fetchError) {
-        console.error('Error reading file:', fetchError);
+
+        // Validate file size (50MB max)
+        const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+        if (fileInfo.size && fileInfo.size > MAX_FILE_SIZE) {
+          return { url: null, error: `File is too large (${Math.round(fileInfo.size / 1024 / 1024)}MB). Maximum size is 50MB.` };
+        }
+
+        // Read file as base64
+        base64Data = await FileSystem.readAsStringAsync(uri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+      } catch (readError) {
+        console.error('Error reading file:', readError);
         return { url: null, error: 'Failed to read file. The file may be corrupted or inaccessible.' };
       }
 
-      // Validate file size (50MB max)
-      const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
-      if (blob.size > MAX_FILE_SIZE) {
-        return { url: null, error: `File is too large (${Math.round(blob.size / 1024 / 1024)}MB). Maximum size is 50MB.` };
+      // Convert base64 to Uint8Array for upload
+      const binaryString = atob(base64Data);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
       }
 
       // Generate unique file path: folder/userId/timestamp.extension
       const extension = fileName.split('.').pop()?.toLowerCase() || 'jpg';
       const filePath = `${folder}/${user.id}/${Date.now()}.${extension}`;
+      const contentType = extension === 'pdf' ? 'application/pdf' : `image/${extension}`;
 
-      console.log('Uploading to storage:', { bucket: 'verification-documents', filePath, blobSize: blob.size });
+      console.log('Uploading to storage:', { bucket: 'verification-documents', filePath, byteLength: bytes.length });
 
       const { data, error } = await supabase.storage
         .from('verification-documents')
-        .upload(filePath, blob, {
+        .upload(filePath, bytes, {
           cacheControl: '3600',
           upsert: true,
-          contentType: blob.type || (extension === 'pdf' ? 'application/pdf' : `image/${extension}`),
+          contentType,
         });
 
       if (error) {

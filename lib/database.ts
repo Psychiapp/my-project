@@ -74,6 +74,7 @@ export interface SupporterProfileCompletion {
   major: string | null;
   yearsAttending: number | null;
   expectedGraduation: string | null;
+  hasGraduated: boolean;
 }
 
 /**
@@ -168,6 +169,7 @@ export async function checkSupporterProfileCompletion(
       major: null,
       yearsAttending: null,
       expectedGraduation: null,
+      hasGraduated: false,
     };
   }
 
@@ -215,6 +217,7 @@ export async function checkSupporterProfileCompletion(
       major: null,
       yearsAttending: null,
       expectedGraduation: null,
+      hasGraduated: false,
     };
   }
 
@@ -266,6 +269,7 @@ export async function checkSupporterProfileCompletion(
     major: major?.trim() || null,
     yearsAttending,
     expectedGraduation: expectedGraduation?.trim() || null,
+    hasGraduated,
   };
 }
 

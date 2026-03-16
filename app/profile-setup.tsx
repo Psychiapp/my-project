@@ -185,6 +185,7 @@ export default function ProfileSetupScreen() {
           if (completion.major) setMajor(completion.major);
           if (completion.yearsAttending) setYearsAttending(String(completion.yearsAttending));
           if (completion.expectedGraduation) setExpectedGraduation(completion.expectedGraduation);
+          if (completion.hasGraduated) setHasGraduated(completion.hasGraduated);
         } else {
           const completion = await checkClientProfileCompletion(user.id);
           if (completion.firstName) setFirstName(completion.firstName);
