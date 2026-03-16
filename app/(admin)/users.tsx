@@ -63,7 +63,8 @@ export default function AdminUsersScreen() {
 
   const handleUserPress = (userId: string) => {
     if (activeTab === 'clients') {
-      // Could navigate to client detail if needed
+      // Navigate to client detail view
+      router.push(`/(admin)/client/${userId}`);
       return;
     }
     // Navigate to supporter detail view
@@ -109,9 +110,7 @@ export default function AdminUsersScreen() {
           </View>
         )}
       </View>
-      {activeTab === 'supporters' && (
-        <ChevronRightIcon size={20} color={PsychiColors.textMuted} />
-      )}
+      <ChevronRightIcon size={20} color={PsychiColors.textMuted} />
     </TouchableOpacity>
   );
 
