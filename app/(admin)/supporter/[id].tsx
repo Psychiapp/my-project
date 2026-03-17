@@ -25,14 +25,10 @@ import {
   CheckCircleIcon,
   ClockIcon,
   AlertIcon,
-  FileTextIcon,
-  DocumentIcon,
-  MailIcon,
   BookIcon,
   CalendarIcon,
 } from '@/components/icons';
 import { getAdminSupporterDetail, updateVerificationStatus, suspendUser, reactivateUser, deleteUser } from '@/lib/database';
-import { supabase } from '@/lib/supabase';
 import type { SupporterApplication, W9FormData } from '@/types/database';
 
 export default function SupporterDetailScreen() {
@@ -61,24 +57,6 @@ export default function SupporterDetailScreen() {
   useEffect(() => {
     loadSupporter();
   }, [loadSupporter]);
-
-  const handleViewDocument = async (documentUrl: string | null | undefined, docType: string) => {
-    if (!documentUrl) {
-      Alert.alert('No Document', `No ${docType} has been uploaded.`);
-      return;
-    }
-
-    // Navigate to document viewer with file path only
-    // The viewer screen will generate the signed URL itself to avoid URL encoding issues
-    router.push({
-      pathname: '/document/[id]',
-      params: {
-        id: 'remote',
-        filePath: documentUrl,
-        title: docType,
-      },
-    });
-  };
 
   const handleApprove = async () => {
     if (!supporter) return;
@@ -461,40 +439,6 @@ export default function SupporterDetailScreen() {
             </View>
           </View>
 
-          {/* Verification Documents */}
-          <Text style={styles.sectionTitle}>Verification Documents</Text>
-          <View style={styles.documentsCard}>
-            <TouchableOpacity
-              style={styles.documentRow}
-              onPress={() => handleViewDocument(supporter.transcript_url, 'Transcript')}
-            >
-              <View style={styles.documentIcon}>
-                <FileTextIcon size={24} color={supporter.transcript_url ? PsychiColors.royalBlue : PsychiColors.textMuted} />
-              </View>
-              <View style={styles.documentInfo}>
-                <Text style={styles.documentLabel}>Academic Transcript</Text>
-                <Text style={styles.documentStatus}>
-                  {supporter.transcript_url ? 'Uploaded - Tap to view' : 'Not uploaded'}
-                </Text>
-              </View>
-            </TouchableOpacity>
-            <View style={styles.documentDivider} />
-            <TouchableOpacity
-              style={styles.documentRow}
-              onPress={() => handleViewDocument(supporter.id_document_url, 'ID Document')}
-            >
-              <View style={styles.documentIcon}>
-                <DocumentIcon size={24} color={supporter.id_document_url ? PsychiColors.royalBlue : PsychiColors.textMuted} />
-              </View>
-              <View style={styles.documentInfo}>
-                <Text style={styles.documentLabel}>ID Document</Text>
-                <Text style={styles.documentStatus}>
-                  {supporter.id_document_url ? 'Uploaded - Tap to view' : 'Not uploaded'}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          </View>
-
           {/* W-9 Form Data */}
           <Text style={styles.sectionTitle}>W-9 Tax Information</Text>
           {renderW9Data()}
@@ -850,43 +794,6 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: PsychiColors.divider,
     marginVertical: 4,
-  },
-  documentsCard: {
-    backgroundColor: PsychiColors.white,
-    borderRadius: 12,
-    padding: 16,
-    ...Shadows.soft,
-  },
-  documentRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-  },
-  documentIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: PsychiColors.frost,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  documentInfo: {
-    marginLeft: 12,
-    flex: 1,
-  },
-  documentLabel: {
-    fontSize: Typography.fontSize.base,
-    fontWeight: Typography.fontWeight.medium,
-    color: PsychiColors.midnight,
-    marginBottom: 2,
-  },
-  documentStatus: {
-    fontSize: Typography.fontSize.sm,
-    color: PsychiColors.textMuted,
-  },
-  documentDivider: {
-    height: 1,
-    backgroundColor: PsychiColors.divider,
   },
   w9Card: {
     backgroundColor: PsychiColors.white,
