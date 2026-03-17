@@ -56,7 +56,7 @@ serve(async (req) => {
     }
 
     switch (event.type) {
-      // Connect account events
+      // Connect account events (v1 API)
       case 'account.updated': {
         const account = event.data.object as Stripe.Account;
         const supporterId = account.metadata?.supporter_id;
@@ -76,6 +76,42 @@ serve(async (req) => {
               stripe_payouts_enabled: account.payouts_enabled,
             })
             .eq('id', supporterId);
+        }
+        break;
+      }
+
+      // Connect account events (v2 API - thin events)
+      case 'v2.core.account.updated': {
+        // v2 events are "thin" - we need to fetch the full account data
+        const accountId = (event.data as any).id || (event as any).related_object?.id;
+
+        if (accountId) {
+          try {
+            // Fetch full account data from Stripe
+            const account = await stripe.accounts.retrieve(accountId);
+            const supporterId = account.metadata?.supporter_id;
+
+            if (supporterId) {
+              const status = account.charges_enabled && account.payouts_enabled
+                ? 'active'
+                : account.details_submitted
+                  ? 'pending_verification'
+                  : 'pending';
+
+              await supabase
+                .from('profiles')
+                .update({
+                  stripe_connect_status: status,
+                  stripe_charges_enabled: account.charges_enabled,
+                  stripe_payouts_enabled: account.payouts_enabled,
+                })
+                .eq('id', supporterId);
+
+              console.log(`Updated supporter ${supporterId} Connect status to ${status}`);
+            }
+          } catch (fetchError) {
+            console.error('Error fetching account for v2 event:', fetchError);
+          }
         }
         break;
       }
