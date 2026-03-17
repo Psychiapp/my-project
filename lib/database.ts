@@ -3792,10 +3792,10 @@ export async function updateVerificationStatus(
 
   // If approved, also set is_verified to true
   if (status === 'approved') {
-    // Update supporter_details
+    // Update supporter_details (include is_verified)
     const { error: detailsError } = await supabase
       .from('supporter_details')
-      .update(updateData)
+      .update({ ...updateData, is_verified: true })
       .eq('supporter_id', supporterId);
 
     if (detailsError) {
