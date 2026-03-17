@@ -13,7 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
@@ -92,26 +92,44 @@ export default function VerificationScreen() {
         return { url: null, error: 'Session expired. Please sign in again.' };
       }
 
-      // Read the file using expo-file-system (fetch doesn't work with local URIs in RN)
+      // Read the file using expo-file-system
+      // On iOS, picker URIs may not be directly readable, so we copy to a temp location first
       let base64Data: string;
+      let tempPath: string | null = null;
       try {
-        // Get file info first to check size
-        const fileInfo = await FileSystem.getInfoAsync(uri);
+        // Create a temp path in document directory (always accessible)
+        const extension = fileName.split('.').pop()?.toLowerCase() || 'dat';
+        tempPath = `${FileSystem.documentDirectory}temp_upload_${Date.now()}.${extension}`;
+
+        // Copy the file to our temp location (handles different URI schemes)
+        await FileSystem.copyAsync({ from: uri, to: tempPath });
+
+        // Get file info to check size
+        const fileInfo = await FileSystem.getInfoAsync(tempPath);
         if (!fileInfo.exists) {
-          return { url: null, error: 'File not found. Please try selecting it again.' };
+          return { url: null, error: 'File not found after copy. Please try selecting it again.' };
         }
 
         // Validate file size (50MB max)
         const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
         if (fileInfo.size && fileInfo.size > MAX_FILE_SIZE) {
+          await FileSystem.deleteAsync(tempPath, { idempotent: true });
           return { url: null, error: `File is too large (${Math.round(fileInfo.size / 1024 / 1024)}MB). Maximum size is 50MB.` };
         }
 
-        // Read file as base64
-        base64Data = await FileSystem.readAsStringAsync(uri, {
+        // Read file as base64 from our temp location
+        base64Data = await FileSystem.readAsStringAsync(tempPath, {
           encoding: FileSystem.EncodingType.Base64,
         });
+
+        // Clean up temp file
+        await FileSystem.deleteAsync(tempPath, { idempotent: true });
+        tempPath = null;
       } catch (readError) {
+        // Clean up temp file on error
+        if (tempPath) {
+          await FileSystem.deleteAsync(tempPath, { idempotent: true }).catch(() => {});
+        }
         console.error('Error reading file:', readError);
         return { url: null, error: 'Failed to read file. The file may be corrupted or inaccessible.' };
       }
