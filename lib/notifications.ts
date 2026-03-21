@@ -598,6 +598,38 @@ export async function sendBookingConfirmedNotification(params: {
 }
 
 // ============================================
+// New Client Assignment (for Supporters)
+// ============================================
+
+/**
+ * Send new client assigned notification to supporter
+ * Called when a client is matched with a supporter
+ */
+export async function sendNewClientAssignedNotification(params: {
+  supporterId: string;
+  clientId: string;
+  clientName?: string;
+}): Promise<{ sent: boolean; error?: string }> {
+  const settings = await getNotificationSettings();
+  if (!settings.supporterUpdates) {
+    return { sent: false, error: 'Notifications disabled' };
+  }
+
+  const content = getNotificationContent('new_client_assigned', {
+    clientId: params.clientId,
+    clientName: params.clientName || '',
+  });
+
+  // Use Edge Function to send push notification (works even when app is closed)
+  return sendPushNotificationViaEdgeFunction({
+    userId: params.supporterId,
+    title: content.title,
+    body: content.body,
+    data: content.data as Record<string, unknown>,
+  });
+}
+
+// ============================================
 // Availability Reminder (for Supporters)
 // ============================================
 
@@ -1051,6 +1083,8 @@ export default {
   // Verification
   sendVerificationApprovedNotification,
   sendVerificationRejectedNotification,
+  // Client Assignment
+  sendNewClientAssignedNotification,
   cancelSessionReminders,
   cancelNotification,
   cancelAllNotifications,

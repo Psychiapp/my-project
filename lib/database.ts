@@ -4,6 +4,7 @@
  */
 
 import { supabase } from './supabase';
+import { sendNewClientAssignedNotification } from './notifications';
 import type {
   UserProfile,
   ClientProfile,
@@ -3004,6 +3005,22 @@ export async function matchAndAssignSupporter(
         error: 'Failed to create supporter assignment. Please try again.',
       };
     }
+
+    // Get client name for notification
+    const { data: clientProfile } = await supabase
+      .from('profiles')
+      .select('full_name')
+      .eq('id', clientId)
+      .single();
+
+    // Send notification to supporter about new client
+    sendNewClientAssignedNotification({
+      supporterId: bestMatch.id,
+      clientId,
+      clientName: clientProfile?.full_name || undefined,
+    }).catch((err) => {
+      console.error('Failed to send new client notification:', err);
+    });
 
     return {
       success: true,

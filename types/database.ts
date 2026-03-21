@@ -87,6 +87,7 @@ export interface SupporterProfile extends UserProfile {
   accepting_clients: boolean;
   training_complete: boolean;
   training_completed_at: string | null;
+  training_modules_completed: string[]; // Array of completed module IDs
   availability: {
     [key: string]: string[]; // day: time slots
   };
@@ -417,6 +418,7 @@ export interface SupporterApplication {
   years_experience: number;
   training_complete: boolean;
   training_completed_at: string | null;
+  training_modules_completed?: string[]; // Array of completed module IDs
   is_verified: boolean;
   // W-9 fields
   w9_completed?: boolean;

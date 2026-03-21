@@ -9,6 +9,7 @@ import {
   getDemoProfile,
 } from '@/constants/demo';
 import { logDiagnostic, sendDiagnosticReport } from '@/lib/diagnosticLogger';
+import { scheduleWeeklyAvailabilityReminder } from '@/lib/notifications';
 
 interface AuthContextType {
   user: { id: string; email: string } | null;
@@ -111,6 +112,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const userProfile = await fetchProfile(session.user.id);
             if (userProfile) {
               setProfile(userProfile);
+
+              // Schedule weekly availability reminder for supporters on app start
+              if (userProfile.role === 'supporter') {
+                scheduleWeeklyAvailabilityReminder().catch((err) => {
+                  console.log('Failed to schedule availability reminder:', err);
+                });
+              }
             }
           } catch (profileError) {
             console.error('Profile fetch error:', profileError);
@@ -156,6 +164,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const userProfile = await fetchProfile(session.user.id);
             if (userProfile) {
               setProfile(userProfile);
+
+              // Schedule weekly availability reminder for supporters
+              if (userProfile.role === 'supporter') {
+                scheduleWeeklyAvailabilityReminder().catch((err) => {
+                  console.log('Failed to schedule availability reminder:', err);
+                });
+              }
             }
           } else if (event === 'SIGNED_OUT') {
             setUser(null);
@@ -198,6 +213,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Navigate to appropriate dashboard
         setTimeout(() => {
           if (role === 'supporter') {
+            // Schedule weekly availability reminder for supporters
+            scheduleWeeklyAvailabilityReminder().catch((err) => {
+              console.log('Failed to schedule availability reminder:', err);
+            });
             router.replace('/(supporter)' as any);
           } else if (role === 'admin') {
             router.replace('/(admin)' as any);
@@ -236,6 +255,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Navigate based on role
           setTimeout(() => {
             if (userProfile.role === 'supporter') {
+              // Schedule weekly availability reminder for supporters
+              scheduleWeeklyAvailabilityReminder().catch((err) => {
+                console.log('Failed to schedule availability reminder:', err);
+              });
               router.replace('/(supporter)' as any);
             } else if (userProfile.role === 'admin') {
               router.replace('/(admin)' as any);

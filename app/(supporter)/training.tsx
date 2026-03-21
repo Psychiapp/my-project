@@ -4,7 +4,7 @@
  * Content matches web version exactly
  */
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -38,6 +38,7 @@ import {
   ExternalLinkIcon,
 } from '@/components/icons';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
 
 type Module = 'confidentiality' | 'mindfulness' | 'cbt' | 'validation' | 'crisis' | 'platform';
 
@@ -1957,7 +1958,7 @@ Congratulations on completing this training! You are now equipped with the found
 };
 
 export default function TrainingScreen() {
-  const { isDemoMode } = useAuth();
+  const { user, isDemoMode } = useAuth();
   const [moduleProgress, setModuleProgress] = useState<ModuleProgress>({
     confidentiality: false,
     mindfulness: false,
@@ -1977,6 +1978,93 @@ export default function TrainingScreen() {
   const [isDownloading, setIsDownloading] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
   const certificateRef = useRef<ViewShot>(null);
+
+  // Load training progress from database on mount
+  useEffect(() => {
+    const loadProgress = async () => {
+      if (!user?.id || isDemoMode || !supabase) return;
+
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('training_modules_completed, training_complete')
+          .eq('id', user.id)
+          .single();
+
+        if (error) {
+          console.error('Error loading training progress:', error);
+          return;
+        }
+
+        if (data?.training_modules_completed) {
+          // training_modules_completed is stored as JSON array of completed module names
+          const completedModules = data.training_modules_completed as string[];
+          const progress: ModuleProgress = {
+            confidentiality: completedModules.includes('confidentiality'),
+            mindfulness: completedModules.includes('mindfulness'),
+            cbt: completedModules.includes('cbt'),
+            validation: completedModules.includes('validation'),
+            crisis: completedModules.includes('crisis'),
+            platform: completedModules.includes('platform'),
+          };
+          setModuleProgress(progress);
+
+          // If training was already completed, show certificate
+          if (data.training_complete) {
+            setShowCertificate(true);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading training progress:', error);
+      }
+    };
+
+    loadProgress();
+  }, [user?.id, isDemoMode]);
+
+  // Save module completion to database
+  const saveModuleProgress = async (moduleId: Module) => {
+    if (!user?.id || isDemoMode || !supabase) return;
+
+    try {
+      // Get current completed modules
+      const { data: currentData } = await supabase
+        .from('profiles')
+        .select('training_modules_completed')
+        .eq('id', user.id)
+        .single();
+
+      const currentModules = (currentData?.training_modules_completed as string[]) || [];
+
+      // Add new module if not already included
+      if (!currentModules.includes(moduleId)) {
+        const updatedModules = [...currentModules, moduleId];
+        const allComplete = updatedModules.length === 6;
+
+        // Update database
+        const updateData: Record<string, unknown> = {
+          training_modules_completed: updatedModules,
+        };
+
+        // If all modules complete, mark training as complete
+        if (allComplete) {
+          updateData.training_complete = true;
+          updateData.training_completed_at = new Date().toISOString();
+        }
+
+        const { error } = await supabase
+          .from('profiles')
+          .update(updateData)
+          .eq('id', user.id);
+
+        if (error) {
+          console.error('Error saving training progress:', error);
+        }
+      }
+    } catch (error) {
+      console.error('Error saving training progress:', error);
+    }
+  };
 
   const completedCount = Object.values(moduleProgress).filter(Boolean).length;
   const allComplete = completedCount === 6;
@@ -2089,6 +2177,8 @@ export default function TrainingScreen() {
 
     if (score >= 5) {
       setModuleProgress((prev) => ({ ...prev, [currentModule]: true }));
+      // Save progress to database
+      saveModuleProgress(currentModule);
     }
   };
 

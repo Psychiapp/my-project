@@ -18,6 +18,7 @@ export type NotificationType =
   | 'live_support_expired'
   | 'verification_approved'
   | 'verification_rejected'
+  | 'new_client_assigned'
   | 'system';
 
 export interface NotificationTemplate {
@@ -254,6 +255,18 @@ export function getNotificationContent(
           type: 'verification_rejected',
           reason: params.reason || '',
           action: 'open_verification',
+        },
+      };
+
+    // New client assignment notification
+    case 'new_client_assigned':
+      return {
+        title: 'New Client Matched',
+        body: `You've been matched with a new client${params.clientName ? `: ${params.clientName}` : ''}. Check your clients list to learn more about them.`,
+        data: {
+          type: 'new_client_assigned',
+          clientId: params.clientId || '',
+          action: 'open_clients',
         },
       };
 

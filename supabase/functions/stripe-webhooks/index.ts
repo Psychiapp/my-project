@@ -18,16 +18,26 @@ serve(async (req) => {
   // Log incoming request for debugging
   console.log('Webhook received:', {
     hasSignature: !!signature,
+    hasWebhookSecret: !!webhookSecret,
+    webhookSecretPrefix: webhookSecret ? webhookSecret.substring(0, 10) + '...' : 'MISSING',
     bodyLength: body.length,
-    bodyPreview: body.substring(0, 200),
+    bodyPreview: body.substring(0, 300),
   });
 
   if (!signature) {
+    console.error('Missing stripe-signature header');
     return new Response('Missing stripe-signature header', { status: 400 });
   }
 
+  if (!webhookSecret) {
+    console.error('STRIPE_WEBHOOK_SECRET not configured');
+    return new Response('Webhook secret not configured', { status: 500 });
+  }
+
   try {
+    console.log('Attempting to verify signature...');
     const event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret);
+    console.log('Signature verified successfully!');
     console.log('Event verified:', event.type);
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -91,12 +101,30 @@ serve(async (req) => {
       // Connect account events (v2 API - thin events)
       case 'v2.core.account.updated': {
         // v2 events are "thin" - we need to fetch the full account data
-        const accountId = (event.data as any).id || (event as any).related_object?.id;
+        // Log the full event structure to understand format
+        console.log('v2 event data:', JSON.stringify(event, null, 2));
+
+        // Try multiple ways to get the account ID from v2 thin event
+        const accountId = (event.data as any)?.id
+          || (event as any).related_object?.id
+          || (event.data as any)?.object?.id
+          || (event as any).data?.object;
+
+        console.log('Extracted account ID:', accountId);
 
         if (accountId) {
           try {
             // Fetch full account data from Stripe
+            console.log('Fetching account from Stripe:', accountId);
             const account = await stripe.accounts.retrieve(accountId);
+            console.log('Account retrieved:', {
+              id: account.id,
+              charges_enabled: account.charges_enabled,
+              payouts_enabled: account.payouts_enabled,
+              details_submitted: account.details_submitted,
+              metadata: account.metadata,
+            });
+
             const supporterId = account.metadata?.supporter_id;
 
             if (supporterId) {
@@ -106,7 +134,9 @@ serve(async (req) => {
                   ? 'pending_verification'
                   : 'pending';
 
-              await supabase
+              console.log(`Updating supporter ${supporterId} to status: ${status}`);
+
+              const { error: updateError } = await supabase
                 .from('profiles')
                 .update({
                   stripe_connect_status: status,
@@ -115,11 +145,19 @@ serve(async (req) => {
                 })
                 .eq('id', supporterId);
 
-              console.log(`Updated supporter ${supporterId} Connect status to ${status}`);
+              if (updateError) {
+                console.error('Database update error:', updateError);
+              } else {
+                console.log(`Successfully updated supporter ${supporterId} Connect status to ${status}`);
+              }
+            } else {
+              console.log('No supporter_id in account metadata');
             }
           } catch (fetchError) {
             console.error('Error fetching account for v2 event:', fetchError);
           }
+        } else {
+          console.log('Could not extract account ID from v2 event');
         }
         break;
       }
@@ -412,8 +450,11 @@ serve(async (req) => {
     });
   } catch (error) {
     console.error('Webhook error:', error);
+    console.error('Error name:', error.name);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error.message, name: error.name }),
       { status: 400, headers: { 'Content-Type': 'application/json' } }
     );
   }
