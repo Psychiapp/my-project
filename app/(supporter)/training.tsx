@@ -2296,7 +2296,7 @@ export default function TrainingScreen() {
           <View style={styles.headerSpacer} />
         </View>
 
-        <ScrollView ref={scrollViewRef} style={styles.content} contentContainerStyle={styles.contentContainer}>
+        <ScrollView ref={scrollViewRef} style={styles.content} contentContainerStyle={styles.contentContainer} removeClippedSubviews={false}>
           {!showQuiz ? (
             // Module Content
             <View style={styles.moduleContent}>
@@ -2694,6 +2694,7 @@ const styles = StyleSheet.create({
   },
   moduleContent: {
     gap: Spacing.md,
+    flexShrink: 0,
   },
   moduleProgressCard: {
     backgroundColor: PsychiColors.white,
@@ -2766,6 +2767,7 @@ const styles = StyleSheet.create({
   sectionCard: {
     backgroundColor: PsychiColors.white,
     borderRadius: BorderRadius.lg,
+    overflow: 'visible',
     ...Shadows.soft,
   },
   sectionHeader: {
@@ -2809,12 +2811,15 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: 'rgba(0,0,0,0.05)',
     flexShrink: 0,
+    flexGrow: 0,
   },
   sectionText: {
     fontSize: 14,
     color: PsychiColors.textSecondary,
     lineHeight: 22,
     flexShrink: 0,
+    flexGrow: 0,
+    flexBasis: 'auto',
   },
   quizButton: {
     backgroundColor: PsychiColors.royalBlue,
