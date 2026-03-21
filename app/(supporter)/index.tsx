@@ -205,7 +205,7 @@ export default function SupporterHomeScreen() {
                 </Text>
               )}
               <Text style={styles.suspensionContact}>
-                If you believe this is an error, please contact support at support@psychi.app
+                If you believe this is an error, please contact support at psychiapp@outlook.com
               </Text>
             </View>
           </View>
