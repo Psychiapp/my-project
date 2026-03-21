@@ -2808,11 +2808,13 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.lg,
     borderTopWidth: 1,
     borderTopColor: 'rgba(0,0,0,0.05)',
+    flexShrink: 0,
   },
   sectionText: {
     fontSize: 14,
     color: PsychiColors.textSecondary,
     lineHeight: 22,
+    flexShrink: 0,
   },
   quizButton: {
     backgroundColor: PsychiColors.royalBlue,
