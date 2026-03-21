@@ -2634,7 +2634,8 @@ export async function matchSupportersToClient(
         training_complete,
         availability,
         session_types,
-        verification_status
+        verification_status,
+        suspended_at
       )
     `)
     .eq('role', 'supporter')
@@ -2652,8 +2653,8 @@ export async function matchSupportersToClient(
   for (const supporter of data || []) {
     const details = supporter.supporter_details as any;
 
-    // Skip if not fully active (verified, accepting clients, and has Stripe Connect enabled)
-    if (!details?.accepting_clients || !details?.is_verified || !supporter.stripe_connect_id || !supporter.stripe_payouts_enabled) {
+    // Skip if not fully active (verified, accepting clients, has Stripe Connect enabled, and not suspended)
+    if (!details?.accepting_clients || !details?.is_verified || !supporter.stripe_connect_id || !supporter.stripe_payouts_enabled || details?.suspended_at) {
       continue;
     }
 
@@ -4036,7 +4037,7 @@ export async function getAvailableSupportersForLiveSupport(
 
   let query = supabase
     .from('profiles')
-    .select('id, full_name, avatar_url')
+    .select('id, full_name, avatar_url, supporter_details(suspended_at)')
     .eq('role', 'supporter')
     .eq('is_online', true)
     .eq('in_session', false)
@@ -4053,11 +4054,17 @@ export async function getAvailableSupportersForLiveSupport(
     return [];
   }
 
-  return (data || []).map(s => ({
-    id: s.id,
-    fullName: s.full_name || 'Supporter',
-    avatarUrl: s.avatar_url,
-  }));
+  // Filter out suspended supporters
+  return (data || [])
+    .filter(s => {
+      const details = s.supporter_details as any;
+      return !details?.suspended_at;
+    })
+    .map(s => ({
+      id: s.id,
+      fullName: s.full_name || 'Supporter',
+      avatarUrl: s.avatar_url,
+    }));
 }
 
 /**
