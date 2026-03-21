@@ -2164,7 +2164,7 @@ export default function TrainingScreen() {
     setQuizAnswers((prev) => ({ ...prev, [questionId]: answer }));
   };
 
-  const handleSubmitQuiz = () => {
+  const handleSubmitQuiz = async () => {
     if (!currentModule) return;
 
     const correct = CORRECT_ANSWERS[currentModule];
@@ -2177,8 +2177,8 @@ export default function TrainingScreen() {
 
     if (score >= 5) {
       setModuleProgress((prev) => ({ ...prev, [currentModule]: true }));
-      // Save progress to database
-      saveModuleProgress(currentModule);
+      // Save progress to database - await to ensure it completes before user can navigate
+      await saveModuleProgress(currentModule);
     }
   };
 
