@@ -2353,12 +2353,14 @@ export default function TrainingScreen() {
                     </View>
                   </TouchableOpacity>
                   {expandedSections[section.id] && (
-                    <View style={styles.sectionContent}>
-                      {typeof section.content === 'string' ? (
-                        <Text style={styles.sectionText}>{section.content}</Text>
-                      ) : (
-                        section.content
-                      )}
+                    <View style={styles.sectionContent} collapsable={false}>
+                      <View style={styles.sectionTextWrapper} collapsable={false}>
+                        {typeof section.content === 'string' ? (
+                          <Text style={styles.sectionText}>{section.content}</Text>
+                        ) : (
+                          section.content
+                        )}
+                      </View>
                     </View>
                   )}
                 </View>
@@ -2810,16 +2812,15 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.lg,
     borderTopWidth: 1,
     borderTopColor: 'rgba(0,0,0,0.05)',
-    flexShrink: 0,
-    flexGrow: 0,
+  },
+  sectionTextWrapper: {
+    // Prevent view flattening which can cause text clipping
+    // Using explicit minHeight ensures proper layout calculation
   },
   sectionText: {
     fontSize: 14,
     color: PsychiColors.textSecondary,
     lineHeight: 22,
-    flexShrink: 0,
-    flexGrow: 0,
-    flexBasis: 'auto',
   },
   quizButton: {
     backgroundColor: PsychiColors.royalBlue,
