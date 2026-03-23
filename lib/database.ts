@@ -1102,6 +1102,7 @@ export async function validateSessionBooking(
 
 /**
  * Create a new session booking
+ * @param paymentRequired - If false, session is covered by subscription (no payment needed)
  * @param validateQuota - If true, validates quota server-side before creating (optional extra check)
  */
 export async function createSession(
@@ -1111,6 +1112,7 @@ export async function createSession(
   scheduledAt: string,
   durationMinutes: number,
   paymentIntentId?: string,
+  paymentRequired: boolean = true,
   validateQuota: boolean = false
 ): Promise<Session | null> {
   if (!supabase) return null;
@@ -1137,8 +1139,11 @@ export async function createSession(
       duration_minutes: durationMinutes,
       status: 'scheduled',
       stripe_payment_intent_id: paymentIntentId || null,
-      // If we have a payment intent, payment already succeeded (webhook already processed)
-      payment_status: paymentIntentId ? 'completed' : 'pending',
+      // Payment status logic:
+      // - If paymentIntentId exists: payment succeeded -> 'completed'
+      // - If no payment required (subscription covers it): no payment needed -> 'completed'
+      // - Otherwise: waiting for payment -> 'pending'
+      payment_status: paymentIntentId ? 'completed' : (paymentRequired ? 'pending' : 'completed'),
     })
     .select()
     .single();

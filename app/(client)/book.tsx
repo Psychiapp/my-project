@@ -436,14 +436,15 @@ export default function BookSessionScreen() {
       }
       // If !requiresPayment, session is covered by subscription - no payment needed
 
-      // Payment succeeded (or dev mode) - now create the session with payment intent ID
+      // Payment succeeded (or dev mode or subscription) - now create the session
       const session = await createSession(
         user.id,
         supporter.id,
         selectedType,
         scheduledTime.toISOString(),
         selectedType === 'chat' ? 30 : 45,
-        paymentIntentId
+        paymentIntentId,
+        requiresPayment // Pass whether payment was required for proper status tracking
       );
 
       if (!session) {
