@@ -3,7 +3,8 @@
  * Multi-step booking flow for scheduling sessions with supporters
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -18,7 +19,7 @@ import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PsychiColors, Spacing, BorderRadius, Shadows, Typography } from '@/constants/theme';
 import { Config } from '@/constants/config';
-import { ChatIcon, PhoneIcon, VideoIcon, CalendarIcon, ClockIcon, ChevronLeftIcon } from '@/components/icons';
+import { ChatIcon, PhoneIcon, VideoIcon, CalendarIcon, ClockIcon, ChevronLeftIcon, RefreshIcon } from '@/components/icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLocalSearchParams } from 'expo-router';
 import {
@@ -293,25 +294,30 @@ export default function BookSessionScreen() {
     }
   };
 
-  // Fetch supporter availability when supporter is available
-  React.useEffect(() => {
-    const fetchAvailability = async () => {
-      const supporterId = params.supporterId || assignedSupporter?.id;
-      if (supporterId) {
-        try {
-          const data = await getSupporterAvailability(supporterId);
-          if (data?.availability) {
-            setSupporterAvailability(data.availability);
-          }
-        } catch (error) {
-          console.error('Error fetching supporter availability:', error);
-          // Continue with empty availability - user can still see supporter info
+  // Fetch supporter availability - refreshes when screen comes into focus
+  const fetchAvailability = useCallback(async () => {
+    const supporterId = params.supporterId || assignedSupporter?.id;
+    if (supporterId) {
+      setIsLoadingAvailability(true);
+      try {
+        const data = await getSupporterAvailability(supporterId);
+        if (data?.availability) {
+          setSupporterAvailability(data.availability);
         }
+      } catch (error) {
+        console.error('Error fetching supporter availability:', error);
+        // Continue with empty availability - user can still see supporter info
       }
-      setIsLoadingAvailability(false);
-    };
-    fetchAvailability();
+    }
+    setIsLoadingAvailability(false);
   }, [params.supporterId, assignedSupporter?.id]);
+
+  // Refresh availability when screen comes into focus (e.g., after supporter updates)
+  useFocusEffect(
+    useCallback(() => {
+      fetchAvailability();
+    }, [fetchAvailability])
+  );
 
   // Get client name for notifications
   const clientName = profile?.firstName
@@ -665,10 +671,26 @@ export default function BookSessionScreen() {
         {/* Step 2: Date Selection */}
         {step === 'date' && (
           <View style={styles.stepContent}>
-            <Text style={styles.stepTitle}>Select a date</Text>
-            <Text style={styles.stepSubtitle}>
-              {sessionTypes.find((t) => t.id === selectedType)?.name}
-            </Text>
+            <View style={styles.stepTitleRow}>
+              <View>
+                <Text style={styles.stepTitle}>Select a date</Text>
+                <Text style={styles.stepSubtitle}>
+                  {sessionTypes.find((t) => t.id === selectedType)?.name}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.refreshButton}
+                onPress={fetchAvailability}
+                disabled={isLoadingAvailability}
+                activeOpacity={0.7}
+              >
+                {isLoadingAvailability ? (
+                  <ActivityIndicator size="small" color={PsychiColors.azure} />
+                ) : (
+                  <RefreshIcon size={20} color={PsychiColors.azure} />
+                )}
+              </TouchableOpacity>
+            </View>
 
             <View style={styles.dateGrid}>
               {availableDates.map((date, idx) => (
@@ -1026,14 +1048,27 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 3,
   },
+  stepTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.md,
+  },
   stepTitle: {
     fontSize: 20,
     fontWeight: '600',
     color: PsychiColors.midnight,
     fontFamily: Typography.fontFamily.serif,
-    textAlign: 'center',
     marginBottom: Spacing.xs,
     letterSpacing: 0.5,
+  },
+  refreshButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(74, 144, 226, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   stepSubtitle: {
     fontSize: 14,
