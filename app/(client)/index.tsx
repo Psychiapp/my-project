@@ -51,7 +51,6 @@ interface AssignedSupporter {
   id: string;
   name: string;
   image: string;
-  compatibilityScore: number;
   year: string;
   university: string;
   bio: string;
@@ -216,7 +215,6 @@ export default function ClientHomeScreen() {
               id: supporterDetail.id,
               name: supporterDetail.full_name,
               image: supporterDetail.avatar_url || '',
-              compatibilityScore: 85,
               year: '',
               university: supporterDetail.education || '',
               bio: supporterDetail.bio,
@@ -469,7 +467,13 @@ export default function ClientHomeScreen() {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle} accessibilityRole="header">Your Supporter</Text>
-              <TouchableOpacity activeOpacity={0.7} accessibilityRole="link" accessibilityLabel="View supporter profile" accessibilityHint="Opens your supporter's full profile">
+              <TouchableOpacity
+                onPress={() => router.push(`/(client)/supporter/${assignedSupporter.id}`)}
+                activeOpacity={0.7}
+                accessibilityRole="link"
+                accessibilityLabel="View supporter profile"
+                accessibilityHint="Opens your supporter's full profile"
+              >
                 <Text style={styles.sectionAction}>View Profile</Text>
               </TouchableOpacity>
             </View>
@@ -487,16 +491,9 @@ export default function ClientHomeScreen() {
                 </View>
               )}
               <View style={styles.supporterInfo}>
-                <View style={styles.supporterHeader}>
-                  <Text style={styles.supporterName}>
-                    {assignedSupporter.name}
-                  </Text>
-                  <View style={styles.matchBadge}>
-                    <Text style={styles.matchBadgeText}>
-                      {assignedSupporter.compatibilityScore}% match
-                    </Text>
-                  </View>
-                </View>
+                <Text style={styles.supporterName}>
+                  {assignedSupporter.name}
+                </Text>
                 {assignedSupporter.university ? (
                   <Text style={styles.supporterMeta}>
                     {assignedSupporter.year ? `${assignedSupporter.year} · ` : ''}{assignedSupporter.university}
@@ -875,27 +872,11 @@ const styles = StyleSheet.create({
   supporterInfo: {
     flex: 1,
   },
-  supporterHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing['2'],
-    marginBottom: Spacing['1'],
-  },
   supporterName: {
     fontSize: Typography.fontSize.lg,
     fontWeight: Typography.fontWeight.semibold,
     color: PsychiColors.textPrimary,
-  },
-  matchBadge: {
-    backgroundColor: `${PsychiColors.success}12`,
-    paddingHorizontal: Spacing['2.5'],
-    paddingVertical: Spacing['1'],
-    borderRadius: BorderRadius.full,
-  },
-  matchBadgeText: {
-    fontSize: Typography.fontSize['2xs'],
-    fontWeight: Typography.fontWeight.semibold,
-    color: PsychiColors.success,
+    marginBottom: Spacing['1'],
   },
   supporterMeta: {
     fontSize: Typography.fontSize.sm,

@@ -127,7 +127,7 @@ export default function ProfileScreen() {
                 ? `${profile.firstName} ${profile.lastName}`
                 : 'User'}
             </Text>
-            <Text style={styles.profileEmail}>{profile?.email || 'user@example.com'}</Text>
+            {profile?.email && <Text style={styles.profileEmail}>{profile.email}</Text>}
           </View>
           <TouchableOpacity
             style={styles.editButton}

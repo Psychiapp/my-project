@@ -1479,6 +1479,7 @@ export async function getSupporterClients(supporterId: string): Promise<ClientAs
         : new Date().toISOString(),
       last_session_date: lastSession?.scheduled_at || null,
       notes: null,
+      compatibility_score: null,
     });
   });
 
@@ -2948,7 +2949,8 @@ export async function getClientPreferences(
  */
 export async function assignSupporterToClient(
   clientId: string,
-  supporterId: string
+  supporterId: string,
+  compatibilityScore?: number
 ): Promise<boolean> {
   if (!supabase) return false;
 
@@ -2959,6 +2961,7 @@ export async function assignSupporterToClient(
       supporter_id: supporterId,
       status: 'active',
       started_at: new Date().toISOString(),
+      compatibility_score: compatibilityScore ?? null,
     });
 
   if (error) {
@@ -3002,8 +3005,8 @@ export async function matchAndAssignSupporter(
       .eq('client_id', clientId)
       .eq('status', 'active');
 
-    // Create the new assignment
-    const assigned = await assignSupporterToClient(clientId, bestMatch.id);
+    // Create the new assignment with compatibility score
+    const assigned = await assignSupporterToClient(clientId, bestMatch.id, bestMatch.compatibilityScore);
 
     if (!assigned) {
       return {
@@ -3090,6 +3093,7 @@ export async function getClientCurrentAssignment(
     started_at: data.started_at,
     last_session_date: data.last_session_date,
     notes: data.notes,
+    compatibility_score: data.compatibility_score,
   };
 }
 
@@ -3204,8 +3208,8 @@ export async function requestSupporterReassignment(
     // Step 4: Get the best match
     const newSupporter = availableMatches[0];
 
-    // Step 5: Create the new assignment
-    const assigned = await assignSupporterToClient(clientId, newSupporter.id);
+    // Step 5: Create the new assignment with compatibility score
+    const assigned = await assignSupporterToClient(clientId, newSupporter.id, newSupporter.compatibilityScore);
     if (!assigned) {
       return { success: false, error: 'Failed to assign new supporter' };
     }

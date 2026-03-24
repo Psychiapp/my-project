@@ -529,4 +529,5 @@ export interface ClientAssignment {
   started_at: string;
   last_session_date: string | null;
   notes: string | null;
+  compatibility_score: number | null;
 }

@@ -79,7 +79,7 @@ const getTypeIcon = (type: string) => {
 };
 
 export default function SessionsScreen() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [activeTab, setActiveTab] = useState<SessionTab>('upcoming');
   const [upcomingSessions, setUpcomingSessions] = useState<Session[]>([]);
   const [pastSessions, setPastSessions] = useState<Session[]>([]);
@@ -188,8 +188,8 @@ export default function SessionsScreen() {
     const result = await cancelSessionWithRefund(
       {
         sessionId: selectedSession.id,
-        clientName: 'You',
-        clientEmail: 'client@example.com',
+        clientName: profile ? `${profile.firstName} ${profile.lastName}`.trim() : 'Client',
+        clientEmail: profile?.email || user?.email || '',
         sessionType: selectedSession.type,
         amount: sessionPrice,
         scheduledAt: selectedSession.scheduledAt,
