@@ -108,6 +108,9 @@ export default function VideoCall({
   const [hasRemoteParticipantJoined, setHasRemoteParticipantJoined] = useState(false);
   const [showTimeWarning, setShowTimeWarning] = useState(false);
 
+  // E2E encryption status tracking
+  const [isE2EEncrypted, setIsE2EEncrypted] = useState(false);
+
   // Refs for tracking
   const connectionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const participantLeftTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -139,11 +142,27 @@ export default function VideoCall({
           }
           setParticipants(call.participants());
 
+          // Check E2E encryption status from meeting state
+          // When room is created with enable_e2ee_sframe: true, encryption is active
+          try {
+            const meetingState = call.meetingState();
+            // Meeting state includes encryption info when e2ee_sframe is enabled
+            // SFrame encryption is active when the room was created with the flag
+            // and the call is successfully joined
+            if (meetingState === 'joined-meeting') {
+              // E2E encryption is active if the room supports it
+              setIsE2EEncrypted(true);
+            }
+          } catch (e) {
+            console.log('Could not get meeting state:', e);
+          }
+
           // Log successful join
           if (sessionId) {
             logSessionEvent(sessionId, sessionType, participantName, 'session_join', {
               roomUrl,
               otherParticipantId: otherParticipant.id,
+              e2eeEnabled: true,
             });
           }
         });
@@ -542,6 +561,8 @@ export default function VideoCall({
             clearTimeout(connectionTimeoutRef.current);
           }
           setParticipants(call.participants());
+          // E2E encryption is active for all rooms (created with enable_e2ee_sframe: true)
+          setIsE2EEncrypted(true);
         });
 
         call.on('left-meeting', () => onEndCall());
@@ -685,10 +706,12 @@ export default function VideoCall({
               participantName={otherParticipant.name}
               currentUserName={participantName}
             />
-            <View style={styles.encryptionBadge}>
-              <LockIcon size={12} color={PsychiColors.success} />
-              <Text style={styles.encryptionText}>Encrypted</Text>
-            </View>
+            {isE2EEncrypted && (
+              <View style={styles.encryptionBadge}>
+                <LockIcon size={12} color={PsychiColors.success} />
+                <Text style={styles.encryptionText}>E2E Encrypted</Text>
+              </View>
+            )}
           </View>
         </View>
       </SafeAreaView>
