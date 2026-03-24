@@ -203,12 +203,12 @@ export default function ChatSession({
       senderId: currentUserId,
       timestamp: new Date(),
       isOwn: true,
-      isEncrypted: useEncryption,
+      isEncrypted: false, // Local messages are NOT encrypted
     };
 
     setLocalMessages((prev) => [...prev, newMessage]);
-    // Note: In local mode, messages are only stored locally
-    // For real-time chat, encryption must be set up for both users
+    // Note: In local mode, messages are only stored locally and NOT encrypted
+    // For real-time encrypted chat, both users must have encryption set up
   };
 
   const formatTime = (date: Date) => {
@@ -273,7 +273,7 @@ export default function ChatSession({
 
       {/* Session Info Banner */}
       <View style={styles.sessionBanner}>
-        {useEncryption && (
+        {useEncryption && encryptedChat.isReady && (
           <View style={styles.encryptionBadge}>
             <LockIcon size={12} color={PsychiColors.success} />
             <Text style={styles.encryptionText}>E2E Encrypted</Text>
