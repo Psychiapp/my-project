@@ -233,9 +233,6 @@ export default function SupporterEditProfileScreen() {
       if (supabase) {
         const now = new Date().toISOString();
 
-        console.log('Saving supporter profile for user:', user.id);
-        console.log('Profile data:', { displayName });
-
         // NOTE: Do NOT block on getSession() here - it can return null even when
         // the session exists in memory (e.g., right after signup when storage write
         // is still async). Just proceed with the database operation.
@@ -271,10 +268,7 @@ export default function SupporterEditProfileScreen() {
           console.error('Profile update returned no data - RLS may be blocking');
           throw new Error('Profile update failed - no data returned. Check RLS policies.');
         }
-        console.log('Profile update result:', profileData);
-
         // Update supporter_details table
-        console.log('Saving supporter details:', { bio, specialties: selectedSpecialties, availability });
         const { data: detailsData, error: detailsError } = await supabase
           .from('supporter_details')
           .upsert({
@@ -298,17 +292,10 @@ export default function SupporterEditProfileScreen() {
           console.error('Supporter details update returned no data');
           // Don't throw here - supporter_details might have different RLS
           console.warn('Supporter details may not have saved - continuing anyway');
-        } else {
-          console.log('Supporter details update result:', detailsData);
         }
 
         // Refresh the AuthContext profile so dashboard updates immediately
-        console.log('Refreshing profile in AuthContext...');
         await refreshProfile();
-        console.log('Profile refresh complete');
-
-        // Verify the refresh worked by checking profile
-        console.log('Verifying profile was updated...');
       }
 
       Alert.alert('Success', 'Your profile has been updated', [

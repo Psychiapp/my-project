@@ -62,7 +62,6 @@ export async function registerForPushNotifications(): Promise<string | null> {
 
   // Check if it's a physical device
   if (!Device.isDevice) {
-    console.log('Push notifications require a physical device');
     return null;
   }
 
@@ -77,7 +76,6 @@ export async function registerForPushNotifications(): Promise<string | null> {
   }
 
   if (finalStatus !== 'granted') {
-    console.log('Permission not granted for push notifications');
     return null;
   }
 

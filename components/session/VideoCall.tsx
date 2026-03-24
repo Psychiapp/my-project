@@ -44,7 +44,7 @@ try {
   Daily = dailyModule.default;
   DailyMediaView = dailyModule.DailyMediaView;
 } catch (e) {
-  console.log('Daily.co native module not available (running in Expo Go)');
+  // Daily.co native module not available (running in Expo Go)
 }
 
 const { width } = Dimensions.get('window');
@@ -158,7 +158,7 @@ export default function VideoCall({
               setIsE2EEncrypted(true);
             }
           } catch (e) {
-            console.log('Could not get meeting state:', e);
+            // Could not get meeting state - non-critical
           }
 
           // Log successful join
@@ -212,7 +212,6 @@ export default function VideoCall({
           if (hasRemoteParticipantJoined && !remoteParticipant) {
             // Start auto-end timeout - will end session in 2 minutes if participant doesn't rejoin
             participantLeftTimeoutRef.current = setTimeout(() => {
-              console.log('Auto-ending session - participant did not rejoin within 2 minutes');
               call.leave();
               onConnectionIssue?.('disconnect');
               onEndCall();
@@ -437,7 +436,6 @@ export default function VideoCall({
         nextAppState.match(/inactive|background/)
       ) {
         // App going to background - could pause or show notification
-        console.log('App going to background during call');
       }
       appStateRef.current = nextAppState;
     };

@@ -333,10 +333,7 @@ export async function uploadAvatar(
     const publicUrl = urlData?.publicUrl;
 
     if (publicUrl) {
-      // Update profile with new avatar URL
-      console.log('Updating profile with avatar URL:', publicUrl);
-
-      // Don't use .select() as RLS might block it even if UPDATE succeeds
+      // Update profile with new avatar URL - Don't use .select() as RLS might block it even if UPDATE succeeds
       const { error: updateError } = await supabase
         .from('profiles')
         .update({ avatar_url: publicUrl, updated_at: new Date().toISOString() })
@@ -362,11 +359,6 @@ export async function uploadAvatar(
       if (verifyError) {
         console.warn('Could not verify avatar update, but it may have succeeded:', verifyError);
         // Don't throw - the upload succeeded and the update didn't return an error
-      } else if (verifyData?.avatar_url !== publicUrl) {
-        console.warn('Avatar URL verification mismatch - expected:', publicUrl, 'got:', verifyData?.avatar_url);
-        // Still return success - the upload and update didn't error
-      } else {
-        console.log('Profile avatar updated and verified successfully');
       }
 
       return publicUrl;
@@ -401,7 +393,6 @@ export async function updateAvatarUrl(
     return false;
   }
 
-  console.log('Avatar URL updated successfully');
   return true;
 }
 
@@ -3326,11 +3317,7 @@ export async function reportUser(
       // Match with a new supporter (excluding the reported one)
       const newMatch = await matchAndAssignSupporter(clientId, [oldSupporterId]);
 
-      if (newMatch) {
-        console.log('Client auto-rematched to new supporter after report');
-      } else {
-        console.log('No available supporters for rematch after report');
-      }
+      // Rematch processed silently
     }
   } catch (rematchError) {
     // Don't fail the report if rematch fails
@@ -4053,8 +4040,6 @@ export async function checkAndCompleteOnboarding(supporterId: string): Promise<{
       if (updateDetailsError) {
         console.error('Error updating accepting_clients:', updateDetailsError);
       }
-
-      console.log(`Supporter ${supporterId} onboarding completed - now accepting clients`);
     }
 
     // If requirements not met but was previously complete, mark as incomplete

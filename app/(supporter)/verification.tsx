@@ -146,8 +146,6 @@ export default function VerificationScreen() {
       const filePath = `${folder}/${user.id}/${Date.now()}.${extension}`;
       const contentType = extension === 'pdf' ? 'application/pdf' : `image/${extension}`;
 
-      console.log('Uploading to storage:', { bucket: 'verification-documents', filePath, byteLength: bytes.length });
-
       const { data, error } = await supabase.storage
         .from('verification-documents')
         .upload(filePath, bytes, {
@@ -176,7 +174,6 @@ export default function VerificationScreen() {
 
       // Return the file path (not a signed URL) so we can generate fresh signed URLs
       // when viewing documents. This avoids URL expiration issues.
-      console.log('Upload successful, returning file path:', filePath);
       return { url: filePath, error: null };
     } catch (error) {
       console.error('Error uploading file:', error);

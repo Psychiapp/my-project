@@ -64,7 +64,6 @@ export async function requestReview(): Promise<boolean> {
   try {
     const isAvailable = await StoreReview.isAvailableAsync();
     if (!isAvailable) {
-      console.log('Store review not available');
       return false;
     }
 

@@ -86,7 +86,6 @@ export default function WelcomeScreen() {
   };
 
   const handleSelectSupportType = (type: 'chat' | 'phone' | 'video') => {
-    console.log('Selected support type:', type);
     if (isAuthenticated) {
       goToDashboard();
     } else {
@@ -95,7 +94,6 @@ export default function WelcomeScreen() {
   };
 
   const handleSelectPlan = (planId: string) => {
-    console.log('Selected plan:', planId);
     if (isAuthenticated) {
       goToDashboard();
     } else {
@@ -105,7 +103,6 @@ export default function WelcomeScreen() {
   };
 
   const handleFooterNavigate = (screen: string) => {
-    console.log('Navigate to:', screen);
     // Handle navigation based on screen name
     if (screen === 'about') {
       // For now, scroll to top as a placeholder

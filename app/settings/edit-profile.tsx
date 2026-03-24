@@ -251,9 +251,6 @@ export default function EditProfileScreen() {
           role: profile?.role || 'client',
         };
 
-        console.log('Saving profile update for user:', user.id);
-        console.log('Update data:', updateData);
-
         const { data, error } = await supabase
           .from('profiles')
           .upsert(updateData, {
@@ -273,8 +270,6 @@ export default function EditProfileScreen() {
           console.error('Profile update returned no data - possible RLS issue');
           throw new Error('Profile update failed - please try again');
         }
-
-        console.log('Profile update result:', data);
 
         // Refresh profile in context so other screens reflect changes
         await refreshProfile();

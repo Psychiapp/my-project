@@ -86,8 +86,6 @@ export function calculateRefundAmount(
  * Process a refund for a cancelled or rescheduled session
  */
 export async function processRefund(request: RefundRequest): Promise<RefundResult> {
-  console.log('Processing refund:', request);
-
   // Check if Stripe is configured
   if (!StripeConfig.publishableKey) {
     console.warn('Stripe not configured - refund cannot be processed');
@@ -210,9 +208,6 @@ export async function rescheduleSession(
 ): Promise<{ success: boolean; message: string }> {
   // For supporter-initiated reschedules, no refund needed but notify client
   if (initiatedBy === 'supporter') {
-    // In production, update the session in the database
-    console.log('Rescheduling session to:', newScheduledTime);
-
     // Notify client
     await notifyClientOfReschedule(sessionInfo, newScheduledTime);
 
@@ -236,12 +231,6 @@ async function notifyClientOfRefund(
   sessionInfo: SessionRefundInfo,
   refundInfo: { amount: number; percentage: number; reason: string }
 ): Promise<void> {
-  console.log('Notifying client of refund:', {
-    clientEmail: sessionInfo.clientEmail,
-    refundAmount: refundInfo.amount / 100,
-    reason: refundInfo.reason,
-  });
-
   // In production:
   // 1. Send push notification
   // 2. Send email notification
@@ -255,12 +244,6 @@ async function notifyClientOfReschedule(
   sessionInfo: SessionRefundInfo,
   newTime: Date
 ): Promise<void> {
-  console.log('Notifying client of reschedule:', {
-    clientEmail: sessionInfo.clientEmail,
-    oldTime: sessionInfo.scheduledAt,
-    newTime: newTime.toISOString(),
-  });
-
   // In production:
   // 1. Send push notification
   // 2. Send email notification

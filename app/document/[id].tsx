@@ -71,7 +71,6 @@ export default function DocumentViewerScreen() {
       try {
         // Decode the file path in case expo-router URL-encoded it
         const decodedFilePath = decodeURIComponent(filePath);
-        console.log('Loading document for path:', decodedFilePath);
 
         if (!supabase) {
           setError('Database not configured');
@@ -104,8 +103,6 @@ export default function DocumentViewerScreen() {
           return;
         }
 
-        console.log('Signed URL generated successfully');
-
         // Check file extension to determine if it's an image
         const filePathLower = decodedFilePath.toLowerCase();
         if (filePathLower.endsWith('.jpg') || filePathLower.endsWith('.jpeg') ||
@@ -133,14 +130,10 @@ export default function DocumentViewerScreen() {
     }
 
     try {
-      console.log('Loading bundled document:', id, 'asset:', bundledDocument.asset);
-
       // Load the asset
       const asset = Asset.fromModule(bundledDocument.asset);
-      console.log('Asset created:', asset.name, asset.type);
 
       await asset.downloadAsync();
-      console.log('Asset downloaded, localUri:', asset.localUri);
 
       if (!asset.localUri) {
         throw new Error('Failed to get local URI for document');
@@ -156,8 +149,6 @@ export default function DocumentViewerScreen() {
       }
 
       const base64 = await file.base64();
-
-      console.log('Base64 length:', base64.length);
 
       if (!base64 || base64.length === 0) {
         throw new Error('Failed to read document content');

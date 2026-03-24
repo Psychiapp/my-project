@@ -16,7 +16,7 @@ const loadStripeNative = () => {
     const moduleName = '@stripe/stripe-react-native';
     return require(moduleName);
   } catch (e) {
-    console.log('Stripe native module not available (running in Expo Go)');
+    // Stripe native module not available (running in Expo Go)
     return null;
   }
 };
@@ -143,7 +143,6 @@ export async function addPaymentMethod(
   customerId: string,
   paymentMethodId: string
 ): Promise<{ success: boolean; error?: string }> {
-  console.log('Adding payment method:', { customerId, paymentMethodId });
   return { success: true };
 }
 
@@ -153,8 +152,6 @@ export async function createSubscription(params: {
   priceId: string;
   paymentMethodId: string;
 }): Promise<{ subscriptionId: string; status: string }> {
-  console.log('Creating subscription:', params);
-
   return new Promise((resolve) => {
     setTimeout(() => {
       resolve({
@@ -167,7 +164,6 @@ export async function createSubscription(params: {
 
 // Cancel subscription
 export async function cancelSubscription(subscriptionId: string): Promise<{ success: boolean }> {
-  console.log('Canceling subscription:', subscriptionId);
   return { success: true };
 }
 

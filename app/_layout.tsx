@@ -22,31 +22,17 @@ try {
   const dsn = SentryConfig.dsn;
   const enabled = SentryConfig.enabled;
 
-  console.log('[SENTRY] DSN exists:', !!dsn);
-  console.log('[SENTRY] Enabled:', enabled);
-  console.log('[SENTRY] Environment:', SentryConfig.environment);
-
   if (dsn && enabled) {
     Sentry.init({
       dsn: dsn,
       environment: SentryConfig.environment,
       enableAutoSessionTracking: true,
       tracesSampleRate: 0.2,
-      debug: true, // Enable debug mode to see what's happening
+      debug: false,
     });
-    console.log('[SENTRY] Initialized successfully for', SentryConfig.environment);
-
-    // Send a test event to verify Sentry is working
-    Sentry.captureMessage('Sentry initialized - test event', {
-      level: 'info',
-      tags: { test: 'true' },
-    });
-    console.log('[SENTRY] Test event sent');
-  } else {
-    console.log('[SENTRY] Not initialized - DSN or enabled flag missing');
   }
 } catch (e) {
-  console.log('[SENTRY] Not available (running in Expo Go):', e);
+  // Sentry not available (running in Expo Go)
 }
 
 // Conditionally import Stripe to avoid crash in Expo Go
@@ -55,7 +41,7 @@ try {
   const stripe = require('@stripe/stripe-react-native');
   StripeProvider = stripe.StripeProvider;
 } catch (e) {
-  console.log('Stripe native module not available (running in Expo Go)');
+  // Stripe native module not available (running in Expo Go)
 }
 
 // Custom Psychi theme

@@ -74,7 +74,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const initAuth = async () => {
       try {
         if (!supabase) {
-          console.log('Supabase not configured, using demo mode only');
           setIsLoading(false);
           return;
         }
@@ -115,9 +114,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
               // Schedule weekly availability reminder for supporters on app start
               if (userProfile.role === 'supporter') {
-                scheduleWeeklyAvailabilityReminder().catch((err) => {
-                  console.log('Failed to schedule availability reminder:', err);
-                });
+                scheduleWeeklyAvailabilityReminder().catch(() => {});
               }
             }
           } catch (profileError) {
@@ -146,13 +143,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (supabase) {
       const { data: { subscription } } = supabase.auth.onAuthStateChange(
         async (event, session) => {
-          console.log('Auth state changed:', event);
-
           if (event === 'SIGNED_IN' && session?.user) {
             // Skip profile fetch during signup - signUp() handles state directly
             // This prevents race condition where onAuthStateChange overwrites profile
             if (isSigningUpRef.current) {
-              console.log('Skipping profile fetch during signup');
               return;
             }
 
@@ -167,9 +161,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
               // Schedule weekly availability reminder for supporters
               if (userProfile.role === 'supporter') {
-                scheduleWeeklyAvailabilityReminder().catch((err) => {
-                  console.log('Failed to schedule availability reminder:', err);
-                });
+                scheduleWeeklyAvailabilityReminder().catch(() => {});
               }
             }
           } else if (event === 'SIGNED_OUT') {
@@ -256,9 +248,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setTimeout(() => {
             if (userProfile.role === 'supporter') {
               // Schedule weekly availability reminder for supporters
-              scheduleWeeklyAvailabilityReminder().catch((err) => {
-                console.log('Failed to schedule availability reminder:', err);
-              });
+              scheduleWeeklyAvailabilityReminder().catch(() => {});
               router.replace('/(supporter)' as any);
             } else if (userProfile.role === 'admin') {
               router.replace('/(admin)' as any);

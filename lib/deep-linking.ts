@@ -117,7 +117,8 @@ export function handleDeepLink(parsedLink: DeepLinkPath): void {
       router.replace('/(client)/' as any);
       break;
     default:
-      console.log('Unknown deep link path');
+      // Unknown deep link path - no action taken
+      break;
   }
 }
 

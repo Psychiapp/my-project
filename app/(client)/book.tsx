@@ -412,9 +412,6 @@ export default function BookSessionScreen() {
       let paymentIntentId: string | undefined;
 
       if (requiresPayment && stripeAvailable) {
-        // Log for debugging payment splits
-        console.log('Processing payment with supporter Connect ID:', supporter.stripe_connect_id || 'NONE - payment will go to platform');
-
         const paymentResult = await processSessionPayment(
           selectedType,
           supporter.id,
