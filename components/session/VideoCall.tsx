@@ -23,8 +23,9 @@ import { Audio } from 'expo-av';
 import NetInfo, { NetInfoState } from '@react-native-community/netinfo';
 import { PsychiColors, Spacing, BorderRadius } from '@/constants/theme';
 import { Avatar } from '@/components/Avatar';
-import { LockIcon, MicIcon, MicOffIcon, VideoIcon, VideoOffIcon, VolumeHighIcon, VolumeLowIcon, PhoneIcon, WifiOffIcon } from '@/components/icons';
+import { LockIcon, MicIcon, MicOffIcon, VideoIcon, VideoOffIcon, VolumeHighIcon, VolumeLowIcon, PhoneIcon, WifiOffIcon, MoreHorizontalIcon } from '@/components/icons';
 import EmergencyButton from './EmergencyButton';
+import ReportUserModal from '@/components/ReportUserModal';
 import { createSessionLogger, logSessionEvent } from '@/lib/sessionLogger';
 
 // Constants for timeouts and warnings
@@ -110,6 +111,9 @@ export default function VideoCall({
 
   // E2E encryption status tracking
   const [isE2EEncrypted, setIsE2EEncrypted] = useState(false);
+
+  // Report modal state
+  const [showReportModal, setShowReportModal] = useState(false);
 
   // Refs for tracking
   const connectionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -513,6 +517,18 @@ export default function VideoCall({
     );
   }, [callObject, onEndCall, sessionId, isVideoEnabled, participantName, callDuration, roomUrl]);
 
+  // Show report options
+  const showMoreOptions = useCallback(() => {
+    Alert.alert(
+      'Options',
+      `Actions for ${otherParticipant.name}`,
+      [
+        { text: 'Report User', onPress: () => setShowReportModal(true), style: 'destructive' },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
+  }, [otherParticipant.name]);
+
   // Get participants
   const localParticipant = participants.local;
   const remoteParticipant = Object.values(participants).find((p) => !p.local);
@@ -700,12 +716,6 @@ export default function VideoCall({
             )}
           </View>
           <View style={styles.topBarRight}>
-            <EmergencyButton
-              sessionId={roomUrl}
-              sessionType={isVideoEnabled ? 'video' : 'phone'}
-              participantName={otherParticipant.name}
-              currentUserName={participantName}
-            />
             {isE2EEncrypted && (
               <View style={styles.encryptionBadge}>
                 <LockIcon size={12} color={PsychiColors.success} />
@@ -752,6 +762,19 @@ export default function VideoCall({
         </View>
       )}
 
+      {/* Safety Actions - positioned lower for better accessibility */}
+      <View style={styles.safetyActionsContainer}>
+        <EmergencyButton
+          sessionId={roomUrl}
+          sessionType={isVideoEnabled ? 'video' : 'phone'}
+          participantName={otherParticipant.name}
+          currentUserName={participantName}
+        />
+        <TouchableOpacity style={styles.moreOptionsButton} onPress={showMoreOptions}>
+          <MoreHorizontalIcon size={22} color={PsychiColors.white} />
+        </TouchableOpacity>
+      </View>
+
       {/* Controls */}
       <SafeAreaView style={styles.controlsContainer}>
         <View style={styles.controlsRow}>
@@ -792,6 +815,15 @@ export default function VideoCall({
           </LinearGradient>
         </TouchableOpacity>
       </SafeAreaView>
+
+      {/* Report Modal */}
+      <ReportUserModal
+        visible={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        reportedUserId={otherParticipant.id}
+        reportedUserName={otherParticipant.name}
+        sessionId={sessionId}
+      />
     </View>
   );
 }
@@ -999,6 +1031,25 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: PsychiColors.white,
+  },
+  safetyActionsContainer: {
+    position: 'absolute',
+    left: Spacing.md,
+    bottom: 220,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    zIndex: 50,
+  },
+  moreOptionsButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   controlsContainer: {
     position: 'absolute',
