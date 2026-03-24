@@ -1,5 +1,6 @@
 import { Alert } from 'react-native';
 import { StripeConfig, Config, SupabaseConfig } from '@/constants/config';
+import { markPaymentRefunded } from './database';
 
 export interface RefundRequest {
   sessionId: string;
@@ -179,6 +180,15 @@ export async function cancelSessionWithRefund(
       refundAmount: 0,
       error: refundResult.error,
     };
+  }
+
+  // Mark the payment as refunded in the database
+  if (refundResult.refundId) {
+    await markPaymentRefunded(
+      sessionInfo.stripePaymentIntentId!,
+      refundResult.refundId,
+      refundCalc.amount
+    );
   }
 
   // Send notification to client about refund

@@ -4789,3 +4789,189 @@ export async function getPostCallMessages(sessionId: string): Promise<PostCallMe
 
   return data || [];
 }
+
+// ============================================
+// PAYMENT TRACKING
+// ============================================
+
+/**
+ * Record a payment in the database
+ * Should be called after a successful Stripe payment
+ */
+export async function recordPayment(params: {
+  clientId: string;
+  supporterId: string;
+  sessionId?: string;
+  stripePaymentIntentId: string;
+  amount: number; // in cents
+  description?: string;
+  metadata?: Record<string, unknown>;
+}): Promise<Payment | null> {
+  if (!supabase) return null;
+
+  const platformFee = Math.round(params.amount * 0.25); // 25% platform fee
+  const supporterAmount = params.amount - platformFee; // 75% to supporter
+
+  const { data, error } = await supabase
+    .from('payments')
+    .insert({
+      client_id: params.clientId,
+      supporter_id: params.supporterId,
+      session_id: params.sessionId || null,
+      stripe_payment_intent_id: params.stripePaymentIntentId,
+      amount: params.amount,
+      platform_fee: platformFee,
+      supporter_amount: supporterAmount,
+      status: 'completed',
+      description: params.description || `Session payment`,
+      metadata: params.metadata || {},
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error recording payment:', error);
+    return null;
+  }
+
+  // Update supporter's total earnings
+  await updateSupporterEarnings(params.supporterId, supporterAmount);
+
+  return data;
+}
+
+/**
+ * Update supporter earnings after a successful payment
+ */
+async function updateSupporterEarnings(supporterId: string, amount: number): Promise<boolean> {
+  if (!supabase) return false;
+
+  // First get current earnings
+  const { data: current, error: fetchError } = await supabase
+    .from('supporter_details')
+    .select('total_earnings, pending_payout')
+    .eq('supporter_id', supporterId)
+    .single();
+
+  if (fetchError) {
+    console.error('Error fetching supporter details:', fetchError);
+    return false;
+  }
+
+  // Update earnings - add to both total and pending
+  const { error: updateError } = await supabase
+    .from('supporter_details')
+    .update({
+      total_earnings: (current?.total_earnings || 0) + amount,
+      pending_payout: (current?.pending_payout || 0) + amount,
+    })
+    .eq('supporter_id', supporterId);
+
+  if (updateError) {
+    console.error('Error updating supporter earnings:', updateError);
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Mark a payment as refunded
+ */
+export async function markPaymentRefunded(
+  stripePaymentIntentId: string,
+  refundId: string,
+  refundAmount: number
+): Promise<boolean> {
+  if (!supabase) return false;
+
+  // Get the payment to find supporter
+  const { data: payment, error: fetchError } = await supabase
+    .from('payments')
+    .select('id, supporter_id, supporter_amount, status')
+    .eq('stripe_payment_intent_id', stripePaymentIntentId)
+    .single();
+
+  if (fetchError || !payment) {
+    console.error('Error finding payment:', fetchError);
+    return false;
+  }
+
+  // Update payment record
+  const { error: updateError } = await supabase
+    .from('payments')
+    .update({
+      status: 'refunded',
+      refund_id: refundId,
+      refund_amount: refundAmount,
+      refunded_at: new Date().toISOString(),
+    })
+    .eq('id', payment.id);
+
+  if (updateError) {
+    console.error('Error updating payment:', updateError);
+    return false;
+  }
+
+  // Deduct from supporter's pending payout if payment was completed
+  if (payment.status === 'completed' && payment.supporter_id) {
+    const { data: current } = await supabase
+      .from('supporter_details')
+      .select('pending_payout')
+      .eq('supporter_id', payment.supporter_id)
+      .single();
+
+    if (current) {
+      // Calculate supporter's portion of refund (75%)
+      const supporterRefund = Math.round(refundAmount * 0.75);
+      const newPending = Math.max(0, (current.pending_payout || 0) - supporterRefund);
+
+      await supabase
+        .from('supporter_details')
+        .update({ pending_payout: newPending })
+        .eq('supporter_id', payment.supporter_id);
+    }
+  }
+
+  return true;
+}
+
+/**
+ * Get payment by session ID
+ */
+export async function getPaymentBySessionId(sessionId: string): Promise<Payment | null> {
+  if (!supabase) return null;
+
+  const { data, error } = await supabase
+    .from('payments')
+    .select('*')
+    .eq('session_id', sessionId)
+    .single();
+
+  if (error) {
+    console.error('Error fetching payment:', error);
+    return null;
+  }
+
+  return data;
+}
+
+/**
+ * Get payment by Stripe payment intent ID
+ */
+export async function getPaymentByIntentId(paymentIntentId: string): Promise<Payment | null> {
+  if (!supabase) return null;
+
+  const { data, error } = await supabase
+    .from('payments')
+    .select('*')
+    .eq('stripe_payment_intent_id', paymentIntentId)
+    .single();
+
+  if (error) {
+    console.error('Error fetching payment:', error);
+    return null;
+  }
+
+  return data;
+}

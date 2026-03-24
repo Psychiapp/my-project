@@ -27,7 +27,7 @@ import {
   sendBookingConfirmedNotification,
   scheduleAllSessionReminders,
 } from '@/lib/notifications';
-import { createSession, getSupporterDetail, getSupporterAvailability, saveClientPreferences, getClientCurrentAssignment, matchAndAssignSupporter } from '@/lib/database';
+import { createSession, getSupporterDetail, getSupporterAvailability, saveClientPreferences, getClientCurrentAssignment, matchAndAssignSupporter, recordPayment } from '@/lib/database';
 import { processSessionPayment, stripeAvailable } from '@/lib/stripe';
 import OnboardingModal from '@/components/OnboardingModal';
 import { Avatar } from '@/components/Avatar';
@@ -459,6 +459,23 @@ export default function BookSessionScreen() {
       }
 
       const sessionId = session.id;
+
+      // Record the payment for tracking and earnings (if payment was made)
+      if (paymentIntentId && requiresPayment) {
+        const pricing = Config.pricing[selectedType];
+        await recordPayment({
+          clientId: user.id,
+          supporterId: supporter.id,
+          sessionId: sessionId,
+          stripePaymentIntentId: paymentIntentId,
+          amount: pricing.amount,
+          description: `${sessionTypes.find((t) => t.id === selectedType)?.name || selectedType} session`,
+          metadata: {
+            sessionType: selectedType,
+            scheduledAt: scheduledTime.toISOString(),
+          },
+        });
+      }
       const sessionTypeName = sessionTypes.find((t) => t.id === selectedType)?.name || selectedType;
 
       // Send notification to supporter about new booking
