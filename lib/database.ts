@@ -983,6 +983,7 @@ export async function getUpcomingSessions(
       ${role === 'client' ? 'supporter:profiles!sessions_supporter_id_fkey' : 'client:profiles!sessions_client_id_fkey'} (
         id,
         full_name,
+        email,
         avatar_url
       )
     `)
@@ -1018,6 +1019,7 @@ export async function getPastSessions(
       ${role === 'client' ? 'supporter:profiles!sessions_supporter_id_fkey' : 'client:profiles!sessions_client_id_fkey'} (
         id,
         full_name,
+        email,
         avatar_url
       )
     `)

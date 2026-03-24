@@ -61,12 +61,13 @@ interface Session {
   duration: number;
   earnings?: number;
   pendingReschedule?: boolean;
+  stripePaymentIntentId?: string;
 }
 
 // Helper to format session data from database
 const formatSessionFromDb = (dbSession: SessionWithDetails): Session => {
   const scheduledDate = new Date(dbSession.scheduled_at);
-  const client = dbSession.client as { id: string; full_name: string; avatar_url?: string } | null;
+  const client = dbSession.client as { id: string; full_name: string; email?: string; avatar_url?: string } | null;
   const sessionType = dbSession.session_type as 'chat' | 'phone' | 'video';
   const pricing = Config.pricing[sessionType];
 
@@ -74,13 +75,14 @@ const formatSessionFromDb = (dbSession: SessionWithDetails): Session => {
     id: dbSession.id,
     clientId: client?.id || '',
     clientName: client?.full_name || 'Unknown Client',
-    clientEmail: '',
+    clientEmail: client?.email || '',
     type: sessionType,
     date: scheduledDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
     time: scheduledDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
     scheduledAt: dbSession.scheduled_at,
     duration: dbSession.duration_minutes || 30,
     earnings: dbSession.status === 'completed' ? (pricing?.supporterCut || 0) / 100 : undefined,
+    stripePaymentIntentId: dbSession.stripe_payment_intent_id || undefined,
   };
 };
 
@@ -189,6 +191,7 @@ export default function SupporterSessionsScreen() {
         sessionType: selectedSession.type,
         amount: sessionPrice,
         scheduledAt: selectedSession.scheduledAt,
+        stripePaymentIntentId: selectedSession.stripePaymentIntentId,
       },
       cancelReason,
       'supporter'
