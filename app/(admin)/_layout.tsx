@@ -1,6 +1,6 @@
 /**
  * Admin Dashboard Layout
- * 3-tab navigation: Home, Users, Revenue
+ * 4-tab navigation: Home, Users, Reports, Revenue
  */
 
 import React from 'react';
@@ -8,7 +8,7 @@ import { Tabs } from 'expo-router';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { PsychiColors } from '@/constants/theme';
-import { HomeIcon, UsersIcon, ChartIcon, LogoutIcon } from '@/components/icons';
+import { HomeIcon, UsersIcon, ChartIcon, LogoutIcon, AlertIcon } from '@/components/icons';
 
 export default function AdminLayout() {
   const { signOut } = useAuth();
@@ -60,6 +60,14 @@ export default function AdminLayout() {
           title: 'Users',
           headerTitle: 'User Management',
           tabBarIcon: ({ color, size }) => <UsersIcon size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="reports"
+        options={{
+          title: 'Reports',
+          headerTitle: 'User Reports',
+          tabBarIcon: ({ color, size }) => <AlertIcon size={size} color={color} />,
         }}
       />
       <Tabs.Screen

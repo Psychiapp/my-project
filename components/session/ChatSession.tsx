@@ -20,7 +20,6 @@ import { LockIcon, MoreHorizontalIcon } from '@/components/icons';
 import { useEncryptedChat, ChatMessage } from '@/hooks/useEncryptedChat';
 import EmergencyButton from './EmergencyButton';
 import ReportUserModal from '@/components/ReportUserModal';
-import BlockUserModal from '@/components/BlockUserModal';
 import { logSessionEvent } from '@/lib/sessionLogger';
 
 interface Message {
@@ -115,7 +114,6 @@ export default function ChatSession({
 
   // Safety modals state
   const [showReportModal, setShowReportModal] = useState(false);
-  const [showBlockModal, setShowBlockModal] = useState(false);
 
   // Use encrypted messages if available, otherwise fall back to local
   const messages = encryptedChat.isReady ? encryptedChat.messages : localMessages;
@@ -124,15 +122,13 @@ export default function ChatSession({
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
         {
-          options: ['Cancel', 'Report User', 'Block User'],
-          destructiveButtonIndex: 2,
+          options: ['Cancel', 'Report User'],
+          destructiveButtonIndex: 1,
           cancelButtonIndex: 0,
         },
         (buttonIndex) => {
           if (buttonIndex === 1) {
             setShowReportModal(true);
-          } else if (buttonIndex === 2) {
-            setShowBlockModal(true);
           }
         }
       );
@@ -142,8 +138,7 @@ export default function ChatSession({
         'Options',
         `Actions for ${otherParticipant.name}`,
         [
-          { text: 'Report User', onPress: () => setShowReportModal(true) },
-          { text: 'Block User', onPress: () => setShowBlockModal(true), style: 'destructive' },
+          { text: 'Report User', onPress: () => setShowReportModal(true), style: 'destructive' },
           { text: 'Cancel', style: 'cancel' },
         ]
       );
@@ -332,13 +327,6 @@ export default function ChatSession({
         reportedUserId={otherParticipant.id}
         reportedUserName={otherParticipant.name}
         sessionId={sessionId}
-      />
-      <BlockUserModal
-        visible={showBlockModal}
-        onClose={() => setShowBlockModal(false)}
-        blockedUserId={otherParticipant.id}
-        blockedUserName={otherParticipant.name}
-        onBlocked={onEndSession}
       />
     </SafeAreaView>
   );

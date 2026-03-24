@@ -3233,6 +3233,7 @@ export async function requestSupporterReassignment(
 
 /**
  * Report a user for inappropriate behavior
+ * Also sends notifications to admin and auto-rematches client if needed
  */
 export async function reportUser(
   reporterId: string,
@@ -3246,6 +3247,7 @@ export async function reportUser(
     return null;
   }
 
+  // Create the report
   const { data, error } = await supabase
     .from('user_reports')
     .insert({
@@ -3262,6 +3264,77 @@ export async function reportUser(
   if (error) {
     console.error('Error reporting user:', error);
     return null;
+  }
+
+  // Send notification to admin (push + email)
+  try {
+    const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+
+    if (supabaseUrl && supabaseAnonKey) {
+      await fetch(`${supabaseUrl}/functions/v1/send-report-notification`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseAnonKey}`,
+        },
+        body: JSON.stringify({
+          reportId: data.id,
+          reporterId,
+          reportedUserId,
+          reason,
+          description,
+          sessionId,
+        }),
+      });
+    }
+  } catch (notifyError) {
+    // Don't fail the report if notification fails
+    console.error('Error sending report notification:', notifyError);
+  }
+
+  // Auto-rematch: If the reporter is a client and reported a supporter,
+  // or if a supporter reported a client, reassign the client to a new supporter
+  try {
+    // Get reporter and reported user roles
+    const [{ data: reporterProfile }, { data: reportedProfile }] = await Promise.all([
+      supabase.from('profiles').select('role').eq('id', reporterId).single(),
+      supabase.from('profiles').select('role').eq('id', reportedUserId).single(),
+    ]);
+
+    // Determine if this involves a client-supporter relationship that needs rematching
+    let clientId: string | null = null;
+    let oldSupporterId: string | null = null;
+
+    if (reporterProfile?.role === 'client' && reportedProfile?.role === 'supporter') {
+      clientId = reporterId;
+      oldSupporterId = reportedUserId;
+    } else if (reporterProfile?.role === 'supporter' && reportedProfile?.role === 'client') {
+      clientId = reportedUserId;
+      oldSupporterId = reporterId;
+    }
+
+    if (clientId && oldSupporterId) {
+      // Deactivate the current assignment
+      await supabase
+        .from('client_assignments')
+        .update({ is_active: false, ended_at: new Date().toISOString() })
+        .eq('client_id', clientId)
+        .eq('supporter_id', oldSupporterId)
+        .eq('is_active', true);
+
+      // Match with a new supporter (excluding the reported one)
+      const newMatch = await matchAndAssignSupporter(clientId, [oldSupporterId]);
+
+      if (newMatch) {
+        console.log('Client auto-rematched to new supporter after report');
+      } else {
+        console.log('No available supporters for rematch after report');
+      }
+    }
+  } catch (rematchError) {
+    // Don't fail the report if rematch fails
+    console.error('Error during auto-rematch after report:', rematchError);
   }
 
   return data;
