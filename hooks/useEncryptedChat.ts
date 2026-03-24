@@ -152,10 +152,26 @@ export const useEncryptedChat = (
     if (!myKeyPairRef.current) return null;
 
     const isOwn = dbMessage.sender_id === currentUserId;
+
+    // For our own messages, use sender_ciphertext (encrypted for ourselves)
+    // For received messages, use ciphertext (encrypted for us by the sender)
+    const ciphertext = isOwn && dbMessage.sender_ciphertext
+      ? dbMessage.sender_ciphertext
+      : dbMessage.ciphertext;
+    const nonce = isOwn && dbMessage.sender_nonce
+      ? dbMessage.sender_nonce
+      : dbMessage.nonce;
+
+    // For our own messages, we encrypted it for ourselves, so sender is us
+    // For received messages, we use the actual sender's public key
+    const senderPubKey = isOwn
+      ? myKeyPairRef.current.publicKey  // We sent it to ourselves
+      : dbMessage.sender_public_key;
+
     const encryptedMsg: EncryptedMessage = {
-      ciphertext: dbMessage.ciphertext,
-      nonce: dbMessage.nonce,
-      senderPublicKey: dbMessage.sender_public_key,
+      ciphertext,
+      nonce,
+      senderPublicKey: senderPubKey,
     };
 
     try {
@@ -223,21 +239,33 @@ export const useEncryptedChat = (
       }
 
       try {
-        // Encrypt the message
-        const encrypted = encryptMessage(
+        // Encrypt the message for the recipient
+        const encryptedForRecipient = encryptMessage(
           content,
           state.recipientPublicKey,
           myKeyPairRef.current.privateKey
         );
 
-        // Store in database
+        // Also encrypt for ourselves so we can read our own sent messages
+        // We encrypt with our own public key, using recipient's private key equivalent
+        // Actually, we need to encrypt with our own public key as if recipient sent it to us
+        const encryptedForSender = encryptMessage(
+          content,
+          myKeyPairRef.current.publicKey,  // Encrypt for ourselves
+          myKeyPairRef.current.privateKey   // Sign with our key
+        );
+
+        // Store in database with both ciphertexts
         const { error } = await supabase.from('encrypted_messages').insert({
           session_id: sessionId,
           sender_id: currentUserId,
           recipient_id: recipientId,
-          ciphertext: encrypted.ciphertext,
-          nonce: encrypted.nonce,
-          sender_public_key: encrypted.senderPublicKey,
+          ciphertext: encryptedForRecipient.ciphertext,
+          nonce: encryptedForRecipient.nonce,
+          sender_public_key: encryptedForRecipient.senderPublicKey,
+          // Store sender's copy for reading own messages
+          sender_ciphertext: encryptedForSender.ciphertext,
+          sender_nonce: encryptedForSender.nonce,
         });
 
         if (error) {
