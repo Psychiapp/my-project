@@ -264,70 +264,95 @@ export default function SessionsScreen() {
     }
   };
 
-  const renderSession = (session: Session, isUpcoming: boolean) => (
-    <View key={session.id} style={styles.sessionCard}>
-      <View style={styles.sessionHeader}>
-        <View style={styles.typeIconContainer}>
-          {getTypeIcon(session.type)}
-        </View>
-        <View style={styles.sessionInfo}>
-          <Text style={styles.supporterName}>{session.supporterName}</Text>
-          <Text style={styles.sessionType}>
-            {session.type.charAt(0).toUpperCase() + session.type.slice(1)} Session
-          </Text>
-        </View>
-      </View>
+  const renderSession = (session: Session, isUpcoming: boolean) => {
+    // Check if session can be entered (5 minutes before scheduled time)
+    const scheduledTime = new Date(session.scheduledAt);
+    const now = new Date();
+    const fiveMinutesBefore = new Date(scheduledTime.getTime() - 5 * 60 * 1000);
+    const canJoin = now >= fiveMinutesBefore;
 
-      <View style={styles.sessionDetails}>
-        <View style={styles.detailItem}>
-          <CalendarIcon size={14} color={PsychiColors.textSecondary} />
-          <Text style={styles.detailText}>{session.date}</Text>
-        </View>
-        <View style={styles.detailItem}>
-          <ClockIcon size={14} color={PsychiColors.textSecondary} />
-          <Text style={styles.detailText}>{session.time}</Text>
-        </View>
-        <View style={styles.detailItem}>
-          <ClockIcon size={14} color={PsychiColors.textSecondary} />
-          <Text style={styles.detailText}>{session.duration} min</Text>
-        </View>
-      </View>
+    // Calculate time until can join
+    const getTimeUntilJoin = () => {
+      if (canJoin) return '';
+      const timeUntil = fiveMinutesBefore.getTime() - now.getTime();
+      const hoursUntil = Math.floor(timeUntil / (1000 * 60 * 60));
+      const minutesUntil = Math.floor((timeUntil % (1000 * 60 * 60)) / (1000 * 60));
 
-      {isUpcoming && (
-        <>
-          <View style={styles.refundStatusRow}>
-            {renderRefundBadge(session)}
-            <TouchableOpacity onPress={() => setPolicyModalVisible(true)} accessibilityRole="link" accessibilityLabel="View cancellation policy">
-              <Text style={styles.policyLink}>View cancellation policy</Text>
-            </TouchableOpacity>
+      if (hoursUntil > 0) {
+        return `Available in ${hoursUntil}h ${minutesUntil}m`;
+      }
+      return `Available in ${minutesUntil}m`;
+    };
+
+    return (
+      <View key={session.id} style={styles.sessionCard}>
+        <View style={styles.sessionHeader}>
+          <View style={styles.typeIconContainer}>
+            {getTypeIcon(session.type)}
           </View>
-          <View style={styles.sessionActions}>
-            <TouchableOpacity
-              style={styles.cancelButton}
-              onPress={() => handleCancelPress(session)}
-              accessibilityRole="button"
-              accessibilityLabel="Cancel session"
-              accessibilityHint="Opens cancellation options for this session"
-            >
-              <Text style={styles.cancelButtonText}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.joinButton}
-              activeOpacity={0.8}
-              onPress={() => router.push(`/session/${session.id}?type=${session.type}`)}
-              accessibilityRole="button"
-              accessibilityLabel={session.type === 'chat' ? 'Open Chat' : 'Join Call'}
-              accessibilityHint={`Start your ${session.type} session with ${session.supporterName}`}
-            >
-              <Text style={styles.joinButtonText}>
-                {session.type === 'chat' ? 'Open Chat' : 'Join Call'}
-              </Text>
-            </TouchableOpacity>
+          <View style={styles.sessionInfo}>
+            <Text style={styles.supporterName}>{session.supporterName}</Text>
+            <Text style={styles.sessionType}>
+              {session.type.charAt(0).toUpperCase() + session.type.slice(1)} Session
+            </Text>
           </View>
-        </>
-      )}
-    </View>
-  );
+        </View>
+
+        <View style={styles.sessionDetails}>
+          <View style={styles.detailItem}>
+            <CalendarIcon size={14} color={PsychiColors.textSecondary} />
+            <Text style={styles.detailText}>{session.date}</Text>
+          </View>
+          <View style={styles.detailItem}>
+            <ClockIcon size={14} color={PsychiColors.textSecondary} />
+            <Text style={styles.detailText}>{session.time}</Text>
+          </View>
+          <View style={styles.detailItem}>
+            <ClockIcon size={14} color={PsychiColors.textSecondary} />
+            <Text style={styles.detailText}>{session.duration} min</Text>
+          </View>
+        </View>
+
+        {isUpcoming && (
+          <>
+            <View style={styles.refundStatusRow}>
+              {renderRefundBadge(session)}
+              <TouchableOpacity onPress={() => setPolicyModalVisible(true)} accessibilityRole="link" accessibilityLabel="View cancellation policy">
+                <Text style={styles.policyLink}>View cancellation policy</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.sessionActions}>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => handleCancelPress(session)}
+                accessibilityRole="button"
+                accessibilityLabel="Cancel session"
+                accessibilityHint="Opens cancellation options for this session"
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.joinButton, !canJoin && styles.joinButtonDisabled]}
+                activeOpacity={canJoin ? 0.8 : 1}
+                onPress={() => canJoin && router.push(`/session/${session.id}?type=${session.type}`)}
+                disabled={!canJoin}
+                accessibilityRole="button"
+                accessibilityLabel={canJoin ? (session.type === 'chat' ? 'Open Chat' : 'Join Call') : getTimeUntilJoin()}
+                accessibilityHint={canJoin ? `Start your ${session.type} session with ${session.supporterName}` : 'Session will be available 5 minutes before scheduled time'}
+                accessibilityState={{ disabled: !canJoin }}
+              >
+                <Text style={[styles.joinButtonText, !canJoin && styles.joinButtonTextDisabled]}>
+                  {canJoin
+                    ? (session.type === 'chat' ? 'Open Chat' : 'Join Call')
+                    : getTimeUntilJoin()}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
+      </View>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -812,10 +837,17 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.sm,
     alignItems: 'center',
   },
+  joinButtonDisabled: {
+    backgroundColor: PsychiColors.textSoft,
+    opacity: 0.6,
+  },
   joinButtonText: {
     fontSize: 15,
     fontWeight: '600',
     color: PsychiColors.white,
+  },
+  joinButtonTextDisabled: {
+    fontSize: 13,
   },
   loadingContainer: {
     flex: 1,

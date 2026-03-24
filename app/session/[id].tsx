@@ -100,6 +100,29 @@ export default function SessionScreen() {
           return;
         }
 
+        // Check if session can be entered (only allow 5 minutes before scheduled time)
+        const scheduledTime = new Date(session.scheduled_at);
+        const now = new Date();
+        const fiveMinutesBefore = new Date(scheduledTime.getTime() - 5 * 60 * 1000);
+
+        if (now < fiveMinutesBefore) {
+          const timeUntilEntry = fiveMinutesBefore.getTime() - now.getTime();
+          const hoursUntil = Math.floor(timeUntilEntry / (1000 * 60 * 60));
+          const minutesUntil = Math.floor((timeUntilEntry % (1000 * 60 * 60)) / (1000 * 60));
+
+          let timeMessage = '';
+          if (hoursUntil > 0) {
+            timeMessage = `${hoursUntil} hour${hoursUntil > 1 ? 's' : ''}${minutesUntil > 0 ? ` and ${minutesUntil} minute${minutesUntil > 1 ? 's' : ''}` : ''}`;
+          } else {
+            timeMessage = `${minutesUntil} minute${minutesUntil > 1 ? 's' : ''}`;
+          }
+
+          const formattedTime = scheduledTime.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+          setLoadError(`This session is scheduled for ${formattedTime}. You can enter ${timeMessage} from now (5 minutes before the session starts).`);
+          setIsLoadingSession(false);
+          return;
+        }
+
         setSessionData({
           id: session.id,
           type: (type as SessionType) || session.session_type || 'chat',

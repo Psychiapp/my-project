@@ -291,79 +291,103 @@ export default function SupporterSessionsScreen() {
     }
   };
 
-  const renderSession = (session: Session, isUpcoming: boolean) => (
-    <View key={session.id} style={styles.sessionCard}>
-      <View style={styles.sessionHeader}>
-        <View style={styles.typeIconContainer}>
-          {(() => {
-            const IconComponent = typeIcons[session.type];
-            return IconComponent ? <IconComponent size={20} color={PsychiColors.white} /> : null;
-          })()}
+  const renderSession = (session: Session, isUpcoming: boolean) => {
+    // Check if session can be entered (5 minutes before scheduled time)
+    const scheduledTime = new Date(session.scheduledAt);
+    const now = new Date();
+    const fiveMinutesBefore = new Date(scheduledTime.getTime() - 5 * 60 * 1000);
+    const canJoin = now >= fiveMinutesBefore;
+
+    // Calculate time until can join
+    const getTimeUntilJoin = () => {
+      if (canJoin) return '';
+      const timeUntil = fiveMinutesBefore.getTime() - now.getTime();
+      const hoursUntil = Math.floor(timeUntil / (1000 * 60 * 60));
+      const minutesUntil = Math.floor((timeUntil % (1000 * 60 * 60)) / (1000 * 60));
+
+      if (hoursUntil > 0) {
+        return `In ${hoursUntil}h ${minutesUntil}m`;
+      }
+      return `In ${minutesUntil}m`;
+    };
+
+    return (
+      <View key={session.id} style={styles.sessionCard}>
+        <View style={styles.sessionHeader}>
+          <View style={styles.typeIconContainer}>
+            {(() => {
+              const IconComponent = typeIcons[session.type];
+              return IconComponent ? <IconComponent size={20} color={PsychiColors.white} /> : null;
+            })()}
+          </View>
+          <View style={styles.sessionInfo}>
+            <Text style={styles.clientName}>{session.clientName}</Text>
+            <Text style={styles.sessionType}>
+              {session.type.charAt(0).toUpperCase() + session.type.slice(1)} Session
+            </Text>
+          </View>
+          {session.pendingReschedule && (
+            <View style={styles.pendingBadge}>
+              <Text style={styles.pendingBadgeText}>Pending</Text>
+            </View>
+          )}
+          {!isUpcoming && session.earnings && (
+            <View style={styles.earningsBadge}>
+              <Text style={styles.earningsText}>+${session.earnings.toFixed(2)}</Text>
+            </View>
+          )}
         </View>
-        <View style={styles.sessionInfo}>
-          <Text style={styles.clientName}>{session.clientName}</Text>
-          <Text style={styles.sessionType}>
-            {session.type.charAt(0).toUpperCase() + session.type.slice(1)} Session
-          </Text>
+
+        <View style={styles.sessionDetails}>
+          <View style={styles.detailItem}>
+            <CalendarIcon size={14} color={PsychiColors.textMuted} />
+            <Text style={styles.detailText}>{session.date}</Text>
+          </View>
+          <View style={styles.detailItem}>
+            <ClockIcon size={14} color={PsychiColors.textMuted} />
+            <Text style={styles.detailText}>{session.time}</Text>
+          </View>
+          <View style={styles.detailItem}>
+            <ClockIcon size={14} color={PsychiColors.textMuted} />
+            <Text style={styles.detailText}>{session.duration} min</Text>
+          </View>
         </View>
-        {session.pendingReschedule && (
-          <View style={styles.pendingBadge}>
-            <Text style={styles.pendingBadgeText}>Pending</Text>
+
+        {isUpcoming && (
+          <View style={styles.sessionActions}>
+            <TouchableOpacity
+              style={[styles.rescheduleButton, session.pendingReschedule && styles.buttonDisabled]}
+              onPress={() => handleReschedulePress(session)}
+              disabled={session.pendingReschedule}
+            >
+              <Text style={styles.rescheduleButtonText}>
+                {session.pendingReschedule ? 'Awaiting Response' : 'Reschedule'}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => handleCancelPress(session)}
+            >
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.joinButton, !canJoin && styles.joinButtonDisabled]}
+              activeOpacity={canJoin ? 0.8 : 1}
+              onPress={() => canJoin && router.push(`/session/${session.id}?type=${session.type}`)}
+              disabled={!canJoin}
+            >
+              <Text style={[styles.joinButtonText, !canJoin && styles.joinButtonTextDisabled]}>
+                {canJoin
+                  ? (session.type === 'chat' ? 'Chat' : 'Join')
+                  : getTimeUntilJoin()}
+              </Text>
+            </TouchableOpacity>
           </View>
         )}
-        {!isUpcoming && session.earnings && (
-          <View style={styles.earningsBadge}>
-            <Text style={styles.earningsText}>+${session.earnings.toFixed(2)}</Text>
-          </View>
-        )}
+
       </View>
-
-      <View style={styles.sessionDetails}>
-        <View style={styles.detailItem}>
-          <CalendarIcon size={14} color={PsychiColors.textMuted} />
-          <Text style={styles.detailText}>{session.date}</Text>
-        </View>
-        <View style={styles.detailItem}>
-          <ClockIcon size={14} color={PsychiColors.textMuted} />
-          <Text style={styles.detailText}>{session.time}</Text>
-        </View>
-        <View style={styles.detailItem}>
-          <ClockIcon size={14} color={PsychiColors.textMuted} />
-          <Text style={styles.detailText}>{session.duration} min</Text>
-        </View>
-      </View>
-
-      {isUpcoming && (
-        <View style={styles.sessionActions}>
-          <TouchableOpacity
-            style={[styles.rescheduleButton, session.pendingReschedule && styles.buttonDisabled]}
-            onPress={() => handleReschedulePress(session)}
-            disabled={session.pendingReschedule}
-          >
-            <Text style={styles.rescheduleButtonText}>
-              {session.pendingReschedule ? 'Awaiting Response' : 'Reschedule'}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.cancelButton}
-            onPress={() => handleCancelPress(session)}
-          >
-            <Text style={styles.cancelButtonText}>Cancel</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.joinButton}
-            activeOpacity={0.8}
-            onPress={() => router.push(`/session/${session.id}?type=${session.type}`)}
-          >
-            <Text style={styles.joinButtonText}>
-              {session.type === 'chat' ? 'Chat' : 'Join'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-    </View>
-  );
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -843,10 +867,17 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.sm,
     alignItems: 'center',
   },
+  joinButtonDisabled: {
+    backgroundColor: PsychiColors.textSoft,
+    opacity: 0.6,
+  },
   joinButtonText: {
     fontSize: 14,
     fontWeight: '600',
     color: PsychiColors.white,
+  },
+  joinButtonTextDisabled: {
+    fontSize: 12,
   },
   ratingRow: {
     flexDirection: 'row',
