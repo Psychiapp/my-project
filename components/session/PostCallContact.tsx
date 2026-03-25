@@ -22,7 +22,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { PsychiColors, Spacing, BorderRadius, Typography } from '@/constants/theme';
 import { ClockIcon, SendIcon, AlertIcon } from '@/components/icons';
 import { supabase } from '@/lib/supabase';
-import { savePostCallMessage } from '@/lib/database';
+import { savePostCallMessage, sendLiveSupportPushNotification } from '@/lib/database';
 import { logSessionEvent } from '@/lib/sessionLogger';
 
 const CONTACT_WINDOW_MINUTES = 10;
@@ -162,6 +162,22 @@ export default function PostCallContact({
         recipientId: otherParticipant.id,
         content: newMessage.content,
         issueReason,
+      });
+
+      // Send push notification to alert the other participant
+      await sendLiveSupportPushNotification({
+        userId: otherParticipant.id,
+        title: `Message from ${currentUserName}`,
+        body: newMessage.content.length > 100
+          ? newMessage.content.substring(0, 97) + '...'
+          : newMessage.content,
+        data: {
+          type: 'post_call_message',
+          sessionId,
+          senderId: currentUserId,
+          senderName: currentUserName,
+        },
+        priority: 'high',
       });
 
       // Log the event

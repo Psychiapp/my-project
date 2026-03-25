@@ -309,9 +309,6 @@ export default function VideoCall({
 
         console.error('Failed to join call:', fullError, err);
 
-        // DEBUG: Show detailed error alert (remove after debugging)
-        Alert.alert('Join Failed', `Room: ${roomUrl}\n\nError: ${fullError}`);
-
         setError(`Failed to connect: ${fullError}`);
         onError?.(`Failed to connect: ${fullError}`);
       }

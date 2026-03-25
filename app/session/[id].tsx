@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -16,7 +16,7 @@ import VideoCall from '@/components/session/VideoCall';
 import PostCallContact from '@/components/session/PostCallContact';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
 import { createSession as createDailySession, SessionConfig, deleteRoom, getRoomNameFromUrl } from '@/lib/daily';
-import { getSession, updateSessionStatus, updateSessionRoomUrl } from '@/lib/database';
+import { getSession, updateSessionStatus, updateSessionRoomUrl, notifySessionEntered } from '@/lib/database';
 import { useAuth } from '@/contexts/AuthContext';
 import { logSessionEvent } from '@/lib/sessionLogger';
 import {
@@ -38,6 +38,7 @@ interface SessionData {
   };
   scheduledAt: string;
   duration: number;
+  roomUrl?: string; // Existing Daily.co room URL if another participant already created it
 }
 
 export default function SessionScreen() {
@@ -54,6 +55,7 @@ export default function SessionScreen() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [showPostCallContact, setShowPostCallContact] = useState(false); // 10-min contact window
   const [connectionIssueReason, setConnectionIssueReason] = useState<'timeout' | 'disconnect' | 'network' | null>(null);
+  const enteredNotificationSent = useRef(false); // Track if we've notified the other participant
 
   // Get current user name from auth context
   const currentUserName = profile?.firstName
@@ -133,6 +135,7 @@ export default function SessionScreen() {
           },
           scheduledAt: session.scheduled_at,
           duration: session.duration_minutes || 30,
+          roomUrl: session.room_url || undefined, // Pass existing room URL if another participant created it
         });
         setIsLoadingSession(false);
       } catch (error) {
@@ -181,16 +184,36 @@ export default function SessionScreen() {
 
       setPermissionsGranted(true);
       setIsCreatingRoom(true);
+
+      // Check if another participant already created a room for this session
+      if (sessionData.roomUrl) {
+        // Join existing room instead of creating a new one
+        setDailySession({
+          type: sessionData.type === 'video' ? 'video' : 'voice',
+          roomUrl: sessionData.roomUrl,
+          participantName: currentUserName,
+        });
+
+        // Log joining existing room
+        logSessionEvent(
+          sessionData.id,
+          sessionData.type,
+          currentUserId,
+          'room_joined',
+          { roomUrl: sessionData.roomUrl, participantId: sessionData.participant.id }
+        );
+        setIsCreatingRoom(false);
+        return;
+      }
+
+      // No existing room - create a new one
       const dailyType = sessionData.type === 'video' ? 'video' : 'voice';
       const config = await createDailySession(dailyType, currentUserName);
 
       if (config && config.roomUrl) {
         setDailySession(config);
-        // Save room URL to database and mark session as in_progress
+        // Save room URL to database so other participant can join the same room
         await updateSessionRoomUrl(sessionData.id, config.roomUrl);
-
-        // DEBUG: Show room URL (remove after debugging)
-        Alert.alert('Room Created', `URL: ${config.roomUrl}\n\nTap OK to join the call.`);
 
         // Log room creation
         logSessionEvent(
@@ -279,6 +302,33 @@ export default function SessionScreen() {
     }
   }, [sessionData?.id, sessionData?.type, currentUserId, sessionData?.participant?.id]);
 
+  // Notify other participant when session is entered
+  useEffect(() => {
+    const sendEnteredNotification = async () => {
+      // Only send once per session
+      if (enteredNotificationSent.current) return;
+      if (!sessionData) return;
+
+      // For chat: send immediately when session data loads
+      // For video/phone: send when room is ready (dailySession is set)
+      const isReady = sessionData.type === 'chat' || dailySession?.roomUrl;
+      if (!isReady) return;
+
+      enteredNotificationSent.current = true;
+
+      // Notify the other participant
+      await notifySessionEntered({
+        sessionId: sessionData.id,
+        otherParticipantId: sessionData.participant.id,
+        enteredByName: currentUserName,
+        enteredByRole: currentUserRole as 'client' | 'supporter',
+        sessionType: sessionData.type,
+      });
+    };
+
+    sendEnteredNotification();
+  }, [sessionData, dailySession?.roomUrl, currentUserName, currentUserRole]);
+
   // Handle connection issue - show post-call contact window
   const handleConnectionIssue = async (reason: 'timeout' | 'disconnect' | 'network') => {
     // Log the connection issue
@@ -307,11 +357,13 @@ export default function SessionScreen() {
   // Close post-call contact and go back
   const handleClosePostCallContact = () => {
     setShowPostCallContact(false);
-    router.replace('/(client)');
+    // Route to appropriate dashboard based on user role
+    router.replace(currentUserRole === 'supporter' ? '/(supporter)' : '/(client)');
   };
 
   const handleBackToDashboard = () => {
-    router.replace('/(client)');
+    // Route to appropriate dashboard based on user role
+    router.replace(currentUserRole === 'supporter' ? '/(supporter)' : '/(client)');
   };
 
   // Loading state

@@ -4782,6 +4782,34 @@ export async function notifyClientNoSupportersAvailable(params: {
   return result.sent;
 }
 
+/**
+ * Notify other participant that someone entered the session
+ */
+export async function notifySessionEntered(params: {
+  sessionId: string;
+  otherParticipantId: string;
+  enteredByName: string;
+  enteredByRole: 'client' | 'supporter';
+  sessionType: 'chat' | 'phone' | 'video';
+}): Promise<boolean> {
+  const roleLabel = params.enteredByRole === 'supporter' ? 'Your supporter' : 'Your client';
+  const sessionTypeLabel = params.sessionType === 'chat' ? 'chat' : params.sessionType === 'phone' ? 'voice call' : 'video call';
+
+  const result = await sendLiveSupportPushNotification({
+    userId: params.otherParticipantId,
+    title: 'Session Ready',
+    body: `${roleLabel} ${params.enteredByName} has entered your ${sessionTypeLabel}. Tap to join.`,
+    data: {
+      type: 'session_entered',
+      sessionId: params.sessionId,
+      sessionType: params.sessionType,
+    },
+    priority: 'high',
+  });
+
+  return result.sent;
+}
+
 // ============================================
 // POST-CALL MESSAGES
 // ============================================
