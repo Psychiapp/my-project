@@ -128,6 +128,16 @@ export default function VideoCall({
   useEffect(() => {
     const initCall = async () => {
       try {
+        // Configure audio session for VoIP call BEFORE creating call object
+        // This is critical for iOS to properly route audio
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: true,
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: true,
+          playThroughEarpieceAndroid: false, // Start with speaker on
+          shouldDuckAndroid: true,
+        });
+
         const call = Daily.createCallObject({
           videoSource: isVideoEnabled,
           audioSource: true,
@@ -581,6 +591,15 @@ export default function VideoCall({
     // Re-initialize the call
     const retryCall = async () => {
       try {
+        // Configure audio session for VoIP call
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: true,
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: true,
+          playThroughEarpieceAndroid: false,
+          shouldDuckAndroid: true,
+        });
+
         const call = Daily.createCallObject({
           videoSource: isVideoEnabled,
           audioSource: true,
@@ -680,6 +699,14 @@ export default function VideoCall({
             colors={[PsychiColors.midnight, PsychiColors.sapphire] as const}
             style={styles.audioOnlyContainer}
           >
+            {/* Hidden DailyMediaView for audio-only calls - plays remote audio */}
+            {remoteParticipant?.audioTrack && (
+              <DailyMediaView
+                videoTrack={null}
+                audioTrack={remoteParticipant.audioTrack}
+                style={styles.hiddenAudioView}
+              />
+            )}
             <View style={styles.audioOnlyAvatar}>
               <Avatar
                 imageUrl={otherParticipant.avatarUrl}
@@ -858,6 +885,11 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  hiddenAudioView: {
+    width: 0,
+    height: 0,
+    position: 'absolute',
   },
   audioOnlyAvatar: {
     marginBottom: Spacing.lg,
