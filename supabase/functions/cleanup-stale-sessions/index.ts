@@ -24,6 +24,46 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 const supabaseUrl = Deno.env.get('SUPABASE_URL') as string;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') as string;
 
+// Helper function to trigger transfer to supporter after session completion
+async function triggerTransferToSupporter(
+  sessionId: string,
+  paymentIntentId: string | null,
+  reason: 'session_completed' | 'no_refund_cancellation' | 'partial_refund_retained'
+): Promise<{ success: boolean; error?: string }> {
+  if (!paymentIntentId) {
+    console.log(`No payment intent for session ${sessionId} - skipping transfer`);
+    return { success: true }; // Not an error, just no payment to transfer
+  }
+
+  try {
+    const response = await fetch(`${supabaseUrl}/functions/v1/transfer-to-supporter`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseServiceKey}`,
+      },
+      body: JSON.stringify({
+        sessionId,
+        paymentIntentId,
+        reason,
+      }),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      console.error(`Transfer failed for session ${sessionId}:`, result.error);
+      return { success: false, error: result.error };
+    }
+
+    console.log(`Transfer triggered for session ${sessionId}:`, result);
+    return { success: true };
+  } catch (error: any) {
+    console.error(`Error triggering transfer for session ${sessionId}:`, error.message);
+    return { success: false, error: error.message };
+  }
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -48,7 +88,7 @@ serve(async (req) => {
     // A session is stale if: scheduled_at + duration_minutes + buffer has passed
     const { data: staleSessions, error: staleError } = await supabase
       .from('sessions')
-      .select('id, scheduled_at, duration_minutes, session_type, client_id, supporter_id')
+      .select('id, scheduled_at, duration_minutes, session_type, client_id, supporter_id, stripe_payment_intent_id, notes')
       .eq('status', 'in_progress');
 
     if (staleError) {
@@ -78,6 +118,13 @@ serve(async (req) => {
           if (!updateError) {
             completedCount++;
             console.log(`Auto-completed stale session: ${session.id}`);
+
+            // Trigger transfer to supporter now that session is complete
+            await triggerTransferToSupporter(
+              session.id,
+              session.stripe_payment_intent_id,
+              'session_completed'
+            );
           } else {
             console.error(`Failed to complete session ${session.id}:`, updateError);
           }

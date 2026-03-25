@@ -29,24 +29,31 @@ serve(async (req) => {
     }
 
     // Build payment intent options
+    // IMPORTANT: We do NOT use transfer_data.destination here because that would
+    // transfer funds to the supporter immediately at charge time. Instead, we hold
+    // funds in the platform account and transfer to supporter AFTER session completion.
     const paymentIntentOptions: any = {
       amount,
       currency,
-      metadata: metadata || {},
+      metadata: {
+        ...(metadata || {}),
+        // Store supporter info for deferred transfer after session completion
+        ...(supporterStripeAccountId ? {
+          supporter_stripe_account_id: supporterStripeAccountId,
+          transfer_pending: 'true', // Flag indicating transfer needed after completion
+        } : {}),
+      },
       automatic_payment_methods: {
         enabled: true,
       },
     };
 
-    // Add Connect split if supporter's connected account is provided
-    // Platform fee: 25%, Supporter receives: 75%
+    // Log payment info (no immediate transfer)
     if (supporterStripeAccountId) {
-      const applicationFee = Math.round(amount * 0.25); // 25% platform fee
-      paymentIntentOptions.application_fee_amount = applicationFee;
-      paymentIntentOptions.transfer_data = {
-        destination: supporterStripeAccountId,
-      };
-      console.log(`Connect payment: $${(amount/100).toFixed(2)} total, $${(applicationFee/100).toFixed(2)} platform fee, $${((amount-applicationFee)/100).toFixed(2)} to supporter`);
+      const supporterAmount = Math.round(amount * 0.75); // 75% to supporter
+      const platformFee = amount - supporterAmount; // 25% platform fee
+      console.log(`Payment created: $${(amount/100).toFixed(2)} total (held in platform account)`);
+      console.log(`After session completion: $${(supporterAmount/100).toFixed(2)} to supporter, $${(platformFee/100).toFixed(2)} platform fee`);
     }
 
     // Create payment intent
