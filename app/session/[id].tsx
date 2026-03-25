@@ -189,6 +189,9 @@ export default function SessionScreen() {
         // Save room URL to database and mark session as in_progress
         await updateSessionRoomUrl(sessionData.id, config.roomUrl);
 
+        // DEBUG: Show room URL (remove after debugging)
+        Alert.alert('Room Created', `URL: ${config.roomUrl}\n\nTap OK to join the call.`);
+
         // Log room creation
         logSessionEvent(
           sessionData.id,
