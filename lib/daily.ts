@@ -54,9 +54,11 @@ export const createRoom = async (options: CreateRoomOptions = {}): Promise<Daily
   try {
     // If no API key, video/voice calls are not available
     if (!DAILY_API_KEY) {
-      console.warn('Daily.co: No API key configured. Video/voice calls unavailable.');
+      console.error('Daily.co: No API key configured. EXPO_PUBLIC_DAILY_API_KEY is empty.');
       return null;
     }
+
+    console.log('Daily.co: Creating room with name:', name, '- API key present:', DAILY_API_KEY.length > 0 ? `${DAILY_API_KEY.substring(0, 8)}...` : 'NO');
 
     const response = await fetch(`${DAILY_API_URL}/rooms`, {
       method: 'POST',
@@ -83,14 +85,16 @@ export const createRoom = async (options: CreateRoomOptions = {}): Promise<Daily
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      console.error('Failed to create Daily room:', error);
+      const errorBody = await response.text();
+      console.error('Failed to create Daily room:', response.status, errorBody);
       return null;
     }
 
-    return await response.json();
-  } catch (error) {
-    console.error('Error creating Daily room:', error);
+    const room = await response.json();
+    console.log('Daily.co: Room created successfully:', room.name, room.url);
+    return room;
+  } catch (error: any) {
+    console.error('Error creating Daily room:', error?.message || error);
     return null;
   }
 };

@@ -285,15 +285,31 @@ export default function VideoCall({
           }
         }, CONNECTION_TIMEOUT_MS);
 
+        // Validate room URL before attempting to join
+        if (!roomUrl || !roomUrl.startsWith('https://')) {
+          const errorMsg = `Invalid room URL: ${roomUrl || 'undefined'}`;
+          console.error('VideoCall:', errorMsg);
+          setError(errorMsg);
+          onError?.(errorMsg);
+          return;
+        }
+
+        console.log('VideoCall: Attempting to join room:', roomUrl);
+
         // Join the room
         await call.join({
           url: roomUrl,
           userName: participantName,
         });
-      } catch (err) {
-        console.error('Failed to join call:', err);
-        setError('Failed to connect to the call');
-        onError?.('Failed to connect to the call');
+      } catch (err: any) {
+        // Extract detailed error information
+        const errorMessage = err?.message || err?.toString() || 'Unknown error';
+        const errorDetails = err?.details || err?.code || '';
+        const fullError = errorDetails ? `${errorMessage} (${errorDetails})` : errorMessage;
+
+        console.error('Failed to join call:', fullError, err);
+        setError(`Failed to connect: ${fullError}`);
+        onError?.(`Failed to connect: ${fullError}`);
       }
     };
 
