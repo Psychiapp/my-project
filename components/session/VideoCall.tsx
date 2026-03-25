@@ -117,12 +117,8 @@ export default function VideoCall({
 
   // Refs for tracking
   const connectionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const participantLeftTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasShownTimeWarningRef = useRef(false);
   const appStateRef = useRef(AppState.currentState);
-
-  // Auto-end timeout when remote participant leaves (2 minutes)
-  const PARTICIPANT_LEFT_TIMEOUT_MS = 2 * 60 * 1000;
 
   // Initialize Daily.co call
   useEffect(() => {
@@ -193,12 +189,6 @@ export default function VideoCall({
           const remoteParticipant = Object.values(updatedParticipants).find((p: any) => !p.local);
           if (remoteParticipant) {
             setHasRemoteParticipantJoined(true);
-
-            // Clear any pending auto-end timeout (participant rejoined)
-            if (participantLeftTimeoutRef.current) {
-              clearTimeout(participantLeftTimeoutRef.current);
-              participantLeftTimeoutRef.current = null;
-            }
           }
         });
 
@@ -220,36 +210,17 @@ export default function VideoCall({
           // Check if the remote participant left (not us)
           const remoteParticipant = Object.values(updatedParticipants).find((p: any) => !p.local);
           if (hasRemoteParticipantJoined && !remoteParticipant) {
-            // Start auto-end timeout - will end session in 2 minutes if participant doesn't rejoin
-            participantLeftTimeoutRef.current = setTimeout(() => {
-              call.leave();
-              onConnectionIssue?.('disconnect');
-              onEndCall();
-            }, PARTICIPANT_LEFT_TIMEOUT_MS);
-
-            // Remote participant has left - show alert with countdown info
+            // Other participant has left - end the call immediately
+            // Show informational alert (non-blocking)
             Alert.alert(
-              'Connection Issue',
-              `${otherParticipant.name} has disconnected. The session will auto-end in 2 minutes if they don't rejoin.`,
-              [
-                {
-                  text: 'Wait (2 min)',
-                  style: 'cancel',
-                },
-                {
-                  text: 'End Now',
-                  onPress: () => {
-                    // Clear the auto-timeout since user is ending manually
-                    if (participantLeftTimeoutRef.current) {
-                      clearTimeout(participantLeftTimeoutRef.current);
-                    }
-                    call.leave();
-                    onConnectionIssue?.('disconnect');
-                    onEndCall();
-                  }
-                },
-              ]
+              'Call Ended',
+              `${otherParticipant.name} has ended the call.`,
+              [{ text: 'OK' }]
             );
+
+            // End the call
+            call.leave();
+            onEndCall();
           }
         });
 
@@ -330,10 +301,6 @@ export default function VideoCall({
       // Clear connection timeout on cleanup
       if (connectionTimeoutRef.current) {
         clearTimeout(connectionTimeoutRef.current);
-      }
-      // Clear participant left timeout on cleanup
-      if (participantLeftTimeoutRef.current) {
-        clearTimeout(participantLeftTimeoutRef.current);
       }
       if (callObject) {
         callObject.leave();
