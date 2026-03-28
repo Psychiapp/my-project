@@ -32,6 +32,7 @@ export default function SubscriptionScreen() {
   const { user } = useAuth();
   const [currentPlan, setCurrentPlan] = useState<PlanTier | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<PlanTier | null>(null);
+  const [renewalDate, setRenewalDate] = useState<Date | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [assignedSupporterStripeId, setAssignedSupporterStripeId] = useState<string | null>(null);
@@ -49,6 +50,9 @@ export default function SubscriptionScreen() {
         const profile = await getClientProfile(user.id);
         if (profile?.subscription_tier && profile?.subscription_status === 'active') {
           setCurrentPlan(profile.subscription_tier as PlanTier);
+          if (profile.subscription_expires_at) {
+            setRenewalDate(new Date(profile.subscription_expires_at));
+          }
         }
 
         // Fetch assigned supporter for payment split
@@ -152,6 +156,10 @@ export default function SubscriptionScreen() {
                   { text: 'OK' }
                 ]);
                 setCurrentPlan(plan);
+                // Set renewal date to 1 month from now
+                const newRenewalDate = new Date();
+                newRenewalDate.setMonth(newRenewalDate.getMonth() + 1);
+                setRenewalDate(newRenewalDate);
                 setSelectedPlan(null);
               } else {
                 // Payment succeeded but database update failed
@@ -262,9 +270,9 @@ export default function SubscriptionScreen() {
             <Text style={[styles.currentPlanPrice, currentPlan && styles.currentPlanPriceLight]}>
               {currentPlan ? plans[currentPlan].price : 'Pay as you go'}
             </Text>
-            {currentPlan && (
+            {currentPlan && renewalDate && (
               <Text style={styles.currentPlanRenewal}>
-                Renews on Feb 1, 2026
+                Renews on {renewalDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
               </Text>
             )}
           </LinearGradient>
