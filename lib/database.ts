@@ -520,6 +520,62 @@ export async function cancelClientSubscription(userId: string): Promise<boolean>
 }
 
 /**
+ * Get client payment history
+ */
+export async function getClientPaymentHistory(userId: string): Promise<{
+  id: string;
+  amount: number;
+  description: string;
+  status: string;
+  created_at: string;
+}[] | null> {
+  if (!supabase) return null;
+
+  const { data, error } = await supabase
+    .from('payments')
+    .select('id, amount, description, status, created_at')
+    .eq('client_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(20);
+
+  if (error) {
+    console.error('Error fetching payment history:', error);
+    return null;
+  }
+
+  return data;
+}
+
+/**
+ * Record a subscription payment
+ */
+export async function recordSubscriptionPayment(
+  userId: string,
+  tier: SubscriptionTier,
+  amount: number,
+  stripePaymentIntentId?: string
+): Promise<boolean> {
+  if (!supabase) return false;
+
+  const { error } = await supabase
+    .from('payments')
+    .insert({
+      client_id: userId,
+      amount,
+      description: `${tier.charAt(0).toUpperCase() + tier.slice(1)} Plan Subscription`,
+      status: 'completed',
+      stripe_payment_intent_id: stripePaymentIntentId,
+    });
+
+  if (error) {
+    console.error('Error recording subscription payment:', error);
+    return false;
+  }
+
+  return true;
+}
+
+/**
  * Get supporter profile with all details
  */
 export async function getSupporterProfile(userId: string): Promise<SupporterProfile | null> {

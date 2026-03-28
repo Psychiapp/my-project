@@ -15,7 +15,7 @@ import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme'
 import { ChevronLeftIcon, CheckIcon, MinusCircleIcon } from '@/components/icons';
 import { Config } from '@/constants/config';
 import { useAuth } from '@/contexts/AuthContext';
-import { getClientProfile, updateClientSubscription, cancelClientSubscription, getClientCurrentAssignment, getSupporterDetail } from '@/lib/database';
+import { getClientProfile, updateClientSubscription, cancelClientSubscription, getClientCurrentAssignment, getSupporterDetail, getClientPaymentHistory, recordSubscriptionPayment } from '@/lib/database';
 import { processSubscriptionPaymentSheet, stripeAvailable } from '@/lib/stripe';
 
 type PlanTier = 'basic' | 'standard' | 'premium';
@@ -36,6 +36,7 @@ export default function SubscriptionScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [assignedSupporterStripeId, setAssignedSupporterStripeId] = useState<string | null>(null);
+  const [paymentHistory, setPaymentHistory] = useState<{ id: string; date: string; amount: number; plan: string; status: string }[]>([]);
 
   // Fetch current subscription and assigned supporter on mount
   useEffect(() => {
@@ -62,6 +63,18 @@ export default function SubscriptionScreen() {
           if (supporterDetail?.stripe_connect_id) {
             setAssignedSupporterStripeId(supporterDetail.stripe_connect_id);
           }
+        }
+
+        // Fetch payment history
+        const payments = await getClientPaymentHistory(user.id);
+        if (payments) {
+          setPaymentHistory(payments.map(p => ({
+            id: p.id,
+            date: new Date(p.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+            amount: p.amount / 100, // Convert cents to dollars
+            plan: p.description || 'Payment',
+            status: p.status === 'completed' ? 'Paid' : p.status === 'refunded' ? 'Refunded' : p.status,
+          })));
         }
       } catch (error) {
         console.error('Error fetching subscription:', error);
@@ -104,8 +117,6 @@ export default function SubscriptionScreen() {
     { label: 'Cancel Anytime', basic: true, standard: true, premium: true },
   ];
 
-  // Mock payment history - empty for new users
-  const paymentHistory: { id: string; date: string; amount: number; plan: string; status: string }[] = [];
 
   const handleSelectPlan = (plan: PlanTier) => {
     if (plan === currentPlan) return;
@@ -152,6 +163,20 @@ export default function SubscriptionScreen() {
               // Payment succeeded - update subscription in database
               const success = await updateClientSubscription(user.id, plan);
               if (success) {
+                // Record the payment
+                const subscriptionPrices = { basic: 2999, standard: 4999, premium: 7999 };
+                await recordSubscriptionPayment(user.id, plan, subscriptionPrices[plan]);
+
+                // Add to local payment history
+                const newPayment = {
+                  id: Date.now().toString(),
+                  date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                  amount: subscriptionPrices[plan] / 100,
+                  plan: `${plans[plan].name} Plan Subscription`,
+                  status: 'Paid',
+                };
+                setPaymentHistory(prev => [newPayment, ...prev]);
+
                 Alert.alert('Success', `You're now subscribed to the ${plans[plan].name} plan!`, [
                   { text: 'OK' }
                 ]);
