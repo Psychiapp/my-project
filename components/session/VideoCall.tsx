@@ -59,6 +59,7 @@ interface VideoCallProps {
   };
   isVideoEnabled?: boolean;
   onEndCall: () => void;
+  onRemoteEndCall?: () => void; // Called when remote participant ends (no confirmation needed)
   onError?: (error: string) => void;
   onConnectionIssue?: (reason: 'timeout' | 'disconnect' | 'network') => void; // Callback when connection fails
   sessionId?: string;
@@ -70,6 +71,7 @@ export default function VideoCall({
   otherParticipant,
   isVideoEnabled = true,
   onEndCall,
+  onRemoteEndCall,
   onError,
   onConnectionIssue,
   sessionId,
@@ -119,6 +121,7 @@ export default function VideoCall({
   const connectionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasShownTimeWarningRef = useRef(false);
   const appStateRef = useRef(AppState.currentState);
+  const userInitiatedEndRef = useRef(false); // Track if user clicked End Call button
 
   // Initialize Daily.co call
   useEffect(() => {
@@ -178,7 +181,19 @@ export default function VideoCall({
         });
 
         call.on('left-meeting', () => {
-          onEndCall();
+          // Check if user initiated the end or if it was remote
+          if (userInitiatedEndRef.current) {
+            // User clicked End Call - they already confirmed, just notify parent
+            onEndCall();
+          } else {
+            // Remote participant ended or call ended externally
+            // Use onRemoteEndCall if provided, otherwise fall back to onEndCall
+            if (onRemoteEndCall) {
+              onRemoteEndCall();
+            } else {
+              onEndCall();
+            }
+          }
         });
 
         call.on('participant-joined', (event: any) => {
@@ -524,15 +539,18 @@ export default function VideoCall({
               );
             }
 
+            // Mark that user initiated the end (so left-meeting handler knows)
+            userInitiatedEndRef.current = true;
+
             if (callObject) {
               callObject.leave();
             }
-            onEndCall();
+            // Don't call onEndCall here - it will be called by left-meeting handler
           },
         },
       ]
     );
-  }, [callObject, onEndCall, sessionId, isVideoEnabled, participantName, callDuration, roomUrl]);
+  }, [callObject, sessionId, isVideoEnabled, participantName, callDuration, roomUrl]);
 
   // Show report options
   const showMoreOptions = useCallback(() => {
@@ -607,7 +625,15 @@ export default function VideoCall({
           setIsE2EEncrypted(true);
         });
 
-        call.on('left-meeting', () => onEndCall());
+        call.on('left-meeting', () => {
+          if (userInitiatedEndRef.current) {
+            onEndCall();
+          } else if (onRemoteEndCall) {
+            onRemoteEndCall();
+          } else {
+            onEndCall();
+          }
+        });
         call.on('participant-joined', () => setParticipants({ ...call.participants() }));
         call.on('participant-updated', () => setParticipants({ ...call.participants() }));
         call.on('participant-left', () => setParticipants({ ...call.participants() }));

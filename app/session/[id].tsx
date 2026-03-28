@@ -256,8 +256,35 @@ export default function SessionScreen() {
     initDailySession();
   }, [sessionData]);
 
+  // User clicks to end session - show confirmation first
   const handleEndSession = () => {
     setShowEndConfirm(true);
+  };
+
+  // Called when the OTHER participant ends the session (from Daily.co left-meeting event)
+  // No confirmation needed - just show session ended screen
+  const handleRemoteEndSession = async () => {
+    if (sessionEnded) return; // Already ended
+
+    // Log that session was ended by other participant
+    if (sessionData?.id) {
+      logSessionEvent(
+        sessionData.id,
+        sessionData.type,
+        currentUserId,
+        'session_end',
+        { endedBy: 'other_participant', participantId: sessionData.participant.id }
+      );
+    }
+
+    // Show alert that session was ended by other participant
+    Alert.alert(
+      'Session Ended',
+      `${sessionData?.participant.name || 'The other participant'} has ended the session.`,
+      [{ text: 'OK' }]
+    );
+
+    setSessionEnded(true);
   };
 
   const confirmEndSession = async () => {
@@ -591,7 +618,8 @@ export default function SessionScreen() {
             participantName={currentUserName}
             otherParticipant={sessionData.participant}
             isVideoEnabled={sessionData.type === 'video'}
-            onEndCall={handleEndSession}
+            onEndCall={confirmEndSession}
+            onRemoteEndCall={handleRemoteEndSession}
             onConnectionIssue={handleConnectionIssue}
             sessionId={sessionData.id}
           />
