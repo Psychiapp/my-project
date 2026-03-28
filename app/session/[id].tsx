@@ -230,10 +230,18 @@ export default function SessionScreen() {
           sessionData.type,
           currentUserId,
           'room_join_failed',
-          { reason: 'Failed to create Daily room' },
+          { reason: 'Failed to create Daily room', config: config ? JSON.stringify(config) : 'null' },
           new Error('Failed to create call session')
         );
-        Alert.alert('Error', 'Failed to create call session. Please try again.');
+        console.error('Failed to create call session. Config:', config);
+        Alert.alert(
+          'Call Setup Error',
+          'Unable to set up the call. Please close and reopen the app to get the latest update, then try again.',
+          [
+            { text: 'Try Again', onPress: () => initDailySession() },
+            { text: 'Go Back', onPress: () => router.back(), style: 'cancel' },
+          ]
+        );
       }
       setIsCreatingRoom(false);
     };

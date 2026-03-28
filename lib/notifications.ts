@@ -530,19 +530,18 @@ export async function sendAutoCancelledNotification(params: {
 // ============================================
 
 /**
- * Send new booking notification to supporter
+ * Send new booking notification to supporter via push notification
+ * This ensures the supporter receives the notification even when their app is closed
  */
 export async function sendNewBookingNotification(params: {
   sessionId: string;
+  supporterId: string;
   clientId: string;
   clientName: string;
   sessionType: 'chat' | 'phone' | 'video';
   date: string;
   time: string;
-}): Promise<void> {
-  const settings = await getNotificationSettings();
-  if (!settings.newBookings) return;
-
+}): Promise<{ sent: boolean; error?: string }> {
   const content = getNotificationContent('new_booking', {
     sessionId: params.sessionId,
     clientId: params.clientId,
@@ -552,15 +551,13 @@ export async function sendNewBookingNotification(params: {
     time: params.time,
   });
 
-  await Notifications.scheduleNotificationAsync({
-    content: {
-      title: content.title,
-      body: content.body,
-      data: content.data,
-      sound: true,
-      categoryIdentifier: NOTIFICATION_CHANNELS.BOOKINGS,
-    },
-    trigger: null,
+  // Send push notification to supporter via Edge Function
+  // This works even when the supporter's app is closed
+  return sendPushNotificationViaEdgeFunction({
+    userId: params.supporterId,
+    title: content.title,
+    body: content.body,
+    data: content.data as Record<string, unknown>,
   });
 }
 

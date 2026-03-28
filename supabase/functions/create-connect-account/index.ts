@@ -1,11 +1,8 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import Stripe from 'https://esm.sh/stripe@14.14.0?target=deno';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { getStripe, getStripeMode } from '../_shared/stripe.ts';
 
-const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') as string, {
-  apiVersion: '2023-10-16',
-  httpClient: Stripe.createFetchHttpClient(),
-});
+const stripe = getStripe();
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL') as string;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') as string;
@@ -92,21 +89,15 @@ serve(async (req) => {
       const errorMessage = stripeError.message || '';
       if (errorMessage.includes('platform profile') || errorMessage.includes('questionnaire')) {
         // Check API key mode to help diagnose
-        const secretKey = Deno.env.get('STRIPE_SECRET_KEY') || '';
-        const isTestMode = secretKey.startsWith('sk_test_');
-        const isLiveMode = secretKey.startsWith('sk_live_');
+        const mode = getStripeMode();
 
-        console.error('Platform profile error - API key mode:', {
-          isTestMode,
-          isLiveMode,
-          keyPrefix: secretKey.substring(0, 8) + '...',
-        });
+        console.error('Platform profile error - API key mode:', mode);
 
         return new Response(
           JSON.stringify({
-            error: `Stripe Connect setup failed. Please verify: 1) Platform profile is completed in ${isTestMode ? 'TEST' : isLiveMode ? 'LIVE' : 'UNKNOWN'} mode in Stripe Dashboard. 2) The correct API key is configured. Original error: ${errorMessage}`,
+            error: `Stripe Connect setup failed. Please verify: 1) Platform profile is completed in ${mode.toUpperCase()} mode in Stripe Dashboard. 2) The correct API key is configured. Original error: ${errorMessage}`,
             code: 'PLATFORM_PROFILE_ERROR',
-            mode: isTestMode ? 'test' : isLiveMode ? 'live' : 'unknown',
+            mode: mode,
           }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );

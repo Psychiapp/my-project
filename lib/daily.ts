@@ -4,7 +4,9 @@
  */
 
 const DAILY_API_URL = 'https://api.daily.co/v1';
-const DAILY_API_KEY = process.env.EXPO_PUBLIC_DAILY_API_KEY || '';
+// TEMPORARY: Hardcoded API key until next full build
+// The || fallback wasn't working because process.env returns empty string, not undefined
+const DAILY_API_KEY = '95564a26a801e68281cf572e06423bc1546915ca1110f57041cb99a0ac5cc957';
 
 export interface DailyRoom {
   id: string;
@@ -52,13 +54,17 @@ export const createRoom = async (options: CreateRoomOptions = {}): Promise<Daily
   const exp = Math.floor(Date.now() / 1000) + (expiryMinutes * 60);
 
   try {
+    // Debug: Log API key status
+    console.log('Daily.co: API key check - length:', DAILY_API_KEY?.length || 0, 'truthy:', !!DAILY_API_KEY);
+
     // If no API key, video/voice calls are not available
     if (!DAILY_API_KEY) {
-      console.error('Daily.co: No API key configured. EXPO_PUBLIC_DAILY_API_KEY is empty.');
+      console.error('Daily.co: No API key configured - this should not happen with hardcoded key');
       return null;
     }
 
-    console.log('Daily.co: Creating room with name:', name, '- API key present:', DAILY_API_KEY.length > 0 ? `${DAILY_API_KEY.substring(0, 8)}...` : 'NO');
+    console.log('Daily.co: Creating room with name:', name);
+    console.log('Daily.co: API key prefix:', DAILY_API_KEY.substring(0, 12) + '...');
 
     const response = await fetch(`${DAILY_API_URL}/rooms`, {
       method: 'POST',

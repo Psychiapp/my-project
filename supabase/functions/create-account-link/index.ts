@@ -1,10 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import Stripe from 'https://esm.sh/stripe@14.14.0?target=deno';
+import { getStripe } from '../_shared/stripe.ts';
 
-const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') as string, {
-  apiVersion: '2023-10-16',
-  httpClient: Stripe.createFetchHttpClient(),
-});
+const stripe = getStripe();
 
 // Use Supabase URL for redirects (goes through stripe-redirect Edge Function)
 const supabaseUrl = Deno.env.get('SUPABASE_URL') as string;

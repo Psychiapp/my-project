@@ -478,9 +478,10 @@ export default function BookSessionScreen() {
       }
       const sessionTypeName = sessionTypes.find((t) => t.id === selectedType)?.name || selectedType;
 
-      // Send notification to supporter about new booking
+      // Send push notification to supporter about new booking
       await sendNewBookingNotification({
         sessionId,
+        supporterId: supporter.id,
         clientId: user?.id || 'client',
         clientName,
         sessionType: selectedType,
