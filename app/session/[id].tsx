@@ -17,6 +17,7 @@ import PostCallContact from '@/components/session/PostCallContact';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
 import { createSession as createDailySession, SessionConfig, deleteRoom, getRoomNameFromUrl } from '@/lib/daily';
 import { getSession, updateSessionStatus, updateSessionRoomUrl, notifySessionEntered } from '@/lib/database';
+import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { logSessionEvent } from '@/lib/sessionLogger';
 import {
@@ -342,6 +343,49 @@ export default function SessionScreen() {
 
     sendEnteredNotification();
   }, [sessionData, dailySession?.roomUrl, currentUserName, currentUserRole]);
+
+  // Subscribe to session status changes (detect when other participant ends session)
+  useEffect(() => {
+    if (!sessionData?.id || !supabase || sessionEnded) return;
+
+    const subscription = supabase
+      .channel(`session-status:${sessionData.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'sessions',
+          filter: `id=eq.${sessionData.id}`,
+        },
+        (payload) => {
+          // If session was ended by other participant, show ended screen
+          if (payload.new.status === 'completed' && !sessionEnded) {
+            // Log that session was ended by other participant
+            logSessionEvent(
+              sessionData.id,
+              sessionData.type,
+              currentUserId,
+              'session_end',
+              { endedBy: 'other_participant', participantId: sessionData.participant.id }
+            );
+
+            // Show alert and end session
+            Alert.alert(
+              'Session Ended',
+              `${sessionData.participant.name} has ended the session.`,
+              [{ text: 'OK' }]
+            );
+            setSessionEnded(true);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [sessionData?.id, sessionData?.type, sessionData?.participant?.name, sessionData?.participant?.id, currentUserId, sessionEnded]);
 
   // Handle connection issue - show post-call contact window
   const handleConnectionIssue = async (reason: 'timeout' | 'disconnect' | 'network') => {
