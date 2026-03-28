@@ -464,18 +464,43 @@ export default function VideoCall({
   const toggleSpeaker = useCallback(async () => {
     try {
       const newSpeakerState = !isSpeakerOn;
+
+      // Configure audio mode for both platforms
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
-        // Use speaker for speakerphone mode, default for earpiece
+        // iOS: Use defaultToSpeaker for speakerphone vs earpiece
+        // This forces a reconfiguration of the audio session
+        ...(Platform.OS === 'ios' ? {
+          // On iOS, we need to set the audio mode category
+          // Setting interruptionModeIOS affects how audio behaves
+          interruptionModeIOS: 1, // DoNotMix - ensures our app controls audio
+        } : {}),
+        // Android: Use playThroughEarpieceAndroid
         playThroughEarpieceAndroid: !newSpeakerState,
         staysActiveInBackground: true,
       });
+
+      // For iOS, use Daily.co's native audio output selection if available
+      if (Platform.OS === 'ios' && callObject) {
+        try {
+          // Daily.co exposes setAudioDevice on iOS
+          // 'speakerphone' for speaker, 'default' for earpiece
+          const audioDevice = newSpeakerState ? 'speakerphone' : 'earpiece';
+          if (typeof callObject.setAudioDevice === 'function') {
+            await callObject.setAudioDevice({ deviceId: audioDevice });
+          }
+        } catch (e) {
+          // Fallback - some versions may not have this method
+          console.log('Daily setAudioDevice not available, using expo-av fallback');
+        }
+      }
+
       setIsSpeakerOn(newSpeakerState);
     } catch (error) {
       console.error('Error toggling speaker:', error);
     }
-  }, [isSpeakerOn]);
+  }, [isSpeakerOn, callObject]);
 
   // End call
   const handleEndCall = useCallback(() => {

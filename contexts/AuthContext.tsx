@@ -9,7 +9,7 @@ import {
   getDemoProfile,
 } from '@/constants/demo';
 import { logDiagnostic, sendDiagnosticReport } from '@/lib/diagnosticLogger';
-import { scheduleWeeklyAvailabilityReminder } from '@/lib/notifications';
+import { scheduleWeeklyAvailabilityReminder, registerAndSavePushToken } from '@/lib/notifications';
 
 interface AuthContextType {
   user: { id: string; email: string } | null;
@@ -158,6 +158,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const userProfile = await fetchProfile(session.user.id);
             if (userProfile) {
               setProfile(userProfile);
+
+              // Register for push notifications
+              registerAndSavePushToken(session.user.id).catch((err) => {
+                console.log('Failed to register push token:', err);
+              });
 
               // Schedule weekly availability reminder for supporters
               if (userProfile.role === 'supporter') {
