@@ -30,7 +30,6 @@ export interface CreateRoomOptions {
   maxParticipants?: number;
   startVideoOff?: boolean;
   startAudioOff?: boolean;
-  enableE2EEncryption?: boolean;
 }
 
 // Generate a unique room name
@@ -48,7 +47,6 @@ export const createRoom = async (options: CreateRoomOptions = {}): Promise<Daily
     maxParticipants = 2,
     startVideoOff = false,
     startAudioOff = false,
-    enableE2EEncryption = true, // E2E encryption enabled by default for privacy
   } = options;
 
   const exp = Math.floor(Date.now() / 1000) + (expiryMinutes * 60);
@@ -82,10 +80,8 @@ export const createRoom = async (options: CreateRoomOptions = {}): Promise<Daily
           start_audio_off: startAudioOff,
           enable_screenshare: false,
           enable_recording: false,
-          // E2E encryption using SFrame - encrypts audio/video between participants
-          // Media is encrypted on sender device and decrypted on receiver device
-          // Daily.co servers cannot access the unencrypted media content
-          enable_e2ee_sframe: enableE2EEncryption,
+          // Note: E2EE SFrame requires a paid Daily.co plan
+          // Calls are still encrypted in transit via SRTP
         },
       }),
     });
@@ -162,7 +158,6 @@ export interface SessionConfig {
   participantName: string;
   supporterId?: string;
   clientId?: string;
-  e2eeEnabled?: boolean; // Whether E2E encryption is enabled for this session
 }
 
 // Create a session based on type
@@ -177,16 +172,14 @@ export const createSession = async (
       type: 'chat',
       participantName,
       roomName: generateRoomName('chat'),
-      e2eeEnabled: true, // Chat uses TweetNaCl E2E encryption
     };
   }
 
-  // Create Daily room for video/voice with E2E encryption enabled
+  // Create Daily room for video/voice
   // This will throw with error details if it fails
   const room = await createRoom({
     startVideoOff: type === 'voice',
     startAudioOff: false,
-    enableE2EEncryption: true, // Always enable E2E for privacy
   });
 
   if (!room) {
@@ -198,7 +191,6 @@ export const createSession = async (
     roomUrl: room.url,
     roomName: room.name,
     participantName,
-    e2eeEnabled: true, // Daily.co SFrame E2E encryption
   };
 };
 
