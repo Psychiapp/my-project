@@ -112,6 +112,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (userProfile) {
               setProfile(userProfile);
 
+              // Register for push notifications on app start
+              registerAndSavePushToken(session.user.id).catch((err) => {
+                console.log('Failed to register push token on init:', err);
+              });
+
               // Schedule weekly availability reminder for supporters on app start
               if (userProfile.role === 'supporter') {
                 scheduleWeeklyAvailabilityReminder().catch(() => {});
