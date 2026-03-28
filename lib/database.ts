@@ -443,7 +443,10 @@ export async function getClientProfile(userId: string): Promise<ClientProfile | 
   }
 
   // Transform to ClientProfile shape
-  const subscription = data.subscriptions?.[0];
+  // Note: subscriptions is an object (not array) because user_id is UNIQUE
+  const subscription = Array.isArray(data.subscriptions)
+    ? data.subscriptions[0]
+    : data.subscriptions;
   return {
     ...data,
     subscription_tier: subscription?.tier || null,
