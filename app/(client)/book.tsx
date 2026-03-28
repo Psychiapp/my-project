@@ -460,6 +460,12 @@ export default function BookSessionScreen() {
 
       const sessionId = session.id;
 
+      // Deduct session from subscription allowance (if covered by subscription)
+      if (!requiresPayment && user?.id) {
+        const { deductSessionFromSubscription } = await import('@/lib/database');
+        await deductSessionFromSubscription(user.id, selectedType);
+      }
+
       // Record the payment for tracking and earnings (if payment was made)
       if (paymentIntentId && requiresPayment) {
         const pricing = Config.pricing[selectedType];

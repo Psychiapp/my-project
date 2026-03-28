@@ -33,9 +33,19 @@ export default function SessionAllowanceDisplay({
     return null;
   }
 
-  const chatDisplay = formatAllowanceDisplay(usage.chatUsed, usage.chatAllowed, 'chat');
-  const voiceVideoDisplay = formatAllowanceDisplay(usage.voiceVideoUsed, usage.voiceVideoAllowed, 'voiceVideo');
+  // Use sessionsRemaining from subscription if available (more accurate)
+  const hasSubscriptionData = usage.sessionsRemaining && usage.subscriptionTier > 0;
+
+  // Get remaining counts from subscription data
+  const chatRemaining = usage.sessionsRemaining?.chat ?? 0;
+  const phoneRemaining = usage.sessionsRemaining?.phone ?? 0;
+  const videoRemaining = usage.sessionsRemaining?.video ?? 0;
+
+  // For display purposes
   const isUnlimitedChat = usage.chatAllowed >= 999 || usage.chatAllowed === Infinity;
+  const chatDisplay = isUnlimitedChat ? 'Unlimited' : `${chatRemaining} left`;
+  const phoneDisplay = `${phoneRemaining} left`;
+  const videoDisplay = `${videoRemaining} left`;
 
   // Calculate days remaining in billing period
   const now = new Date();
@@ -52,7 +62,7 @@ export default function SessionAllowanceDisplay({
           <View style={styles.compactDivider} />
           <View style={styles.compactItem}>
             <PhoneIcon size={16} color={PsychiColors.phoneAccent} />
-            <Text style={styles.compactValue}>{voiceVideoDisplay}</Text>
+            <Text style={styles.compactValue}>{phoneRemaining + videoRemaining} calls</Text>
           </View>
         </View>
       </View>
@@ -62,7 +72,7 @@ export default function SessionAllowanceDisplay({
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>This Week's Sessions</Text>
+        <Text style={styles.title}>Your Session Allowance</Text>
         <Text style={styles.periodInfo}>{daysRemaining} days left</Text>
       </View>
 
@@ -73,46 +83,52 @@ export default function SessionAllowanceDisplay({
             <ChatIcon size={20} color={PsychiColors.chatAccent} />
           </View>
           <View style={styles.allowanceInfo}>
-            <Text style={styles.allowanceLabel}>Chat</Text>
-            <Text style={styles.allowanceValue}>
-              {isUnlimitedChat ? 'Unlimited' : chatDisplay}
-            </Text>
+            <Text style={styles.allowanceLabel}>Chat Sessions</Text>
+            <Text style={styles.allowanceValue}>{chatDisplay}</Text>
           </View>
-          {!isUnlimitedChat && (
-            <View style={styles.progressBar}>
-              <View
-                style={[
-                  styles.progressFill,
-                  {
-                    width: `${Math.min(100, (usage.chatUsed / usage.chatAllowed) * 100)}%`,
-                    backgroundColor: PsychiColors.chatAccent,
-                  },
-                ]}
-              />
+          {!isUnlimitedChat && hasSubscriptionData && (
+            <View style={styles.remainingBadge}>
+              <Text style={[styles.remainingText, { color: chatRemaining > 0 ? PsychiColors.chatAccent : PsychiColors.textMuted }]}>
+                {chatRemaining}
+              </Text>
             </View>
           )}
         </View>
 
-        {/* Voice/Video Sessions */}
+        {/* Phone Sessions */}
+        <View style={styles.allowanceCard}>
+          <View style={[styles.iconContainer, { backgroundColor: `${PsychiColors.phoneAccent}20` }]}>
+            <PhoneIcon size={20} color={PsychiColors.phoneAccent} />
+          </View>
+          <View style={styles.allowanceInfo}>
+            <Text style={styles.allowanceLabel}>Phone Calls</Text>
+            <Text style={styles.allowanceValue}>{phoneDisplay}</Text>
+          </View>
+          {hasSubscriptionData && (
+            <View style={styles.remainingBadge}>
+              <Text style={[styles.remainingText, { color: phoneRemaining > 0 ? PsychiColors.phoneAccent : PsychiColors.textMuted }]}>
+                {phoneRemaining}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Video Sessions */}
         <View style={styles.allowanceCard}>
           <View style={[styles.iconContainer, { backgroundColor: `${PsychiColors.videoAccent}20` }]}>
             <VideoIcon size={20} color={PsychiColors.videoAccent} />
           </View>
           <View style={styles.allowanceInfo}>
-            <Text style={styles.allowanceLabel}>Calls</Text>
-            <Text style={styles.allowanceValue}>{voiceVideoDisplay}</Text>
+            <Text style={styles.allowanceLabel}>Video Calls</Text>
+            <Text style={styles.allowanceValue}>{videoDisplay}</Text>
           </View>
-          <View style={styles.progressBar}>
-            <View
-              style={[
-                styles.progressFill,
-                {
-                  width: `${Math.min(100, (usage.voiceVideoUsed / usage.voiceVideoAllowed) * 100)}%`,
-                  backgroundColor: PsychiColors.videoAccent,
-                },
-              ]}
-            />
-          </View>
+          {hasSubscriptionData && (
+            <View style={styles.remainingBadge}>
+              <Text style={[styles.remainingText, { color: videoRemaining > 0 ? PsychiColors.videoAccent : PsychiColors.textMuted }]}>
+                {videoRemaining}
+              </Text>
+            </View>
+          )}
         </View>
       </View>
 
@@ -189,16 +205,17 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: PsychiColors.textPrimary,
   },
-  progressBar: {
-    width: 60,
-    height: 4,
+  remainingBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: PsychiColors.frost,
-    borderRadius: 2,
-    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  progressFill: {
-    height: '100%',
-    borderRadius: 2,
+  remainingText: {
+    fontSize: 14,
+    fontWeight: '700',
   },
   compactRow: {
     flexDirection: 'row',

@@ -51,47 +51,68 @@ export function useSessionUsage(userId: string | null): UseSessionUsageReturn {
     try {
       setError(null);
 
-      // Get client's subscription tier
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('subscription_tier, subscription_status')
-        .eq('id', userId)
+      // Get client's subscription from subscriptions table (more reliable than profiles)
+      const { data: subscription, error: subError } = await supabase
+        .from('subscriptions')
+        .select('tier, status, sessions_remaining, expires_at')
+        .eq('user_id', userId)
         .single();
 
-      if (profileError) {
-        throw new Error(profileError.message);
+      // If no subscription found, check profiles as fallback
+      let tierString: string | null = null;
+      let isActive = false;
+      let sessionsRemaining: { chat: number; phone: number; video: number } | null = null;
+      let expiresAt: string | null = null;
+
+      if (subscription && !subError) {
+        tierString = subscription.tier;
+        isActive = subscription.status === 'active';
+        sessionsRemaining = subscription.sessions_remaining as { chat: number; phone: number; video: number };
+        expiresAt = subscription.expires_at;
       }
 
       // Map tier string to number (0 if no subscription)
-      const tierString = profile?.subscription_tier;
-      const isActive = profile?.subscription_status === 'active';
       const tierNumber = (tierString && isActive) ? (TIER_MAP[tierString] || 0) : 0;
 
-      // Get current period usage from database function
-      const { data: usageData, error: usageError } = await supabase
-        .rpc('get_current_period_usage', { p_client_id: userId });
-
-      if (usageError) {
-        throw new Error(usageError.message);
-      }
-
-      const row = usageData?.[0];
+      // Calculate allowances based on tier
       const allowances = tierNumber > 0
         ? TIER_ALLOWANCES[tierNumber as 1 | 2 | 3]
         : { voiceVideo: 0, chat: 0 };
 
+      // Use sessions_remaining from subscription if available
+      // Otherwise fall back to calculated allowances
+      const chatRemaining = sessionsRemaining?.chat ?? 0;
+      const phoneRemaining = sessionsRemaining?.phone ?? 0;
+      const videoRemaining = sessionsRemaining?.video ?? 0;
+      const voiceVideoRemaining = phoneRemaining + videoRemaining;
+
+      // For display, "used" is the difference between allowance and remaining
+      const chatAllowed = allowances.chat === Infinity ? 999 : allowances.chat;
+      const chatUsed = Math.max(0, chatAllowed - chatRemaining);
+      const voiceVideoUsed = Math.max(0, allowances.voiceVideo - Math.min(phoneRemaining, allowances.voiceVideo));
+
+      // Calculate billing period (subscription period, or weekly if no subscription)
+      const now = new Date();
+      let billingStart = new Date();
+      let billingEnd = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+      if (expiresAt) {
+        // Subscription period: 1 month before expiry to expiry
+        billingEnd = new Date(expiresAt);
+        billingStart = new Date(billingEnd);
+        billingStart.setMonth(billingStart.getMonth() - 1);
+      }
+
       setUsage({
-        chatUsed: row?.chat_count || 0,
-        chatAllowed: allowances.chat === Infinity ? 999 : allowances.chat,
-        voiceVideoUsed: row?.voice_video_count || 0,
+        chatUsed,
+        chatAllowed,
+        voiceVideoUsed,
         voiceVideoAllowed: allowances.voiceVideo,
-        billingPeriodStart: row?.billing_period_start
-          ? new Date(row.billing_period_start)
-          : new Date(),
-        billingPeriodEnd: row?.billing_period_end
-          ? new Date(row.billing_period_end)
-          : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        billingPeriodStart: billingStart,
+        billingPeriodEnd: billingEnd,
         subscriptionTier: tierNumber,
+        // Also store raw remaining values for display
+        sessionsRemaining: sessionsRemaining || { chat: 0, phone: 0, video: 0 },
       });
     } catch (err) {
       console.error('Failed to fetch usage:', err);

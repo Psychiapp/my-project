@@ -520,6 +520,101 @@ export async function cancelClientSubscription(userId: string): Promise<boolean>
 }
 
 /**
+ * Deduct a session from the client's subscription allowance
+ * Returns true if session was deducted, false if insufficient allowance or error
+ */
+export async function deductSessionFromSubscription(
+  userId: string,
+  sessionType: 'chat' | 'phone' | 'video'
+): Promise<{ success: boolean; remaining: number }> {
+  if (!supabase) return { success: false, remaining: 0 };
+
+  // Get current subscription
+  const { data: subscription, error: fetchError } = await supabase
+    .from('subscriptions')
+    .select('sessions_remaining, status')
+    .eq('user_id', userId)
+    .single();
+
+  if (fetchError || !subscription) {
+    console.error('Error fetching subscription:', fetchError);
+    return { success: false, remaining: 0 };
+  }
+
+  // Check if subscription is active
+  if (subscription.status !== 'active') {
+    return { success: false, remaining: 0 };
+  }
+
+  const sessionsRemaining = subscription.sessions_remaining as {
+    chat: number;
+    phone: number;
+    video: number;
+  };
+
+  // Check if there's remaining allowance
+  const currentRemaining = sessionsRemaining[sessionType] || 0;
+  if (currentRemaining <= 0) {
+    return { success: false, remaining: 0 };
+  }
+
+  // Deduct one session
+  const newRemaining = {
+    ...sessionsRemaining,
+    [sessionType]: currentRemaining - 1,
+  };
+
+  const { error: updateError } = await supabase
+    .from('subscriptions')
+    .update({
+      sessions_remaining: newRemaining,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('user_id', userId);
+
+  if (updateError) {
+    console.error('Error deducting session:', updateError);
+    return { success: false, remaining: currentRemaining };
+  }
+
+  return { success: true, remaining: newRemaining[sessionType] };
+}
+
+/**
+ * Get remaining sessions for a client's subscription
+ */
+export async function getSubscriptionRemaining(userId: string): Promise<{
+  chat: number;
+  phone: number;
+  video: number;
+  tier: string | null;
+  status: string | null;
+  expiresAt: string | null;
+} | null> {
+  if (!supabase) return null;
+
+  const { data, error } = await supabase
+    .from('subscriptions')
+    .select('sessions_remaining, tier, status, expires_at')
+    .eq('user_id', userId)
+    .single();
+
+  if (error || !data) {
+    return null;
+  }
+
+  const remaining = data.sessions_remaining as { chat: number; phone: number; video: number };
+  return {
+    chat: remaining?.chat || 0,
+    phone: remaining?.phone || 0,
+    video: remaining?.video || 0,
+    tier: data.tier,
+    status: data.status,
+    expiresAt: data.expires_at,
+  };
+}
+
+/**
  * Get client payment history
  */
 export async function getClientPaymentHistory(userId: string): Promise<{

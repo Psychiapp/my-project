@@ -80,6 +80,11 @@ export interface PeriodUsageSummary {
   billingPeriodStart: Date;
   billingPeriodEnd: Date;
   subscriptionTier: number;
+  sessionsRemaining?: {
+    chat: number;
+    phone: number;
+    video: number;
+  };
 }
 
 // Decline history entry
