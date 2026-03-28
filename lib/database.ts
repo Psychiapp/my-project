@@ -1111,6 +1111,7 @@ export async function saveSupporterSchedule(
 
 /**
  * Get upcoming sessions for a user
+ * Includes sessions up to 5 minutes past their scheduled time (late join grace period)
  */
 export async function getUpcomingSessions(
   userId: string,
@@ -1120,6 +1121,9 @@ export async function getUpcomingSessions(
 
   const userIdField = role === 'client' ? 'client_id' : 'supporter_id';
   const otherField = role === 'client' ? 'supporter_id' : 'client_id';
+
+  // Allow 5-minute grace period for late joins
+  const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
 
   const { data, error } = await supabase
     .from('sessions')
@@ -1134,7 +1138,7 @@ export async function getUpcomingSessions(
     `)
     .eq(userIdField, userId)
     .in('status', ['scheduled', 'in_progress'])
-    .gte('scheduled_at', new Date().toISOString())
+    .gte('scheduled_at', fiveMinutesAgo.toISOString())
     .order('scheduled_at', { ascending: true });
 
   if (error) {
