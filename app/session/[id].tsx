@@ -208,35 +208,41 @@ export default function SessionScreen() {
 
       // No existing room - create a new one
       const dailyType = sessionData.type === 'video' ? 'video' : 'voice';
-      const config = await createDailySession(dailyType, currentUserName);
 
-      if (config && config.roomUrl) {
-        setDailySession(config);
-        // Save room URL to database so other participant can join the same room
-        await updateSessionRoomUrl(sessionData.id, config.roomUrl);
+      try {
+        const config = await createDailySession(dailyType, currentUserName);
 
-        // Log room creation
-        logSessionEvent(
-          sessionData.id,
-          sessionData.type,
-          currentUserId,
-          'room_created',
-          { roomUrl: config.roomUrl, participantId: sessionData.participant.id }
-        );
-      } else {
+        if (config && config.roomUrl) {
+          setDailySession(config);
+          // Save room URL to database so other participant can join the same room
+          await updateSessionRoomUrl(sessionData.id, config.roomUrl);
+
+          // Log room creation
+          logSessionEvent(
+            sessionData.id,
+            sessionData.type,
+            currentUserId,
+            'room_created',
+            { roomUrl: config.roomUrl, participantId: sessionData.participant.id }
+          );
+        } else {
+          throw new Error('Room created but no URL returned');
+        }
+      } catch (error: any) {
+        const errorMessage = error?.message || 'Unknown error';
         // Log room creation failure
         logSessionEvent(
           sessionData.id,
           sessionData.type,
           currentUserId,
           'room_join_failed',
-          { reason: 'Failed to create Daily room', config: config ? JSON.stringify(config) : 'null' },
-          new Error('Failed to create call session')
+          { reason: errorMessage },
+          error
         );
-        console.error('Failed to create call session. Config:', config);
+        console.error('Failed to create call session:', errorMessage);
         Alert.alert(
           'Call Setup Error',
-          'Unable to set up the call. Please close and reopen the app to get the latest update, then try again.',
+          `Unable to set up the call: ${errorMessage}`,
           [
             { text: 'Try Again', onPress: () => initDailySession() },
             { text: 'Go Back', onPress: () => router.back(), style: 'cancel' },

@@ -93,15 +93,17 @@ export const createRoom = async (options: CreateRoomOptions = {}): Promise<Daily
     if (!response.ok) {
       const errorBody = await response.text();
       console.error('Failed to create Daily room:', response.status, errorBody);
-      return null;
+      throw new Error(`Daily API error ${response.status}: ${errorBody}`);
     }
 
     const room = await response.json();
     console.log('Daily.co: Room created successfully:', room.name, room.url);
     return room;
   } catch (error: any) {
-    console.error('Error creating Daily room:', error?.message || error);
-    return null;
+    const errorMsg = error?.message || String(error);
+    console.error('Error creating Daily room:', errorMsg);
+    // Throw with details so caller can show them
+    throw new Error(`Daily room creation failed: ${errorMsg}`);
   }
 };
 
@@ -164,10 +166,11 @@ export interface SessionConfig {
 }
 
 // Create a session based on type
+// Throws error with details if room creation fails
 export const createSession = async (
   type: SessionType,
   participantName: string
-): Promise<SessionConfig | null> => {
+): Promise<SessionConfig> => {
   if (type === 'chat') {
     // Chat sessions use separate E2E encryption via TweetNaCl
     return {
@@ -179,6 +182,7 @@ export const createSession = async (
   }
 
   // Create Daily room for video/voice with E2E encryption enabled
+  // This will throw with error details if it fails
   const room = await createRoom({
     startVideoOff: type === 'voice',
     startAudioOff: false,
@@ -186,7 +190,7 @@ export const createSession = async (
   });
 
   if (!room) {
-    return null;
+    throw new Error('Room creation returned null');
   }
 
   return {
