@@ -218,6 +218,12 @@ export const useEncryptedChat = (
           filter: `session_id=eq.${sessionId}`,
         },
         async (payload) => {
+          // Skip our own messages - we already add them after insert succeeds
+          // This prevents duplicate messages from appearing
+          if (payload.new.sender_id === currentUserId) {
+            return;
+          }
+
           const newMessage = await decryptStoredMessage(payload.new, recipientPubKey);
           if (newMessage) {
             setState((prev) => ({
@@ -273,7 +279,8 @@ export const useEncryptedChat = (
           return false;
         }
 
-        // Optimistically add to local messages (will also come via subscription)
+        // Add to local messages immediately after successful insert
+        // Subscription handler skips own messages to prevent duplicates
         const newMessage: ChatMessage = {
           id: Date.now().toString(),
           content,
