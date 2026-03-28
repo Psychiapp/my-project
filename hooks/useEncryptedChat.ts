@@ -295,12 +295,13 @@ export const useEncryptedChat = (
           messages: [...prev.messages, newMessage],
         }));
 
-        // Send push notification to recipient
+        // Send push notification to recipient (works even when their app is closed)
         if (options?.senderName) {
           // Truncate message preview for notification
           const messagePreview = content.length > 50 ? content.substring(0, 50) + '...' : content;
 
           sendChatMessageNotification({
+            recipientId,
             senderName: options.senderName,
             senderId: currentUserId,
             conversationId: options.conversationId || sessionId,

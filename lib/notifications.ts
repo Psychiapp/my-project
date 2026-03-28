@@ -209,18 +209,17 @@ export async function updateNotificationSettings(
 // ============================================
 
 /**
- * Send notification for new chat message
+ * Send push notification for new chat message
+ * This uses the Edge Function to send even when the recipient's app is closed
  */
 export async function sendChatMessageNotification(params: {
+  recipientId: string;
   senderName: string;
   senderId: string;
   conversationId: string;
   messagePreview: string;
   isFromSupporter?: boolean;
-}): Promise<void> {
-  const settings = await getNotificationSettings();
-  if (!settings.newMessages) return;
-
+}): Promise<{ sent: boolean; error?: string }> {
   const type: NotificationType = params.isFromSupporter ? 'supporter_message' : 'chat_message';
   const content = getNotificationContent(type, {
     senderName: params.senderName,
@@ -231,15 +230,12 @@ export async function sendChatMessageNotification(params: {
     supporterId: params.senderId,
   });
 
-  await Notifications.scheduleNotificationAsync({
-    content: {
-      title: content.title,
-      body: content.body,
-      data: content.data,
-      sound: true,
-      categoryIdentifier: NOTIFICATION_CHANNELS.MESSAGES,
-    },
-    trigger: null, // Immediately
+  // Send push notification via Edge Function (works even when app is closed)
+  return sendPushNotificationViaEdgeFunction({
+    userId: params.recipientId,
+    title: content.title,
+    body: content.body,
+    data: content.data as Record<string, unknown>,
   });
 }
 
