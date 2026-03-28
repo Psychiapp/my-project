@@ -24,6 +24,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import {
   registerForPushNotifications,
+  registerAndSavePushToken,
   getNotificationSettings,
   updateNotificationSettings,
   scheduleWeeklyAvailabilityReminder,
@@ -54,7 +55,11 @@ export default function NotificationSettingsScreen() {
 
   const loadSettings = async () => {
     try {
-      const token = await registerForPushNotifications();
+      // Also save the token to database when loading settings
+      const userId = profile?.id;
+      const token = userId
+        ? await registerAndSavePushToken(userId)
+        : await registerForPushNotifications();
       setPushEnabled(!!token);
 
       const storedSettings = await getNotificationSettings();
@@ -68,7 +73,14 @@ export default function NotificationSettingsScreen() {
 
   const handleTogglePush = async () => {
     if (!pushEnabled) {
-      const token = await registerForPushNotifications();
+      // Use registerAndSavePushToken to ensure token is saved to database
+      const userId = profile?.id;
+      if (!userId) {
+        Alert.alert('Error', 'Please sign in to enable notifications.');
+        return;
+      }
+
+      const token = await registerAndSavePushToken(userId);
       if (token) {
         setPushEnabled(true);
         Alert.alert('Notifications Enabled', 'You will now receive push notifications.');
@@ -295,6 +307,32 @@ export default function NotificationSettingsScreen() {
           </View>
         </View>
 
+        {/* Refresh Token Button (for debugging) */}
+        {pushEnabled && (
+          <View style={styles.section}>
+            <TouchableOpacity
+              style={styles.refreshButton}
+              onPress={async () => {
+                const userId = profile?.id;
+                if (!userId) {
+                  Alert.alert('Error', 'Please sign in first.');
+                  return;
+                }
+                const token = await registerAndSavePushToken(userId);
+                if (token) {
+                  Alert.alert('Success', 'Push notification token refreshed and saved to server.');
+                } else {
+                  Alert.alert('Error', 'Could not get push token. Check permissions.');
+                }
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Refresh notification token"
+            >
+              <Text style={styles.refreshButtonText}>Refresh Notification Token</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Notification Summary */}
         {pushEnabled && (
           <View style={styles.section}>
@@ -511,5 +549,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: PsychiColors.textSecondary,
     lineHeight: 24,
+  },
+  refreshButton: {
+    backgroundColor: PsychiColors.frost,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: PsychiColors.borderLight,
+  },
+  refreshButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: PsychiColors.azure,
   },
 });

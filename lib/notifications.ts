@@ -62,35 +62,42 @@ export async function registerForPushNotifications(): Promise<string | null> {
 
   // Check if it's a physical device
   if (!Device.isDevice) {
+    console.log('[PushNotifications] Not a physical device, skipping registration');
     return null;
   }
 
   // Check existing permissions
   const { status: existingStatus } = await Notifications.getPermissionsAsync();
   let finalStatus = existingStatus;
+  console.log('[PushNotifications] Existing permission status:', existingStatus);
 
   // Request permission if not already granted
   if (existingStatus !== 'granted') {
+    console.log('[PushNotifications] Requesting permissions...');
     const { status } = await Notifications.requestPermissionsAsync();
     finalStatus = status;
+    console.log('[PushNotifications] New permission status:', status);
   }
 
   if (finalStatus !== 'granted') {
+    console.log('[PushNotifications] Permission not granted, cannot register');
     return null;
   }
 
   // Get the token
   try {
     const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+    console.log('[PushNotifications] Getting token with projectId:', projectId);
     const tokenData = await Notifications.getExpoPushTokenAsync({
       projectId: projectId,
     });
     token = tokenData.data;
+    console.log('[PushNotifications] Got token:', token?.substring(0, 30) + '...');
 
     // Store token locally
     await AsyncStorage.setItem(STORAGE_KEYS.PUSH_TOKEN, token);
   } catch (error) {
-    console.error('Error getting push token:', error);
+    console.error('[PushNotifications] Error getting push token:', error);
   }
 
   // Android-specific channel configuration
@@ -106,13 +113,19 @@ export async function registerForPushNotifications(): Promise<string | null> {
  * Call this when user logs in or app starts for authenticated user
  */
 export async function registerAndSavePushToken(userId: string): Promise<string | null> {
+  console.log('[PushNotifications] registerAndSavePushToken called for user:', userId);
   const token = await registerForPushNotifications();
 
   if (token && userId) {
+    console.log('[PushNotifications] Saving token to database...');
     const saved = await saveExpoPushToken(userId, token);
     if (!saved) {
-      console.warn('Failed to save push token to database');
+      console.warn('[PushNotifications] Failed to save push token to database');
+    } else {
+      console.log('[PushNotifications] Token saved successfully');
     }
+  } else {
+    console.log('[PushNotifications] No token to save (token:', !!token, ', userId:', !!userId, ')');
   }
 
   return token;

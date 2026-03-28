@@ -21,6 +21,7 @@ import { useEncryptedChat, ChatMessage } from '@/hooks/useEncryptedChat';
 import EmergencyButton from './EmergencyButton';
 import ReportUserModal from '@/components/ReportUserModal';
 import { logSessionEvent } from '@/lib/sessionLogger';
+import { supabase } from '@/lib/supabase';
 
 interface Message {
   id: string;
@@ -71,6 +72,51 @@ export default function ChatSession({
   // Session timer state
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [hasAutoEnded, setHasAutoEnded] = useState(false);
+
+  // Other participant's online status
+  const [isOtherParticipantOnline, setIsOtherParticipantOnline] = useState(true);
+
+  // Subscribe to other participant's online status
+  useEffect(() => {
+    if (!supabase || !otherParticipant.id) return;
+
+    // Fetch initial status
+    const fetchInitialStatus = async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('is_online')
+        .eq('id', otherParticipant.id)
+        .single();
+
+      if (data) {
+        setIsOtherParticipantOnline(data.is_online || false);
+      }
+    };
+    fetchInitialStatus();
+
+    // Subscribe to real-time changes
+    const channel = supabase
+      .channel(`presence:${otherParticipant.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${otherParticipant.id}`,
+        },
+        (payload) => {
+          if (payload.new && typeof payload.new.is_online === 'boolean') {
+            setIsOtherParticipantOnline(payload.new.is_online);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [otherParticipant.id]);
 
   // Session timer - counts elapsed time and auto-ends at duration limit
   useEffect(() => {
@@ -245,8 +291,10 @@ export default function ChatSession({
           <View style={styles.headerInfo}>
             <Text style={styles.headerName}>{otherParticipant.name}</Text>
             <View style={styles.statusRow}>
-              <View style={styles.onlineDot} />
-              <Text style={styles.statusText}>Online</Text>
+              <View style={[styles.onlineDot, !isOtherParticipantOnline && styles.offlineDot]} />
+              <Text style={[styles.statusText, !isOtherParticipantOnline && styles.statusTextOffline]}>
+                {isOtherParticipantOnline ? 'Online' : 'Away'}
+              </Text>
             </View>
           </View>
         </View>
@@ -394,9 +442,15 @@ const styles = StyleSheet.create({
     backgroundColor: PsychiColors.success,
     marginRight: 4,
   },
+  offlineDot: {
+    backgroundColor: PsychiColors.textMuted,
+  },
   statusText: {
     fontSize: 13,
     color: PsychiColors.success,
+  },
+  statusTextOffline: {
+    color: PsychiColors.textMuted,
   },
   moreButton: {
     width: 36,
