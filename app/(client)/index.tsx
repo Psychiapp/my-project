@@ -67,6 +67,13 @@ const planLabels: Record<string, string> = {
   'pay-as-you-go': 'Pay As You Go',
 };
 
+// Map tier numbers to tier strings (for useSessionUsage fallback)
+const tierNumberToString: Record<number, string> = {
+  1: 'basic',
+  2: 'standard',
+  3: 'premium',
+};
+
 export default function ClientHomeScreen() {
   const insets = useSafeAreaInsets();
   const { profile, user } = useAuth();
@@ -158,7 +165,15 @@ export default function ClientHomeScreen() {
       if (clientProfile?.subscription_tier && clientProfile?.subscription_status === 'active') {
         setSubscriptionTier(clientProfile.subscription_tier);
       } else {
-        setSubscriptionTier(null);
+        // If join returned null, try direct query as fallback
+        const { getSubscriptionRemaining } = await import('@/lib/database');
+        const subscriptionData = await getSubscriptionRemaining(user.id);
+        if (subscriptionData && subscriptionData.tier && subscriptionData.status === 'active') {
+          setSubscriptionTier(subscriptionData.tier);
+        } else {
+          // Only set to null if both queries failed or subscription not active
+          setSubscriptionTier(null);
+        }
       }
     } catch (error) {
       console.error('Error fetching subscription:', error);
@@ -202,9 +217,16 @@ export default function ClientHomeScreen() {
           getClientProfile(user.id),
         ]);
 
-        // Set subscription tier
+        // Set subscription tier (with fallback to direct query)
         if (clientProfile?.subscription_tier && clientProfile?.subscription_status === 'active') {
           setSubscriptionTier(clientProfile.subscription_tier);
+        } else {
+          // Fallback: try direct subscription query if join didn't return subscription data
+          const { getSubscriptionRemaining } = await import('@/lib/database');
+          const subscriptionData = await getSubscriptionRemaining(user.id);
+          if (subscriptionData && subscriptionData.tier && subscriptionData.status === 'active') {
+            setSubscriptionTier(subscriptionData.tier);
+          }
         }
 
         // Set assigned supporter
@@ -440,12 +462,16 @@ export default function ClientHomeScreen() {
               onPress={() => router.push('/(client)/subscription')}
               activeOpacity={0.7}
               accessibilityRole="button"
-              accessibilityLabel={`Current plan: ${subscriptionTier ? planLabels[subscriptionTier] || subscriptionTier : 'Pay-As-You-Go'}`}
+              accessibilityLabel={`Current plan: ${subscriptionTier ? planLabels[subscriptionTier] || subscriptionTier : (usage?.subscriptionTier && usage.subscriptionTier > 0 ? planLabels[tierNumberToString[usage.subscriptionTier]] : 'Pay-As-You-Go')}`}
               accessibilityHint="View or change your subscription"
             >
               <CardIcon size={20} color={PsychiColors.violet} />
               <Text style={styles.statValueSmall}>
-                {subscriptionTier ? planLabels[subscriptionTier] || subscriptionTier : 'Pay-As-You-Go'}
+                {subscriptionTier
+                  ? planLabels[subscriptionTier] || subscriptionTier
+                  : (usage?.subscriptionTier && usage.subscriptionTier > 0
+                      ? planLabels[tierNumberToString[usage.subscriptionTier]] || tierNumberToString[usage.subscriptionTier]
+                      : 'Pay-As-You-Go')}
               </Text>
               <Text style={styles.statLabel}>Plan</Text>
             </TouchableOpacity>
