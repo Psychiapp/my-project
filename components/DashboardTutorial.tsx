@@ -101,6 +101,12 @@ const clientSteps: TutorialStep[] = [
     icon: 'chat',
   },
   {
+    title: 'Post-Session Follow-Up',
+    description: 'After any session ends, you have a 10-minute window to message your supporter. This is helpful if the call disconnected accidentally or you need to coordinate next steps.',
+    icon: 'chat',
+    tip: 'Look for the "Message [Name]" button on the session completed screen.',
+  },
+  {
     title: 'Your Profile',
     description: 'Keep your profile updated in the Profile tab. This helps supporters understand your needs better and provide more personalized support.',
     icon: 'profile',
@@ -138,6 +144,12 @@ const supporterSteps: TutorialStep[] = [
     description: 'The Sessions tab shows all your upcoming and completed sessions. View session details, start sessions when it\'s time, and add private notes.',
     icon: 'video',
     tip: 'Session notes are private and only visible to you - use them to track client progress.',
+  },
+  {
+    title: 'Post-Session Follow-Up',
+    description: 'After any session ends, you have a 10-minute window to message your client. This is helpful if the call disconnected accidentally or you need to coordinate next steps.',
+    icon: 'chat',
+    tip: 'Look for the "Message [Name]" button on the session completed screen.',
   },
   {
     title: 'Live Support Requests',
