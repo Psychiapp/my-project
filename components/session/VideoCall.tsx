@@ -122,11 +122,25 @@ export default function VideoCall({
   const hasShownTimeWarningRef = useRef(false);
   const appStateRef = useRef(AppState.currentState);
   const userInitiatedEndRef = useRef(false); // Track if user clicked End Call button
+  const callObjectRef = useRef<DailyCall | null>(null); // Track call object for cleanup
 
   // Initialize Daily.co call
   useEffect(() => {
     const initCall = async () => {
       try {
+        // IMPORTANT: Destroy any existing call object before creating a new one
+        // This prevents "Duplicate DailyIframe instances are not allowed" error
+        if (callObjectRef.current) {
+          try {
+            await callObjectRef.current.leave();
+            callObjectRef.current.destroy();
+          } catch (e) {
+            // Ignore errors during cleanup
+          }
+          callObjectRef.current = null;
+          setCallObject(null);
+        }
+
         // Configure audio session for VoIP call BEFORE creating call object
         // This is critical for iOS to properly route audio
         await Audio.setAudioModeAsync({
@@ -141,6 +155,9 @@ export default function VideoCall({
           videoSource: isVideoEnabled,
           audioSource: true,
         });
+
+        // Store in ref immediately for reliable cleanup
+        callObjectRef.current = call;
 
         const sessionType = isVideoEnabled ? 'video' : 'phone';
 
@@ -316,10 +333,17 @@ export default function VideoCall({
       // Clear connection timeout on cleanup
       if (connectionTimeoutRef.current) {
         clearTimeout(connectionTimeoutRef.current);
+        connectionTimeoutRef.current = null;
       }
-      if (callObject) {
-        callObject.leave();
-        callObject.destroy();
+      // Use ref for cleanup since state may be stale
+      if (callObjectRef.current) {
+        try {
+          callObjectRef.current.leave();
+          callObjectRef.current.destroy();
+        } catch (e) {
+          // Ignore errors during cleanup
+        }
+        callObjectRef.current = null;
       }
     };
   }, [roomUrl, participantName, isVideoEnabled]);
@@ -601,6 +625,18 @@ export default function VideoCall({
     // Re-initialize the call
     const retryCall = async () => {
       try {
+        // IMPORTANT: Destroy any existing call object before creating a new one
+        if (callObjectRef.current) {
+          try {
+            await callObjectRef.current.leave();
+            callObjectRef.current.destroy();
+          } catch (e) {
+            // Ignore errors during cleanup
+          }
+          callObjectRef.current = null;
+          setCallObject(null);
+        }
+
         // Configure audio session for VoIP call
         await Audio.setAudioModeAsync({
           allowsRecordingIOS: true,
@@ -614,6 +650,9 @@ export default function VideoCall({
           videoSource: isVideoEnabled,
           audioSource: true,
         });
+
+        // Store in ref immediately
+        callObjectRef.current = call;
 
         call.on('joined-meeting', () => {
           setIsConnecting(false);
