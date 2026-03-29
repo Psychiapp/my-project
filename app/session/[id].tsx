@@ -308,6 +308,25 @@ export default function SessionScreen() {
         'session_end',
         { participantId: sessionData.participant.id }
       );
+
+      // Broadcast session end to other participant for immediate notification
+      try {
+        const channel = supabase.channel(`session-end:${sessionData.id}`);
+        await channel.subscribe();
+        await channel.send({
+          type: 'broadcast',
+          event: 'session_ended',
+          payload: {
+            endedBy: currentUserId,
+            endedAt: endTime.toISOString(),
+          },
+        });
+        // Unsubscribe after sending
+        await channel.unsubscribe();
+      } catch (broadcastError) {
+        // Non-critical - database subscription will still work as backup
+        console.log('Broadcast error (non-critical):', broadcastError);
+      }
     }
 
     // Clean up Daily.co room if it exists
@@ -377,10 +396,38 @@ export default function SessionScreen() {
   }, [sessionData, dailySession?.roomUrl, currentUserName, currentUserRole]);
 
   // Subscribe to session status changes (detect when other participant ends session)
+  // Uses both database subscription AND a broadcast channel for reliable delivery
   useEffect(() => {
     if (!sessionData?.id || !supabase || sessionEnded) return;
 
-    const subscription = supabase
+    // Handler for when session ends (from any source)
+    const handleSessionEnded = (endedAt: Date, endedBy: 'self' | 'other') => {
+      if (sessionEnded) return; // Already handled
+
+      // Log that session was ended
+      logSessionEvent(
+        sessionData.id,
+        sessionData.type,
+        currentUserId,
+        'session_end',
+        { endedBy: endedBy === 'other' ? 'other_participant' : 'self', participantId: sessionData.participant.id }
+      );
+
+      // Show alert only if ended by other participant
+      if (endedBy === 'other') {
+        Alert.alert(
+          'Session Ended',
+          `${sessionData.participant.name} has ended the session.`,
+          [{ text: 'OK' }]
+        );
+      }
+
+      setSessionEndedAt(endedAt);
+      setSessionEnded(true);
+    };
+
+    // 1. Subscribe to database changes (as backup)
+    const dbChannel = supabase
       .channel(`session-status:${sessionData.id}`)
       .on(
         'postgres_changes',
@@ -393,30 +440,30 @@ export default function SessionScreen() {
         (payload) => {
           // If session was ended by other participant, show ended screen
           if (payload.new.status === 'completed' && !sessionEnded) {
-            // Log that session was ended by other participant
-            logSessionEvent(
-              sessionData.id,
-              sessionData.type,
-              currentUserId,
-              'session_end',
-              { endedBy: 'other_participant', participantId: sessionData.participant.id }
-            );
-
-            // Show alert and end session
-            Alert.alert(
-              'Session Ended',
-              `${sessionData.participant.name} has ended the session.`,
-              [{ text: 'OK' }]
-            );
-            setSessionEndedAt(new Date());
-            setSessionEnded(true);
+            // Use the actual ended_at timestamp from database if available
+            const endedAt = payload.new.ended_at ? new Date(payload.new.ended_at) : new Date();
+            handleSessionEnded(endedAt, 'other');
           }
         }
       )
       .subscribe();
 
+    // 2. Subscribe to broadcast channel for immediate notification
+    const broadcastChannel = supabase
+      .channel(`session-end:${sessionData.id}`)
+      .on('broadcast', { event: 'session_ended' }, (payload) => {
+        // Ignore if we're the one who sent it
+        if (payload.payload?.endedBy === currentUserId) return;
+        if (sessionEnded) return;
+
+        const endedAt = payload.payload?.endedAt ? new Date(payload.payload.endedAt) : new Date();
+        handleSessionEnded(endedAt, 'other');
+      })
+      .subscribe();
+
     return () => {
-      subscription.unsubscribe();
+      dbChannel.unsubscribe();
+      broadcastChannel.unsubscribe();
     };
   }, [sessionData?.id, sessionData?.type, sessionData?.participant?.name, sessionData?.participant?.id, currentUserId, sessionEnded]);
 
