@@ -44,9 +44,10 @@ interface PostCallContactProps {
     id: string;
     name: string;
   };
-  issueReason: 'timeout' | 'disconnect' | 'network';
-  callType: 'phone' | 'video';
+  issueReason: 'timeout' | 'disconnect' | 'network' | 'session_ended';
+  callType: 'phone' | 'video' | 'chat';
   onClose: () => void;
+  sessionEndedAt?: Date; // When the session ended (for calculating remaining time)
 }
 
 export default function PostCallContact({
@@ -57,13 +58,28 @@ export default function PostCallContact({
   issueReason,
   callType,
   onClose,
+  sessionEndedAt,
 }: PostCallContactProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [timeRemaining, setTimeRemaining] = useState(CONTACT_WINDOW_MS);
   const [isExpired, setIsExpired] = useState(false);
   const flatListRef = useRef<FlatList>(null);
-  const startTimeRef = useRef(Date.now());
+  // Use sessionEndedAt if provided, otherwise use current time
+  const startTimeRef = useRef(sessionEndedAt ? sessionEndedAt.getTime() : Date.now());
+
+  // Check if already expired on mount
+  useEffect(() => {
+    if (sessionEndedAt) {
+      const elapsed = Date.now() - sessionEndedAt.getTime();
+      if (elapsed >= CONTACT_WINDOW_MS) {
+        setIsExpired(true);
+        setTimeRemaining(0);
+      } else {
+        setTimeRemaining(CONTACT_WINDOW_MS - elapsed);
+      }
+    }
+  }, [sessionEndedAt]);
 
   // Countdown timer
   useEffect(() => {
@@ -132,9 +148,33 @@ export default function PostCallContact({
         return 'The other participant disconnected';
       case 'network':
         return 'Network connection was lost';
+      case 'session_ended':
+        return 'Session completed';
       default:
         return 'Connection issue occurred';
     }
+  };
+
+  // Get header title based on reason
+  const getHeaderTitle = () => {
+    if (issueReason === 'session_ended') {
+      return 'Follow-up Chat';
+    }
+    return 'Connection Issue';
+  };
+
+  // Get info card content based on reason
+  const getInfoContent = () => {
+    if (issueReason === 'session_ended') {
+      return {
+        title: 'Post-Session Contact',
+        text: `You have 10 minutes to message ${otherParticipant.name} if you need to discuss anything about your session or coordinate next steps.`,
+      };
+    }
+    return {
+      title: 'Temporary Contact Window',
+      text: `You have 10 minutes to message ${otherParticipant.name} about the ${callType} call issue. Use this to troubleshoot or reschedule your session.`,
+    };
   };
 
   // Send message
@@ -226,28 +266,38 @@ export default function PostCallContact({
     </View>
   );
 
-  // Quick message suggestions
-  const quickMessages = [
-    "I'm having connection issues. Can we try again?",
-    "Let's reschedule for later today.",
-    "Sorry about the technical difficulties!",
-    "Can you hear me now?",
-  ];
+  // Quick message suggestions based on reason
+  const quickMessages = issueReason === 'session_ended'
+    ? [
+        "Thanks for the session!",
+        "I have a quick follow-up question.",
+        "When can we schedule the next session?",
+        "I accidentally ended the call early.",
+      ]
+    : [
+        "I'm having connection issues. Can we try again?",
+        "Let's reschedule for later today.",
+        "Sorry about the technical difficulties!",
+        "Can you hear me now?",
+      ];
 
   const handleQuickMessage = (message: string) => {
     setInputText(message);
   };
+
+  const infoContent = getInfoContent();
+  const isSessionEnded = issueReason === 'session_ended';
 
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <View style={styles.alertIconContainer}>
-            <AlertIcon size={20} color={PsychiColors.warning} />
+          <View style={[styles.alertIconContainer, isSessionEnded && styles.successIconContainer]}>
+            <AlertIcon size={20} color={isSessionEnded ? PsychiColors.success : PsychiColors.warning} />
           </View>
           <View style={styles.headerInfo}>
-            <Text style={styles.headerTitle}>Connection Issue</Text>
+            <Text style={styles.headerTitle}>{getHeaderTitle()}</Text>
             <Text style={styles.headerSubtitle}>{getIssueDescription()}</Text>
           </View>
         </View>
@@ -257,7 +307,7 @@ export default function PostCallContact({
       </View>
 
       {/* Timer Banner */}
-      <View style={styles.timerBanner}>
+      <View style={[styles.timerBanner, isSessionEnded && styles.timerBannerSuccess]}>
         <ClockIcon size={16} color={PsychiColors.white} />
         <Text style={styles.timerText}>
           Contact window: {formatTimeRemaining()} remaining
@@ -265,11 +315,10 @@ export default function PostCallContact({
       </View>
 
       {/* Info Card */}
-      <View style={styles.infoCard}>
-        <Text style={styles.infoTitle}>Temporary Contact Window</Text>
+      <View style={[styles.infoCard, isSessionEnded && styles.infoCardSuccess]}>
+        <Text style={[styles.infoTitle, isSessionEnded && styles.infoTitleSuccess]}>{infoContent.title}</Text>
         <Text style={styles.infoText}>
-          You have 10 minutes to message {otherParticipant.name} about the {callType} call issue.
-          Use this to troubleshoot or reschedule your session.
+          {infoContent.text}
         </Text>
       </View>
 
@@ -373,6 +422,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: Spacing.sm,
   },
+  successIconContainer: {
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+  },
   headerInfo: {
     flex: 1,
   },
@@ -402,6 +454,9 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.sm,
     gap: Spacing.xs,
   },
+  timerBannerSuccess: {
+    backgroundColor: PsychiColors.success,
+  },
   timerText: {
     fontSize: 14,
     fontWeight: '600',
@@ -415,11 +470,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(74, 144, 226, 0.15)',
   },
+  infoCardSuccess: {
+    backgroundColor: 'rgba(16, 185, 129, 0.08)',
+    borderColor: 'rgba(16, 185, 129, 0.15)',
+  },
   infoTitle: {
     fontSize: 14,
     fontWeight: '600',
     color: PsychiColors.azure,
     marginBottom: Spacing.xs,
+  },
+  infoTitleSuccess: {
+    color: PsychiColors.success,
   },
   infoText: {
     fontSize: 13,

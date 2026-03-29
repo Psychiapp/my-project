@@ -55,7 +55,9 @@ export default function SessionScreen() {
   const [isLoadingSession, setIsLoadingSession] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [showPostCallContact, setShowPostCallContact] = useState(false); // 10-min contact window
-  const [connectionIssueReason, setConnectionIssueReason] = useState<'timeout' | 'disconnect' | 'network' | null>(null);
+  const [connectionIssueReason, setConnectionIssueReason] = useState<'timeout' | 'disconnect' | 'network' | 'session_ended' | null>(null);
+  const [sessionEndedAt, setSessionEndedAt] = useState<Date | null>(null); // Track when session ended for 10-min window
+  const [followUpTimeRemaining, setFollowUpTimeRemaining] = useState<number>(10 * 60 * 1000); // 10 minutes in ms
   const enteredNotificationSent = useRef(false); // Track if we've notified the other participant
 
   // Get current user name from auth context
@@ -284,16 +286,18 @@ export default function SessionScreen() {
       [{ text: 'OK' }]
     );
 
+    setSessionEndedAt(new Date());
     setSessionEnded(true);
   };
 
   const confirmEndSession = async () => {
     setShowEndConfirm(false);
+    const endTime = new Date();
 
     // Mark session as completed with ended timestamp
     if (sessionData?.id) {
       await updateSessionStatus(sessionData.id, 'completed', {
-        ended_at: new Date().toISOString()
+        ended_at: endTime.toISOString()
       });
 
       // Log session end
@@ -325,6 +329,7 @@ export default function SessionScreen() {
       }
     }
 
+    setSessionEndedAt(endTime);
     setSessionEnded(true);
   };
 
@@ -403,6 +408,7 @@ export default function SessionScreen() {
               `${sessionData.participant.name} has ended the session.`,
               [{ text: 'OK' }]
             );
+            setSessionEndedAt(new Date());
             setSessionEnded(true);
           }
         }
@@ -442,8 +448,63 @@ export default function SessionScreen() {
   // Close post-call contact and go back
   const handleClosePostCallContact = () => {
     setShowPostCallContact(false);
+    // If we came from session ended screen, go back to that
+    if (connectionIssueReason === 'session_ended') {
+      // Stay on session ended screen - don't navigate away
+      return;
+    }
     // Route to appropriate dashboard based on user role
     router.replace(currentUserRole === 'supporter' ? '/(supporter)' : '/(client)');
+  };
+
+  // Open post-call contact for follow-up messaging after session ends
+  const handleOpenFollowUpChat = () => {
+    // Check if 10-minute window has expired
+    if (sessionEndedAt) {
+      const elapsed = Date.now() - sessionEndedAt.getTime();
+      const tenMinutesMs = 10 * 60 * 1000;
+      if (elapsed >= tenMinutesMs) {
+        Alert.alert(
+          'Contact Window Expired',
+          'The 10-minute follow-up window has ended. You can contact your supporter through the messages feature.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+    }
+    setConnectionIssueReason('session_ended');
+    setShowPostCallContact(true);
+  };
+
+  // Check if follow-up chat is still available (within 10 minutes)
+  const isFollowUpAvailable = () => {
+    if (!sessionEndedAt) return false;
+    return followUpTimeRemaining > 0;
+  };
+
+  // Countdown timer for follow-up chat availability
+  useEffect(() => {
+    if (!sessionEndedAt || !sessionEnded) return;
+
+    const tenMinutesMs = 10 * 60 * 1000;
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - sessionEndedAt.getTime();
+      const remaining = Math.max(0, tenMinutesMs - elapsed);
+      setFollowUpTimeRemaining(remaining);
+
+      if (remaining <= 0) {
+        clearInterval(interval);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [sessionEndedAt, sessionEnded]);
+
+  // Format remaining time for display
+  const formatFollowUpTime = () => {
+    const minutes = Math.floor(followUpTimeRemaining / 60000);
+    const seconds = Math.floor((followUpTimeRemaining % 60000) / 1000);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
   const handleBackToDashboard = () => {
@@ -491,7 +552,7 @@ export default function SessionScreen() {
     );
   }
 
-  // Post-call contact view (10-minute window after connection issue)
+  // Post-call contact view (10-minute window after connection issue or session end)
   if (showPostCallContact && sessionData) {
     return (
       <PostCallContact
@@ -500,8 +561,9 @@ export default function SessionScreen() {
         currentUserName={currentUserName}
         otherParticipant={sessionData.participant}
         issueReason={connectionIssueReason || 'disconnect'}
-        callType={sessionData.type === 'video' ? 'video' : 'phone'}
+        callType={sessionData.type}
         onClose={handleClosePostCallContact}
+        sessionEndedAt={sessionEndedAt || undefined}
       />
     );
   }
@@ -547,6 +609,22 @@ export default function SessionScreen() {
                 Thank you for using Psychi. We hope your session was helpful.
               </Text>
             </View>
+
+            {/* Follow-up Message Button - available for 10 minutes after session ends */}
+            {isFollowUpAvailable() && (
+              <TouchableOpacity
+                style={styles.followUpButton}
+                onPress={handleOpenFollowUpChat}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.followUpButtonText}>
+                  Message {sessionData.participant.name}
+                </Text>
+                <Text style={styles.followUpSubtext}>
+                  {formatFollowUpTime()} remaining
+                </Text>
+              </TouchableOpacity>
+            )}
 
             <TouchableOpacity
               style={styles.doneButton}
@@ -779,6 +857,26 @@ const styles = StyleSheet.create({
   },
   starText: {
     fontSize: 32,
+  },
+  followUpButton: {
+    width: '100%',
+    backgroundColor: 'rgba(74, 144, 226, 0.1)',
+    borderRadius: BorderRadius.lg,
+    paddingVertical: Spacing.md,
+    alignItems: 'center',
+    marginBottom: Spacing.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(74, 144, 226, 0.2)',
+  },
+  followUpButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: PsychiColors.azure,
+  },
+  followUpSubtext: {
+    fontSize: 12,
+    color: PsychiColors.textMuted,
+    marginTop: 2,
   },
   doneButton: {
     width: '100%',

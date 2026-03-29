@@ -4978,7 +4978,7 @@ export interface PostCallMessage {
   sender_id: string;
   recipient_id: string;
   content: string;
-  issue_reason: 'timeout' | 'disconnect' | 'network';
+  issue_reason: 'timeout' | 'disconnect' | 'network' | 'session_ended';
   created_at: string;
 }
 
@@ -4990,7 +4990,7 @@ export async function savePostCallMessage(params: {
   senderId: string;
   recipientId: string;
   content: string;
-  issueReason: 'timeout' | 'disconnect' | 'network';
+  issueReason: 'timeout' | 'disconnect' | 'network' | 'session_ended';
 }): Promise<PostCallMessage | null> {
   if (!supabase) return null;
 
