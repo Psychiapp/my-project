@@ -63,6 +63,7 @@ export function useLiveSupportRequest(
   const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Create a live support request (client)
+  // Uses broadcast model: notifies ALL eligible supporters, first to accept wins
   const createRequest = useCallback(async (
     sessionType: SessionType,
     allowanceCheck: AllowanceCheckResult,
@@ -91,29 +92,29 @@ export function useLiveSupportRequest(
         paymentIntentId = paymentResult.paymentIntentId || null;
       }
 
-      // Find available supporter (try matched supporter first, then any available)
-      const { data: supporterId, error: findError } = await supabase
-        .rpc('find_available_supporter', { p_exclude_ids: [] });
+      // Check if there are any eligible supporters first
+      const { data: supporters, error: supportersError } = await supabase
+        .rpc('get_all_eligible_supporters');
 
-      if (findError) {
-        console.error('Error finding supporter:', findError);
+      if (supportersError) {
+        console.error('Error checking eligible supporters:', supportersError);
       }
 
-      if (!supporterId) {
+      if (!supporters || supporters.length === 0) {
         return {
           success: false,
           error: 'No supporters are currently available. Please try again later.',
         };
       }
 
-      // Create the request
+      // Create the request (no specific supporter assigned - broadcast model)
       const expiresAt = new Date(Date.now() + REQUEST_TIMEOUT_MS);
 
       const { data: request, error: createError } = await supabase
         .from('live_support_requests')
         .insert({
           client_id: userId,
-          requested_supporter_id: supporterId,
+          requested_supporter_id: null, // Broadcast to all - no specific supporter
           session_type: sessionType,
           status: 'pending',
           payment_intent_id: paymentIntentId,
@@ -132,7 +133,25 @@ export function useLiveSupportRequest(
       setActiveRequest(transformedRequest);
       setCountdown(Math.floor(REQUEST_TIMEOUT_MS / 1000));
 
-      // TODO: Trigger Edge Function to send push notification to supporter
+      // Broadcast push notification to ALL eligible supporters
+      try {
+        const broadcastResponse = await supabase.functions.invoke('broadcast-live-support-request', {
+          body: {
+            requestId: request.id,
+            sessionType: sessionType,
+          },
+        });
+
+        if (broadcastResponse.error) {
+          console.error('Broadcast notification error:', broadcastResponse.error);
+          // Don't fail the request - notification is best-effort
+        } else {
+          console.log('Broadcast sent to', broadcastResponse.data?.sent, 'supporters');
+        }
+      } catch (notifyError) {
+        console.error('Failed to send broadcast notification:', notifyError);
+        // Don't fail the request - notification is best-effort
+      }
 
       return { success: true };
     } catch (err) {
@@ -147,31 +166,29 @@ export function useLiveSupportRequest(
   }, [userId]);
 
   // Accept a request (supporter)
+  // Uses atomic function - first to accept wins (race condition safe)
   const acceptRequest = useCallback(async (requestId: string): Promise<boolean> => {
     if (!userId || !supabase) return false;
 
     try {
+      // Use atomic function to claim the request
       const { data, error } = await supabase
-        .from('live_support_requests')
-        .update({
-          status: 'accepted',
-          accepted_at: new Date().toISOString(),
-        })
-        .eq('id', requestId)
-        .eq('requested_supporter_id', userId)
-        .eq('status', 'pending')
-        .select()
-        .single();
+        .rpc('accept_live_support_request', {
+          p_request_id: requestId,
+          p_supporter_id: userId,
+        });
 
       if (error) {
         throw new Error(error.message);
       }
 
-      // Set supporter in_session
-      await supabase
-        .from('profiles')
-        .update({ in_session: true })
-        .eq('id', userId);
+      if (!data) {
+        // Request was already accepted by another supporter
+        options.onError?.('This request has already been accepted by another supporter.');
+        // Remove from pending requests
+        setPendingRequests(prev => prev.filter(r => r.id !== requestId));
+        return false;
+      }
 
       const transformedRequest = transformLiveSupportRequest(data as LiveSupportRequestRow);
 
@@ -312,68 +329,94 @@ export function useLiveSupportRequest(
   useEffect(() => {
     if (!userId || !supabase) return;
 
-    const filterColumn = userType === 'client' ? 'client_id' : 'requested_supporter_id';
+    // For clients: filter by their client_id
+    // For supporters: listen to ALL pending requests (broadcast model)
+    const channel = userType === 'client'
+      ? supabase
+          .channel(`live_support:${userId}`)
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'live_support_requests',
+              filter: `client_id=eq.${userId}`,
+            },
+            (payload) => {
+              const request = transformLiveSupportRequest(payload.new as LiveSupportRequestRow);
 
-    const channel = supabase
-      .channel(`live_support:${userId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'live_support_requests',
-          filter: `${filterColumn}=eq.${userId}`,
-        },
-        (payload) => {
-          const request = transformLiveSupportRequest(payload.new as LiveSupportRequestRow);
-
-          if (userType === 'client') {
-            // Client: track active request
-            if (request.status === 'pending') {
-              setActiveRequest(request);
-              // Recalculate countdown based on expires_at
-              const remaining = Math.max(0, Math.floor((request.expiresAt.getTime() - Date.now()) / 1000));
-              setCountdown(remaining);
-            } else if (request.status === 'accepted') {
-              setActiveRequest(request);
-              setCountdown(null);
-              options.onRequestAccepted?.(request);
-            } else if (request.status === 'no_supporters') {
-              setActiveRequest(null);
-              setCountdown(null);
-              options.onNoSupportersAvailable?.();
-            } else if (request.status === 'expired' || request.status === 'cancelled') {
-              setActiveRequest(null);
-              setCountdown(null);
-              if (request.status === 'expired') {
-                options.onRequestExpired?.(request);
+              // Client: track active request
+              if (request.status === 'pending') {
+                setActiveRequest(request);
+                // Recalculate countdown based on expires_at
+                const remaining = Math.max(0, Math.floor((request.expiresAt.getTime() - Date.now()) / 1000));
+                setCountdown(remaining);
+              } else if (request.status === 'accepted') {
+                setActiveRequest(request);
+                setCountdown(null);
+                options.onRequestAccepted?.(request);
+              } else if (request.status === 'no_supporters') {
+                setActiveRequest(null);
+                setCountdown(null);
+                options.onNoSupportersAvailable?.();
+              } else if (request.status === 'expired' || request.status === 'cancelled') {
+                setActiveRequest(null);
+                setCountdown(null);
+                if (request.status === 'expired') {
+                  options.onRequestExpired?.(request);
+                }
               }
             }
-          } else {
-            // Supporter: track pending requests assigned to them
-            if (request.status === 'pending' && request.requestedSupporterId === userId) {
-              setPendingRequests(prev => {
-                const exists = prev.find(r => r.id === request.id);
-                if (exists) {
-                  return prev.map(r => r.id === request.id ? request : r);
-                }
-                return [...prev, request];
-              });
+          )
+          .subscribe()
+      : supabase
+          .channel(`live_support_broadcast:${userId}`)
+          .on(
+            'postgres_changes',
+            {
+              event: 'INSERT',
+              schema: 'public',
+              table: 'live_support_requests',
+            },
+            (payload) => {
+              const request = transformLiveSupportRequest(payload.new as LiveSupportRequestRow);
 
-              // Send local notification
-              sendLocalNotification(
-                'Live Support Request',
-                `A client is requesting a ${request.sessionType} session. Respond within 15 minutes.`,
-                { type: 'live_support_request', requestId: request.id }
-              );
-            } else {
-              // Request is no longer pending or not assigned to this supporter
-              setPendingRequests(prev => prev.filter(r => r.id !== request.id));
+              // Supporter: show ALL new pending requests (broadcast model)
+              if (request.status === 'pending') {
+                setPendingRequests(prev => {
+                  const exists = prev.find(r => r.id === request.id);
+                  if (exists) {
+                    return prev.map(r => r.id === request.id ? request : r);
+                  }
+                  return [...prev, request];
+                });
+
+                // Send local notification
+                sendLocalNotification(
+                  '🔔 Live Support Request',
+                  `A client needs a ${request.sessionType} session now! First to respond gets it.`,
+                  { type: 'live_support_request', requestId: request.id }
+                );
+              }
             }
-          }
-        }
-      )
-      .subscribe();
+          )
+          .on(
+            'postgres_changes',
+            {
+              event: 'UPDATE',
+              schema: 'public',
+              table: 'live_support_requests',
+            },
+            (payload) => {
+              const request = transformLiveSupportRequest(payload.new as LiveSupportRequestRow);
+
+              // If request is no longer pending, remove from list
+              if (request.status !== 'pending') {
+                setPendingRequests(prev => prev.filter(r => r.id !== request.id));
+              }
+            }
+          )
+          .subscribe();
 
     subscriptionRef.current = channel;
 
