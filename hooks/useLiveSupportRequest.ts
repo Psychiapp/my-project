@@ -92,9 +92,13 @@ export function useLiveSupportRequest(
         paymentIntentId = paymentResult.paymentIntentId || null;
       }
 
-      // Check if there are any eligible supporters first
+      // Get client's timezone first
+      const { data: clientTimezone } = await supabase
+        .rpc('get_client_timezone', { p_client_id: userId });
+
+      // Check if there are any eligible supporters in the same timezone (max 10)
       const { data: supporters, error: supportersError } = await supabase
-        .rpc('get_all_eligible_supporters');
+        .rpc('get_all_eligible_supporters', { p_timezone: clientTimezone });
 
       if (supportersError) {
         console.error('Error checking eligible supporters:', supportersError);
@@ -103,7 +107,7 @@ export function useLiveSupportRequest(
       if (!supporters || supporters.length === 0) {
         return {
           success: false,
-          error: 'No supporters are currently available. Please try again later.',
+          error: 'No supporters are currently available in your timezone. Please try again later.',
         };
       }
 
@@ -133,12 +137,13 @@ export function useLiveSupportRequest(
       setActiveRequest(transformedRequest);
       setCountdown(Math.floor(REQUEST_TIMEOUT_MS / 1000));
 
-      // Broadcast push notification to ALL eligible supporters
+      // Broadcast push notification to eligible supporters in same timezone (max 10)
       try {
         const broadcastResponse = await supabase.functions.invoke('broadcast-live-support-request', {
           body: {
             requestId: request.id,
             sessionType: sessionType,
+            clientId: userId,
           },
         });
 

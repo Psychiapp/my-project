@@ -11,6 +11,31 @@ import {
 import { logDiagnostic, sendDiagnosticReport } from '@/lib/diagnosticLogger';
 import { scheduleWeeklyAvailabilityReminder, registerAndSavePushToken } from '@/lib/notifications';
 
+// Get device timezone using Intl API
+function getDeviceTimezone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/New_York';
+  } catch {
+    return 'America/New_York';
+  }
+}
+
+// Update user's timezone in the database
+async function updateUserTimezone(userId: string): Promise<void> {
+  if (!supabase) return;
+
+  const timezone = getDeviceTimezone();
+  try {
+    await supabase
+      .from('profiles')
+      .update({ timezone })
+      .eq('id', userId);
+    console.log(`Updated timezone to ${timezone} for user ${userId}`);
+  } catch (err) {
+    console.log('Failed to update timezone:', err);
+  }
+}
+
 interface AuthContextType {
   user: { id: string; email: string } | null;
   profile: UserProfile | null;
@@ -117,6 +142,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 console.log('Failed to register push token on init:', err);
               });
 
+              // Update timezone on app start (in case user traveled)
+              updateUserTimezone(session.user.id);
+
               // Schedule weekly availability reminder for supporters on app start
               if (userProfile.role === 'supporter') {
                 scheduleWeeklyAvailabilityReminder().catch(() => {});
@@ -168,6 +196,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               registerAndSavePushToken(session.user.id).catch((err) => {
                 console.log('Failed to register push token:', err);
               });
+
+              // Update timezone on sign in
+              updateUserTimezone(session.user.id);
 
               // Schedule weekly availability reminder for supporters
               if (userProfile.role === 'supporter') {
@@ -253,6 +284,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const userProfile = await fetchProfile(data.user.id);
         if (userProfile) {
           setProfile(userProfile);
+
+          // Update timezone on sign in
+          updateUserTimezone(data.user.id);
 
           // Navigate based on role
           setTimeout(() => {
@@ -341,12 +375,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Create profile in database using upsert to handle any existing partial profile
         // Use a timeout to prevent hanging if the database is slow or RLS blocks
         const now = new Date().toISOString();
+        const timezone = getDeviceTimezone();
         const upsertPayload = {
           id: data.user.id,
           email: data.user.email,
           full_name: '',
           role: role,
           avatar_url: null,
+          timezone: timezone,
           created_at: now,
           updated_at: now,
         };

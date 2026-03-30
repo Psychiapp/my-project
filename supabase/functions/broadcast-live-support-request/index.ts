@@ -21,6 +21,7 @@ interface PushMessage {
 interface BroadcastRequest {
   requestId: string;
   sessionType: 'chat' | 'phone' | 'video';
+  clientId: string;
   clientName?: string;
 }
 
@@ -36,19 +37,25 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') as string
     );
 
-    const { requestId, sessionType, clientName }: BroadcastRequest = await req.json();
+    const { requestId, sessionType, clientId, clientName }: BroadcastRequest = await req.json();
 
     // Validate required fields
-    if (!requestId || !sessionType) {
+    if (!requestId || !sessionType || !clientId) {
       return new Response(
-        JSON.stringify({ error: 'Missing required fields: requestId, sessionType' }),
+        JSON.stringify({ error: 'Missing required fields: requestId, sessionType, clientId' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Get all eligible supporters using the database function
+    // Get the client's timezone
+    const { data: clientTimezone } = await supabase
+      .rpc('get_client_timezone', { p_client_id: clientId });
+
+    console.log(`Client ${clientId} timezone: ${clientTimezone}`);
+
+    // Get up to 10 eligible supporters in the same timezone
     const { data: supporters, error: supportersError } = await supabase
-      .rpc('get_all_eligible_supporters');
+      .rpc('get_all_eligible_supporters', { p_timezone: clientTimezone });
 
     if (supportersError) {
       console.error('Error fetching eligible supporters:', supportersError);
@@ -59,7 +66,7 @@ serve(async (req) => {
     }
 
     if (!supporters || supporters.length === 0) {
-      console.log('No eligible supporters found');
+      console.log(`No eligible supporters found in timezone: ${clientTimezone}`);
 
       // Update the request status to no_supporters
       await supabase
@@ -68,10 +75,16 @@ serve(async (req) => {
         .eq('id', requestId);
 
       return new Response(
-        JSON.stringify({ sent: 0, error: 'No eligible supporters available' }),
+        JSON.stringify({
+          sent: 0,
+          timezone: clientTimezone,
+          error: 'No eligible supporters available in your timezone'
+        }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    console.log(`Found ${supporters.length} eligible supporters in timezone ${clientTimezone}`);
 
     // Build push messages for all supporters with push tokens
     const pushMessages: PushMessage[] = supporters
@@ -132,6 +145,7 @@ serve(async (req) => {
         failed: errorCount,
         total: pushMessages.length,
         eligibleSupporters: supporters.length,
+        timezone: clientTimezone,
         tickets: pushResult.data,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
