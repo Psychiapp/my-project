@@ -4844,7 +4844,16 @@ export async function sendLiveSupportPushNotification(params: {
   data?: Record<string, unknown>;
   priority?: 'default' | 'normal' | 'high';
 }): Promise<{ sent: boolean; error?: string }> {
-  if (!supabase) return { sent: false, error: 'Database not initialized' };
+  console.log('[sendLiveSupportPushNotification] Calling Edge Function with:', {
+    userId: params.userId,
+    title: params.title,
+    body: params.body.substring(0, 50) + '...',
+  });
+
+  if (!supabase) {
+    console.error('[sendLiveSupportPushNotification] Database not initialized');
+    return { sent: false, error: 'Database not initialized' };
+  }
 
   try {
     const { data, error } = await supabase.functions.invoke('send-live-support-notification', {
@@ -4858,13 +4867,14 @@ export async function sendLiveSupportPushNotification(params: {
     });
 
     if (error) {
-      console.error('Error invoking push notification function:', error);
+      console.error('[sendLiveSupportPushNotification] Error:', error);
       return { sent: false, error: error.message };
     }
 
+    console.log('[sendLiveSupportPushNotification] Success:', data);
     return data as { sent: boolean; error?: string };
   } catch (error) {
-    console.error('Error sending push notification:', error);
+    console.error('[sendLiveSupportPushNotification] Exception:', error);
     return { sent: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }
@@ -4950,6 +4960,13 @@ export async function notifySessionEntered(params: {
   enteredByRole: 'client' | 'supporter';
   sessionType: 'chat' | 'phone' | 'video';
 }): Promise<boolean> {
+  console.log('[notifySessionEntered] Sending notification:', {
+    sessionId: params.sessionId,
+    otherParticipantId: params.otherParticipantId,
+    enteredByName: params.enteredByName,
+    sessionType: params.sessionType,
+  });
+
   const roleLabel = params.enteredByRole === 'supporter' ? 'Your supporter' : 'Your client';
   const sessionTypeLabel = params.sessionType === 'chat' ? 'chat' : params.sessionType === 'phone' ? 'voice call' : 'video call';
 
@@ -4965,6 +4982,7 @@ export async function notifySessionEntered(params: {
     priority: 'high',
   });
 
+  console.log('[notifySessionEntered] Result:', result);
   return result.sent;
 }
 

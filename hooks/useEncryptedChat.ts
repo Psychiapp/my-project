@@ -296,10 +296,17 @@ export const useEncryptedChat = (
         }));
 
         // Send push notification to recipient (works even when their app is closed)
+        console.log('[useEncryptedChat] Checking notification send:', {
+          hasSenderName: !!options?.senderName,
+          senderName: options?.senderName,
+          recipientId,
+          contentLength: content.length,
+        });
         if (options?.senderName) {
           // Truncate message preview for notification
           const messagePreview = content.length > 50 ? content.substring(0, 50) + '...' : content;
 
+          console.log('[useEncryptedChat] Sending chat notification to:', recipientId);
           sendChatMessageNotification({
             recipientId,
             senderName: options.senderName,
@@ -308,8 +315,10 @@ export const useEncryptedChat = (
             messagePreview,
           }).catch((err) => {
             // Don't fail the message send if notification fails
-            console.warn('Failed to send chat notification:', err);
+            console.warn('[useEncryptedChat] Failed to send chat notification:', err);
           });
+        } else {
+          console.log('[useEncryptedChat] NOT sending notification - no senderName in options');
         }
 
         return true;

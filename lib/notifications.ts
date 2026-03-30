@@ -233,6 +233,12 @@ export async function sendChatMessageNotification(params: {
   messagePreview: string;
   isFromSupporter?: boolean;
 }): Promise<{ sent: boolean; error?: string }> {
+  console.log('[sendChatMessageNotification] Sending notification:', {
+    recipientId: params.recipientId,
+    senderName: params.senderName,
+    preview: params.messagePreview.substring(0, 30) + '...',
+  });
+
   const type: NotificationType = params.isFromSupporter ? 'supporter_message' : 'chat_message';
   const content = getNotificationContent(type, {
     senderName: params.senderName,
@@ -244,12 +250,15 @@ export async function sendChatMessageNotification(params: {
   });
 
   // Send push notification via Edge Function (works even when app is closed)
-  return sendPushNotificationViaEdgeFunction({
+  const result = await sendPushNotificationViaEdgeFunction({
     userId: params.recipientId,
     title: content.title,
     body: content.body,
     data: content.data as Record<string, unknown>,
   });
+
+  console.log('[sendChatMessageNotification] Result:', result);
+  return result;
 }
 
 // ============================================
@@ -911,12 +920,21 @@ async function sendPushNotificationViaEdgeFunction(params: {
   body: string;
   data?: Record<string, unknown>;
 }): Promise<{ sent: boolean; error?: string }> {
+  console.log('[sendPushNotificationViaEdgeFunction] START:', {
+    userId: params.userId,
+    title: params.title,
+    body: params.body.substring(0, 50) + '...',
+    dataKeys: params.data ? Object.keys(params.data) : [],
+  });
+
   try {
     const { supabase } = await import('@/lib/supabase');
     if (!supabase) {
+      console.log('[sendPushNotificationViaEdgeFunction] ERROR: Supabase not configured');
       return { sent: false, error: 'Supabase not configured' };
     }
 
+    console.log('[sendPushNotificationViaEdgeFunction] Invoking edge function...');
     const { data, error } = await supabase.functions.invoke('send-live-support-notification', {
       body: {
         userId: params.userId,
@@ -928,13 +946,14 @@ async function sendPushNotificationViaEdgeFunction(params: {
     });
 
     if (error) {
-      console.error('Error sending push notification:', error);
+      console.error('[sendPushNotificationViaEdgeFunction] Edge function error:', error);
       return { sent: false, error: error.message };
     }
 
+    console.log('[sendPushNotificationViaEdgeFunction] SUCCESS:', data);
     return { sent: data?.sent ?? false, error: data?.error };
   } catch (error) {
-    console.error('Error calling edge function:', error);
+    console.error('[sendPushNotificationViaEdgeFunction] EXCEPTION:', error);
     return { sent: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }

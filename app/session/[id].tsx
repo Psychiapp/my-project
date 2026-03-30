@@ -371,25 +371,51 @@ export default function SessionScreen() {
   // Notify other participant when session is entered
   useEffect(() => {
     const sendEnteredNotification = async () => {
+      console.log('[Session] sendEnteredNotification check:', {
+        alreadySent: enteredNotificationSent.current,
+        hasSessionData: !!sessionData,
+        sessionType: sessionData?.type,
+        hasDailyRoomUrl: !!dailySession?.roomUrl,
+      });
+
       // Only send once per session
-      if (enteredNotificationSent.current) return;
-      if (!sessionData) return;
+      if (enteredNotificationSent.current) {
+        console.log('[Session] Notification already sent, skipping');
+        return;
+      }
+      if (!sessionData) {
+        console.log('[Session] No session data yet, skipping');
+        return;
+      }
 
       // For chat: send immediately when session data loads
       // For video/phone: send when room is ready (dailySession is set)
       const isReady = sessionData.type === 'chat' || dailySession?.roomUrl;
-      if (!isReady) return;
+      if (!isReady) {
+        console.log('[Session] Session not ready yet (waiting for room URL)');
+        return;
+      }
 
       enteredNotificationSent.current = true;
 
+      console.log('[Session] Sending session entered notification:', {
+        sessionId: sessionData.id,
+        otherParticipantId: sessionData.participant.id,
+        enteredByName: currentUserName,
+        enteredByRole: currentUserRole,
+        sessionType: sessionData.type,
+      });
+
       // Notify the other participant
-      await notifySessionEntered({
+      const result = await notifySessionEntered({
         sessionId: sessionData.id,
         otherParticipantId: sessionData.participant.id,
         enteredByName: currentUserName,
         enteredByRole: currentUserRole as 'client' | 'supporter',
         sessionType: sessionData.type,
       });
+
+      console.log('[Session] Session entered notification result:', result);
     };
 
     sendEnteredNotification();
