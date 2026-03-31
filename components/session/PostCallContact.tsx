@@ -69,6 +69,9 @@ export default function PostCallContact({
   const startTimeRef = useRef(sessionEndedAt ? sessionEndedAt.getTime() : Date.now());
   // Track if we already sent the open notification
   const openNotificationSent = useRef(false);
+  // Store the channel reference for sending broadcasts
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const channelRef = useRef<any>(null);
 
   // Check if already expired on mount
   useEffect(() => {
@@ -184,7 +187,11 @@ export default function PostCallContact({
       })
       .subscribe();
 
+    // Store channel reference for sending broadcasts
+    channelRef.current = channel;
+
     return () => {
+      channelRef.current = null;
       if (supabase) {
         supabase.removeChannel(channel);
       }
@@ -200,11 +207,11 @@ export default function PostCallContact({
 
   // Handle closing the chat - notify other participant
   const handleClose = async () => {
-    if (supabase) {
+    // Use the existing subscribed channel to broadcast
+    if (channelRef.current) {
       try {
-        // Broadcast that chat was closed
-        const channelId = `post-call-${sessionId}`;
-        await supabase.channel(channelId).send({
+        console.log('[PostCallContact] Broadcasting chat_closed event...');
+        await channelRef.current.send({
           type: 'broadcast',
           event: 'chat_closed',
           payload: {
@@ -213,10 +220,12 @@ export default function PostCallContact({
             timestamp: new Date().toISOString(),
           },
         });
-        console.log('[PostCallContact] Broadcast chat closed event');
+        console.log('[PostCallContact] Broadcast chat closed event sent successfully');
       } catch (error) {
         console.warn('[PostCallContact] Failed to broadcast close event:', error);
       }
+    } else {
+      console.log('[PostCallContact] No channel available for broadcast');
     }
     onClose();
   };
@@ -314,19 +323,20 @@ export default function PostCallContact({
       console.warn('Failed to persist post-call message:', error);
     }
 
-    // Broadcast to other participant for real-time delivery
-    const channelId = `post-call-${sessionId}`;
-    await supabase.channel(channelId).send({
-      type: 'broadcast',
-      event: 'message',
-      payload: {
-        id: messageId,
-        content: newMessage.content,
-        senderId: currentUserId,
-        senderName: currentUserName,
-        timestamp: newMessage.timestamp.toISOString(),
-      },
-    });
+    // Broadcast to other participant for real-time delivery using existing channel
+    if (channelRef.current) {
+      await channelRef.current.send({
+        type: 'broadcast',
+        event: 'message',
+        payload: {
+          id: messageId,
+          content: newMessage.content,
+          senderId: currentUserId,
+          senderName: currentUserName,
+          timestamp: newMessage.timestamp.toISOString(),
+        },
+      });
+    }
 
     // Scroll to bottom
     setTimeout(() => {
