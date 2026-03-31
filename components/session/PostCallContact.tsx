@@ -67,6 +67,8 @@ export default function PostCallContact({
   const flatListRef = useRef<FlatList>(null);
   // Use sessionEndedAt if provided, otherwise use current time
   const startTimeRef = useRef(sessionEndedAt ? sessionEndedAt.getTime() : Date.now());
+  // Track if we already sent the open notification
+  const openNotificationSent = useRef(false);
 
   // Check if already expired on mount
   useEffect(() => {
@@ -94,7 +96,7 @@ export default function PostCallContact({
         Alert.alert(
           'Contact Window Expired',
           'The 10-minute contact window has ended. You can reschedule from your dashboard.',
-          [{ text: 'OK', onPress: onClose }]
+          [{ text: 'OK', onPress: handleClose }]
         );
       } else {
         setTimeRemaining(remaining);
@@ -104,7 +106,53 @@ export default function PostCallContact({
     return () => clearInterval(interval);
   }, [onClose]);
 
-  // Subscribe to messages (using session_messages table or similar)
+  // Notify other participant when chat is opened
+  useEffect(() => {
+    if (!supabase || openNotificationSent.current) return;
+    openNotificationSent.current = true;
+
+    const notifyOtherParticipant = async () => {
+      try {
+        // Send push notification to alert the other participant
+        await sendLiveSupportPushNotification({
+          userId: otherParticipant.id,
+          title: `${currentUserName} opened follow-up chat`,
+          body: issueReason === 'session_ended'
+            ? 'Tap to continue the conversation'
+            : 'Tap to discuss the connection issue',
+          data: {
+            type: 'post_call_chat_opened',
+            sessionId,
+            senderId: currentUserId,
+            senderName: currentUserName,
+          },
+          priority: 'high',
+        });
+
+        // Broadcast that chat was opened (for real-time sync if other user has app open)
+        if (supabase) {
+          const channelId = `post-call-${sessionId}`;
+          await supabase.channel(channelId).send({
+            type: 'broadcast',
+            event: 'chat_opened',
+            payload: {
+              openedBy: currentUserId,
+              openedByName: currentUserName,
+              timestamp: new Date().toISOString(),
+            },
+          });
+        }
+
+        console.log('[PostCallContact] Notified other participant that chat was opened');
+      } catch (error) {
+        console.warn('[PostCallContact] Failed to notify other participant:', error);
+      }
+    };
+
+    notifyOtherParticipant();
+  }, [sessionId, currentUserId, currentUserName, otherParticipant.id, issueReason]);
+
+  // Subscribe to messages and chat control events
   useEffect(() => {
     if (!supabase) return;
 
@@ -123,6 +171,17 @@ export default function PostCallContact({
         };
         setMessages((prev) => [...prev, newMessage]);
       })
+      .on('broadcast', { event: 'chat_closed' }, (payload) => {
+        // Other participant closed the chat
+        if (payload.payload.closedBy !== currentUserId) {
+          console.log('[PostCallContact] Other participant closed the chat');
+          Alert.alert(
+            'Chat Ended',
+            `${payload.payload.closedByName || otherParticipant.name} has ended the follow-up chat.`,
+            [{ text: 'OK', onPress: onClose }]
+          );
+        }
+      })
       .subscribe();
 
     return () => {
@@ -130,13 +189,36 @@ export default function PostCallContact({
         supabase.removeChannel(channel);
       }
     };
-  }, [sessionId, currentUserId]);
+  }, [sessionId, currentUserId, otherParticipant.name, onClose]);
 
   // Format time remaining
   const formatTimeRemaining = () => {
     const minutes = Math.floor(timeRemaining / 60000);
     const seconds = Math.floor((timeRemaining % 60000) / 1000);
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  // Handle closing the chat - notify other participant
+  const handleClose = async () => {
+    if (supabase) {
+      try {
+        // Broadcast that chat was closed
+        const channelId = `post-call-${sessionId}`;
+        await supabase.channel(channelId).send({
+          type: 'broadcast',
+          event: 'chat_closed',
+          payload: {
+            closedBy: currentUserId,
+            closedByName: currentUserName,
+            timestamp: new Date().toISOString(),
+          },
+        });
+        console.log('[PostCallContact] Broadcast chat closed event');
+      } catch (error) {
+        console.warn('[PostCallContact] Failed to broadcast close event:', error);
+      }
+    }
+    onClose();
   };
 
   // Get issue description
@@ -301,7 +383,7 @@ export default function PostCallContact({
             <Text style={styles.headerSubtitle}>{getIssueDescription()}</Text>
           </View>
         </View>
-        <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+        <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
           <Text style={styles.closeButtonText}>Close</Text>
         </TouchableOpacity>
       </View>
