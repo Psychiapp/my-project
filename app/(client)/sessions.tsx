@@ -45,6 +45,7 @@ interface Session {
   scheduledAt: string;
   duration: number;
   stripePaymentIntentId?: string;
+  status?: 'scheduled' | 'in_progress' | 'completed' | 'cancelled' | 'no_show';
 }
 
 // Helper to format session data from database
@@ -62,6 +63,7 @@ const formatSessionFromDb = (dbSession: SessionWithDetails): Session => {
     scheduledAt: dbSession.scheduled_at,
     duration: dbSession.duration_minutes || 30,
     stripePaymentIntentId: (dbSession as any).stripe_payment_intent_id || undefined,
+    status: dbSession.status as Session['status'],
   };
 };
 
@@ -216,6 +218,8 @@ export default function SessionsScreen() {
       });
 
       setUpcomingSessions(upcomingSessions.filter((s) => s.id !== selectedSession.id));
+      // Add to past sessions list immediately so it appears in "Past" tab
+      setPastSessions([{ ...selectedSession, status: 'cancelled' }, ...pastSessions]);
       setCancelModalVisible(false);
 
       if (result.refundAmount > 0) {
@@ -312,6 +316,27 @@ export default function SessionsScreen() {
             <Text style={styles.detailText}>{session.duration} min</Text>
           </View>
         </View>
+
+        {/* Status badge for past sessions */}
+        {!isUpcoming && session.status && (
+          <View style={[
+            styles.statusBadge,
+            session.status === 'cancelled' && styles.statusBadgeCancelled,
+            session.status === 'completed' && styles.statusBadgeCompleted,
+            session.status === 'no_show' && styles.statusBadgeNoShow,
+          ]}>
+            <Text style={[
+              styles.statusBadgeText,
+              session.status === 'cancelled' && styles.statusBadgeTextCancelled,
+              session.status === 'completed' && styles.statusBadgeTextCompleted,
+              session.status === 'no_show' && styles.statusBadgeTextNoShow,
+            ]}>
+              {session.status === 'cancelled' ? 'Cancelled' :
+               session.status === 'completed' ? 'Completed' :
+               session.status === 'no_show' ? 'No Show' : session.status}
+            </Text>
+          </View>
+        )}
 
         {isUpcoming && (
           <>
@@ -808,6 +833,35 @@ const styles = StyleSheet.create({
   },
   refundBadgeTextNone: {
     color: PsychiColors.error,
+  },
+  statusBadge: {
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.full,
+    alignSelf: 'flex-start',
+    marginTop: Spacing.sm,
+  },
+  statusBadgeCancelled: {
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+  },
+  statusBadgeCompleted: {
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+  },
+  statusBadgeNoShow: {
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+  },
+  statusBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  statusBadgeTextCancelled: {
+    color: PsychiColors.error,
+  },
+  statusBadgeTextCompleted: {
+    color: PsychiColors.success,
+  },
+  statusBadgeTextNoShow: {
+    color: '#F59E0B',
   },
   policyLink: {
     fontSize: 12,
