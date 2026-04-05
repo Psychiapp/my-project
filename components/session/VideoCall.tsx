@@ -143,17 +143,31 @@ export default function VideoCall({
 
         // Configure audio session for VoIP call BEFORE creating call object
         // This is critical for iOS to properly route audio
+        // Use settings optimized for clear voice calls
         await Audio.setAudioModeAsync({
           allowsRecordingIOS: true,
           playsInSilentModeIOS: true,
           staysActiveInBackground: true,
           playThroughEarpieceAndroid: false, // Start with speaker on
-          shouldDuckAndroid: true,
+          shouldDuckAndroid: false, // Don't lower volume - keep audio at full level
+          // iOS audio mode - use 2 (DoNotMix) for clearer call audio
+          interruptionModeIOS: 2,
+          // Android interruption mode - 1 = DoNotMix (prioritize this app's audio)
+          interruptionModeAndroid: 1,
         });
 
         const call = Daily.createCallObject({
           videoSource: isVideoEnabled,
           audioSource: true,
+          // Audio processing for clearer calls
+          dailyConfig: {
+            // Enable noise suppression to reduce background noise
+            noiseCancellationEnabled: true,
+            // Enable echo cancellation for clearer audio
+            echoCancellationEnabled: true,
+            // Auto gain control helps normalize volume levels
+            autoGainControlEnabled: true,
+          },
         });
 
         // Store in ref immediately for reliable cleanup
@@ -517,7 +531,8 @@ export default function VideoCall({
           allowsRecordingIOS: true,
           playsInSilentModeIOS: true,
           staysActiveInBackground: true,
-          shouldDuckAndroid: true,
+          shouldDuckAndroid: false, // Don't lower volume
+          interruptionModeAndroid: 1, // DoNotMix - prioritize this app's audio
           // Key setting for Android speaker control
           playThroughEarpieceAndroid: !newSpeakerState,
         });
@@ -626,18 +641,25 @@ export default function VideoCall({
           setCallObject(null);
         }
 
-        // Configure audio session for VoIP call
+        // Configure audio session for VoIP call - optimized for clear voice
         await Audio.setAudioModeAsync({
           allowsRecordingIOS: true,
           playsInSilentModeIOS: true,
           staysActiveInBackground: true,
           playThroughEarpieceAndroid: false,
-          shouldDuckAndroid: true,
+          shouldDuckAndroid: false, // Don't lower volume
+          interruptionModeIOS: 2,
+          interruptionModeAndroid: 1,
         });
 
         const call = Daily.createCallObject({
           videoSource: isVideoEnabled,
           audioSource: true,
+          dailyConfig: {
+            noiseCancellationEnabled: true,
+            echoCancellationEnabled: true,
+            autoGainControlEnabled: true,
+          },
         });
 
         // Store in ref immediately
