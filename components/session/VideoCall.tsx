@@ -172,27 +172,15 @@ export default function VideoCall({
           }
           setParticipants(call.participants());
 
-          // Check E2E encryption status from meeting state
-          // When room is created with enable_e2ee_sframe: true, encryption is active
-          try {
-            const meetingState = call.meetingState();
-            // Meeting state includes encryption info when e2ee_sframe is enabled
-            // SFrame encryption is active when the room was created with the flag
-            // and the call is successfully joined
-            if (meetingState === 'joined-meeting') {
-              // E2E encryption is active if the room supports it
-              setIsE2EEncrypted(true);
-            }
-          } catch (e) {
-            // Could not get meeting state - non-critical
-          }
+          // Note: SFrame E2E encryption is not enabled (requires paid Daily plan)
+          // Calls are still encrypted in transit via SRTP (standard WebRTC encryption)
 
           // Log successful join
           if (sessionId) {
             logSessionEvent(sessionId, sessionType, participantName, 'session_join', {
               roomUrl,
               otherParticipantId: otherParticipant.id,
-              e2eeEnabled: true,
+              srtpEncrypted: true, // Standard WebRTC encryption (not E2E SFrame)
             });
           }
         });
@@ -504,35 +492,36 @@ export default function VideoCall({
     try {
       const newSpeakerState = !isSpeakerOn;
 
-      // Configure audio mode for both platforms
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-        // iOS: Use defaultToSpeaker for speakerphone vs earpiece
-        // This forces a reconfiguration of the audio session
-        ...(Platform.OS === 'ios' ? {
-          // On iOS, we need to set the audio mode category
-          // Setting interruptionModeIOS affects how audio behaves
-          interruptionModeIOS: 1, // DoNotMix - ensures our app controls audio
-        } : {}),
-        // Android: Use playThroughEarpieceAndroid
-        playThroughEarpieceAndroid: !newSpeakerState,
-        staysActiveInBackground: true,
-      });
-
-      // For iOS, use Daily.co's native audio output selection if available
-      if (Platform.OS === 'ios' && callObject) {
-        try {
-          // Daily.co exposes setAudioDevice on iOS
-          // 'speakerphone' for speaker, 'default' for earpiece
-          const audioDevice = newSpeakerState ? 'speakerphone' : 'earpiece';
-          if (typeof callObject.setAudioDevice === 'function') {
-            await callObject.setAudioDevice({ deviceId: audioDevice });
+      if (Platform.OS === 'ios') {
+        // iOS: Use Daily.co's native audio device selection
+        if (callObject) {
+          try {
+            // Daily.co React Native SDK provides setAudioDevice for iOS
+            // Valid device IDs: 'speakerphone', 'earpiece', 'bluetooth', etc.
+            const audioDevice = newSpeakerState ? 'speakerphone' : 'earpiece';
+            if (typeof callObject.setAudioDevice === 'function') {
+              await callObject.setAudioDevice({ deviceId: audioDevice });
+              console.log('iOS: Audio device set to', audioDevice);
+            } else {
+              // Fallback: Try using the native module directly if available
+              console.log('Daily setAudioDevice not available');
+            }
+          } catch (e) {
+            console.error('iOS speaker toggle error:', e);
           }
-        } catch (e) {
-          // Fallback - some versions may not have this method
-          console.log('Daily setAudioDevice not available, using expo-av fallback');
         }
+      } else {
+        // Android: Use expo-av to control audio routing
+        // Must reconfigure the entire audio mode
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: true,
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: true,
+          shouldDuckAndroid: true,
+          // Key setting for Android speaker control
+          playThroughEarpieceAndroid: !newSpeakerState,
+        });
+        console.log('Android: playThroughEarpieceAndroid set to', !newSpeakerState);
       }
 
       setIsSpeakerOn(newSpeakerState);
@@ -660,8 +649,7 @@ export default function VideoCall({
             clearTimeout(connectionTimeoutRef.current);
           }
           setParticipants(call.participants());
-          // E2E encryption is active for all rooms (created with enable_e2ee_sframe: true)
-          setIsE2EEncrypted(true);
+          // Note: SRTP encryption is always active (standard WebRTC)
         });
 
         call.on('left-meeting', () => {
@@ -815,12 +803,11 @@ export default function VideoCall({
             )}
           </View>
           <View style={styles.topBarRight}>
-            {isE2EEncrypted && (
-              <View style={styles.encryptionBadge}>
-                <LockIcon size={12} color={PsychiColors.success} />
-                <Text style={styles.encryptionText}>E2E Encrypted</Text>
-              </View>
-            )}
+            {/* SRTP encryption is always active (standard WebRTC encryption in transit) */}
+            <View style={styles.encryptionBadge}>
+              <LockIcon size={12} color={PsychiColors.success} />
+              <Text style={styles.encryptionText}>Encrypted</Text>
+            </View>
           </View>
         </View>
       </SafeAreaView>
