@@ -159,6 +159,8 @@ export default function VideoCall({
         const call = Daily.createCallObject({
           videoSource: isVideoEnabled,
           audioSource: true,
+          // Keep subscribed to tracks even when app is backgrounded
+          subscribeToTracksAutomatically: true,
           // Audio processing for clearer calls
           dailyConfig: {
             // Enable noise suppression to reduce background noise
@@ -167,6 +169,8 @@ export default function VideoCall({
             echoCancellationEnabled: true,
             // Auto gain control helps normalize volume levels
             autoGainControlEnabled: true,
+            // Keep call alive when app is in background
+            keepDeviceAwake: true,
           },
         });
 
@@ -465,19 +469,72 @@ export default function VideoCall({
 
   // App state monitoring (handle app going to background)
   useEffect(() => {
-    const handleAppStateChange = (nextAppState: AppStateStatus) => {
-      if (
-        appStateRef.current.match(/active/) &&
-        nextAppState.match(/inactive|background/)
-      ) {
-        // App going to background - could pause or show notification
+    const handleAppStateChange = async (nextAppState: AppStateStatus) => {
+      const previousState = appStateRef.current;
+
+      if (previousState.match(/active/) && nextAppState.match(/inactive|background/)) {
+        // App going to background - ensure audio session stays active for voice calls
+        console.log('App going to background, maintaining audio session');
+        try {
+          // Re-apply audio settings to keep session active in background
+          await Audio.setAudioModeAsync({
+            allowsRecordingIOS: true,
+            playsInSilentModeIOS: true,
+            staysActiveInBackground: true, // Critical for background audio
+            playThroughEarpieceAndroid: !isSpeakerOn,
+            shouldDuckAndroid: false,
+            interruptionModeIOS: 2,
+            interruptionModeAndroid: 1,
+          });
+        } catch (e) {
+          console.error('Error maintaining audio session:', e);
+        }
       }
+
+      if (previousState.match(/inactive|background/) && nextAppState === 'active') {
+        // App coming back to foreground - restore audio session
+        console.log('App returning to foreground, restoring audio session');
+        try {
+          // Re-configure audio mode when returning to foreground
+          await Audio.setAudioModeAsync({
+            allowsRecordingIOS: true,
+            playsInSilentModeIOS: true,
+            staysActiveInBackground: true,
+            playThroughEarpieceAndroid: !isSpeakerOn,
+            shouldDuckAndroid: false,
+            interruptionModeIOS: 2,
+            interruptionModeAndroid: 1,
+          });
+
+          // Check if call is still connected
+          if (callObject) {
+            const meetingState = callObject.meetingState?.();
+            console.log('Meeting state on return:', meetingState);
+
+            // If we got disconnected while in background, show reconnecting state
+            if (meetingState === 'left-meeting' || meetingState === 'error') {
+              setIsReconnecting(true);
+              // Try to rejoin
+              try {
+                await callObject.join({ url: roomUrl, userName: participantName });
+                setIsReconnecting(false);
+              } catch (rejoinError) {
+                console.error('Failed to rejoin after background:', rejoinError);
+                setError('Call disconnected while app was in background. Please rejoin.');
+              }
+            }
+          }
+        } catch (e) {
+          console.error('Error restoring audio session:', e);
+        }
+      }
+
       appStateRef.current = nextAppState;
     };
 
     const subscription = AppState.addEventListener('change', handleAppStateChange);
     return () => subscription?.remove();
-  }, []);
+  }, [callObject, roomUrl, participantName, isSpeakerOn]);
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -655,10 +712,12 @@ export default function VideoCall({
         const call = Daily.createCallObject({
           videoSource: isVideoEnabled,
           audioSource: true,
+          subscribeToTracksAutomatically: true,
           dailyConfig: {
             noiseCancellationEnabled: true,
             echoCancellationEnabled: true,
             autoGainControlEnabled: true,
+            keepDeviceAwake: true,
           },
         });
 
