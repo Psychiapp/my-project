@@ -573,6 +573,41 @@ export default function SessionScreen() {
     return () => clearInterval(interval);
   }, [sessionEndedAt, sessionEnded]);
 
+  // Subscribe to post-call chat events (when other person opens/closes the chat)
+  useEffect(() => {
+    if (!sessionData?.id || !supabase || !sessionEnded) return;
+
+    const channelId = `post-call-${sessionData.id}`;
+
+    const channel = supabase
+      .channel(channelId)
+      .on('broadcast', { event: 'chat_opened' }, (payload) => {
+        // Other participant opened the chat - auto-open it for us too
+        if (payload.payload?.openedBy !== currentUserId && !showPostCallContact) {
+          console.log('[Session] Other participant opened follow-up chat, auto-opening...');
+          setConnectionIssueReason('session_ended');
+          setShowPostCallContact(true);
+        }
+      })
+      .on('broadcast', { event: 'chat_closed' }, (payload) => {
+        // Other participant closed the chat - close it for us too
+        if (payload.payload?.closedBy !== currentUserId && showPostCallContact) {
+          console.log('[Session] Other participant closed follow-up chat, closing...');
+          Alert.alert(
+            'Chat Ended',
+            `${payload.payload?.closedByName || sessionData.participant.name} has ended the follow-up chat.`,
+            [{ text: 'OK' }]
+          );
+          setShowPostCallContact(false);
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [sessionData?.id, sessionEnded, currentUserId, showPostCallContact, sessionData?.participant?.name]);
+
   // Format remaining time for display
   const formatFollowUpTime = () => {
     const minutes = Math.floor(followUpTimeRemaining / 60000);
@@ -728,6 +763,7 @@ export default function SessionScreen() {
             currentUserId={currentUserId}
             currentUserName={currentUserName}
             onEndSession={handleEndSession}
+            onAutoEnd={confirmEndSession}
             sessionDurationMinutes={sessionData.duration}
           />
         );

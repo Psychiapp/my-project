@@ -43,6 +43,7 @@ interface ChatSessionProps {
   currentUserId: string;
   currentUserName?: string; // Name of the current user for notifications
   onEndSession: () => void;
+  onAutoEnd?: () => void; // Called when timer expires - bypasses confirmation, syncs to other participant
   useEncryption?: boolean; // Enable E2E encryption
   sessionDurationMinutes?: number; // Session duration in minutes (default 30)
 }
@@ -53,6 +54,7 @@ export default function ChatSession({
   currentUserId,
   currentUserName,
   onEndSession,
+  onAutoEnd,
   useEncryption = true,
   sessionDurationMinutes = 30,
 }: ChatSessionProps) {
@@ -140,14 +142,19 @@ export default function ChatSession({
             'Your chat session has reached the maximum duration.',
             [{ text: 'OK' }]
           );
-          onEndSession();
+          // Use onAutoEnd if provided (bypasses confirmation, syncs to other participant)
+          if (onAutoEnd) {
+            onAutoEnd();
+          } else {
+            onEndSession();
+          }
         }
 
         return newElapsed;
       });
     }, 1000);
     return () => clearInterval(interval);
-  }, [sessionDurationMinutes, hasAutoEnded, sessionId, currentUserId, onEndSession]);
+  }, [sessionDurationMinutes, hasAutoEnded, sessionId, currentUserId, onEndSession, onAutoEnd]);
 
   // Format remaining time
   const formatRemainingTime = () => {
