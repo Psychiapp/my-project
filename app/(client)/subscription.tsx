@@ -142,6 +142,7 @@ export default function SubscriptionScreen() {
               if (stripeAvailable) {
                 const paymentSuccess = await processSubscriptionPaymentSheet(
                   plan,
+                  user.id,
                   assignedSupporterStripeId || undefined
                 );
 

@@ -308,9 +308,11 @@ export async function processSessionPayment(
 /**
  * Process subscription payment with payment sheet
  * If supporterStripeAccountId is provided, payment is split 75/25 (supporter/platform)
+ * clientId is required for webhook fallback to update subscription if client-side update fails
  */
 export async function processSubscriptionPaymentSheet(
   tier: 'basic' | 'standard' | 'premium',
+  clientId: string,
   supporterStripeAccountId?: string
 ): Promise<boolean> {
   const plan = subscriptionPlans.find(p => p.id === tier);
@@ -329,9 +331,10 @@ export async function processSubscriptionPaymentSheet(
   try {
     // Create payment intent for first month
     // If supporter has a Stripe Connect account, payment is split 75% to supporter, 25% platform fee
+    // Include clientId in metadata so webhook can update subscription as fallback
     const paymentIntent = await createPaymentIntent({
       amount: plan.amount,
-      metadata: { type: 'subscription', tier },
+      metadata: { type: 'subscription', tier, client_id: clientId },
       supporterStripeAccountId,
     });
 

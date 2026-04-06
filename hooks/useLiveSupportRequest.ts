@@ -470,7 +470,7 @@ export function useLiveSupportRequest(
       const { data, error } = await db
         .from('live_support_requests')
         .select('*')
-        .eq('requested_supporter_id', userId)
+        .or(`requested_supporter_id.eq.${userId},requested_supporter_id.is.null`)
         .eq('status', 'pending');
 
       if (data && !error) {

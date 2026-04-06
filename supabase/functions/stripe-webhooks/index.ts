@@ -200,6 +200,63 @@ serve(async (req) => {
               .eq('supporter_id', paymentIntent.metadata.supporter_id);
           }
         }
+
+        // SUBSCRIPTION FALLBACK: If this is a subscription payment, ensure subscription is updated
+        // This is a safety net in case the client-side update fails (app crash, network issue, etc.)
+        if (paymentIntent.metadata?.type === 'subscription' && paymentIntent.metadata?.client_id) {
+          const tier = paymentIntent.metadata.tier as 'basic' | 'standard' | 'premium';
+          const clientId = paymentIntent.metadata.client_id;
+
+          // Define sessions based on tier (same as client-side updateClientSubscription)
+          const sessionsRemaining = {
+            basic: { chat: 4, phone: 0, video: 0 },
+            standard: { chat: 8, phone: 1, video: 0 },
+            premium: { chat: 999, phone: 3, video: 0 },
+          }[tier];
+
+          if (sessionsRemaining) {
+            // Calculate expiration (1 month from now)
+            const expiresAt = new Date();
+            expiresAt.setMonth(expiresAt.getMonth() + 1);
+
+            // Check if subscription already exists and was updated more recently
+            const { data: existingSub } = await supabase
+              .from('subscriptions')
+              .select('updated_at')
+              .eq('user_id', clientId)
+              .single();
+
+            // Only update if no existing subscription OR existing subscription is older than this event
+            // This ensures idempotency - client-side update won't be overwritten by webhook
+            const eventTime = new Date(event.created * 1000);
+            const shouldUpdate = !existingSub ||
+              !existingSub.updated_at ||
+              new Date(existingSub.updated_at) < eventTime;
+
+            if (shouldUpdate) {
+              const { error: subError } = await supabase
+                .from('subscriptions')
+                .upsert({
+                  user_id: clientId,
+                  tier,
+                  status: 'active',
+                  expires_at: expiresAt.toISOString(),
+                  sessions_remaining: sessionsRemaining,
+                  updated_at: eventTime.toISOString(),
+                }, {
+                  onConflict: 'user_id',
+                });
+
+              if (subError) {
+                console.error('Error updating subscription from webhook:', subError);
+              } else {
+                console.log(`Subscription updated for client ${clientId}: ${tier}`);
+              }
+            } else {
+              console.log(`Subscription for client ${clientId} already up-to-date, skipping webhook update`);
+            }
+          }
+        }
         break;
       }
 

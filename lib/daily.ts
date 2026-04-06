@@ -1,12 +1,12 @@
 /**
  * Daily.co Video/Voice Call Service for React Native
  * Handles room creation and session management
+ *
+ * NOTE: Daily.co API key is stored server-side in Supabase secrets.
+ * All Daily.co API operations go through the daily-room Edge Function.
  */
 
-const DAILY_API_URL = 'https://api.daily.co/v1';
-// TEMPORARY: Hardcoded API key until next full build
-// The || fallback wasn't working because process.env returns empty string, not undefined
-const DAILY_API_KEY = '95564a26a801e68281cf572e06423bc1546915ca1110f57041cb99a0ac5cc957';
+import { supabase } from '@/lib/supabase';
 
 export interface DailyRoom {
   id: string;
@@ -39,7 +39,7 @@ export const generateRoomName = (prefix: string = 'psychi'): string => {
   return `${prefix}-${timestamp}-${random}`;
 };
 
-// Create a Daily.co room
+// Create a Daily.co room via Edge Function (API key is server-side)
 export const createRoom = async (options: CreateRoomOptions = {}): Promise<DailyRoom | null> => {
   const {
     name = generateRoomName(),
@@ -49,102 +49,60 @@ export const createRoom = async (options: CreateRoomOptions = {}): Promise<Daily
     startAudioOff = false,
   } = options;
 
-  const exp = Math.floor(Date.now() / 1000) + (expiryMinutes * 60);
-
   try {
-    // Debug: Log API key status
-    console.log('Daily.co: API key check - length:', DAILY_API_KEY?.length || 0, 'truthy:', !!DAILY_API_KEY);
+    console.log('Daily.co: Creating room via Edge Function:', name);
 
-    // If no API key, video/voice calls are not available
-    if (!DAILY_API_KEY) {
-      console.error('Daily.co: No API key configured - this should not happen with hardcoded key');
-      return null;
-    }
-
-    console.log('Daily.co: Creating room with name:', name);
-    console.log('Daily.co: API key prefix:', DAILY_API_KEY.substring(0, 12) + '...');
-
-    const response = await fetch(`${DAILY_API_URL}/rooms`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${DAILY_API_KEY}`,
-      },
-      body: JSON.stringify({
+    const { data, error } = await supabase.functions.invoke('daily-room', {
+      body: {
+        action: 'create',
         name,
-        properties: {
-          exp,
-          max_participants: maxParticipants,
-          enable_chat: true,
-          start_video_off: startVideoOff,
-          start_audio_off: startAudioOff,
-          enable_screenshare: false,
-          enable_recording: false,
-          // Note: E2EE SFrame requires a paid Daily.co plan
-          // Calls are still encrypted in transit via SRTP
-        },
-      }),
+        expiryMinutes,
+        maxParticipants,
+        startVideoOff,
+        startAudioOff,
+      },
     });
 
-    if (!response.ok) {
-      const errorBody = await response.text();
-      console.error('Failed to create Daily room:', response.status, errorBody);
-      throw new Error(`Daily API error ${response.status}: ${errorBody}`);
+    if (error) {
+      console.error('Edge Function error:', error);
+      throw new Error(`Edge Function error: ${error.message}`);
     }
 
-    const room = await response.json();
-    console.log('Daily.co: Room created successfully:', room.name, room.url);
-    return room;
+    if (data?.error) {
+      console.error('Daily API error:', data.error);
+      throw new Error(data.error);
+    }
+
+    console.log('Daily.co: Room created successfully:', data.name, data.url);
+    return data;
   } catch (error: any) {
     const errorMsg = error?.message || String(error);
     console.error('Error creating Daily room:', errorMsg);
-    // Throw with details so caller can show them
     throw new Error(`Daily room creation failed: ${errorMsg}`);
   }
 };
 
-// Delete a Daily.co room
+// Delete a Daily.co room via Edge Function (API key is server-side)
 export const deleteRoom = async (roomName: string): Promise<boolean> => {
-  if (!DAILY_API_KEY) {
-    return true;
-  }
-
   try {
-    const response = await fetch(`${DAILY_API_URL}/rooms/${roomName}`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${DAILY_API_KEY}`,
+    console.log('Daily.co: Deleting room via Edge Function:', roomName);
+
+    const { data, error } = await supabase.functions.invoke('daily-room', {
+      body: {
+        action: 'delete',
+        roomName,
       },
     });
 
-    return response.ok;
+    if (error) {
+      console.error('Edge Function error:', error);
+      return false;
+    }
+
+    return data?.success === true;
   } catch (error) {
     console.error('Error deleting Daily room:', error);
     return false;
-  }
-};
-
-// Get room info
-export const getRoom = async (roomName: string): Promise<DailyRoom | null> => {
-  if (!DAILY_API_KEY) {
-    return null;
-  }
-
-  try {
-    const response = await fetch(`${DAILY_API_URL}/rooms/${roomName}`, {
-      headers: {
-        'Authorization': `Bearer ${DAILY_API_KEY}`,
-      },
-    });
-
-    if (!response.ok) {
-      return null;
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('Error getting Daily room:', error);
-    return null;
   }
 };
 
@@ -192,11 +150,6 @@ export const createSession = async (
     roomName: room.name,
     participantName,
   };
-};
-
-// Check if Daily.co is configured
-export const isDailyConfigured = (): boolean => {
-  return !!DAILY_API_KEY;
 };
 
 // Extract room name from Daily.co room URL
