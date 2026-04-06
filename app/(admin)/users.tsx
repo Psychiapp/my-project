@@ -64,15 +64,15 @@ export default function AdminUsersScreen() {
   const handleUserPress = (userId: string) => {
     if (activeTab === 'clients') {
       // Navigate to client detail view
-      router.push(`/(admin)/client/${userId}`);
+      router.push(`/(admin)/client/${userId}` as any);
       return;
     }
     // Navigate to supporter detail view
-    router.push(`/(admin)/supporter/${userId}`);
+    router.push(`/(admin)/supporter/${userId}` as any);
   };
 
   const handlePendingPress = (supporterId: string) => {
-    router.push(`/(admin)/supporter/${supporterId}`);
+    router.push(`/(admin)/supporter/${supporterId}` as any);
   };
 
   const renderUserItem = ({ item }: { item: AdminUserListing }) => (

@@ -202,7 +202,7 @@ export default function SessionScreen() {
           sessionData.id,
           sessionData.type,
           currentUserId,
-          'room_joined',
+          'session_join',
           { roomUrl: sessionData.roomUrl, participantId: sessionData.participant.id }
         );
         setIsCreatingRoom(false);
@@ -311,6 +311,7 @@ export default function SessionScreen() {
 
       // Broadcast session end to other participant for immediate notification
       try {
+        if (!supabase) throw new Error('Supabase not available');
         const channel = supabase.channel(`session-end:${sessionData.id}`);
         await channel.subscribe();
         await channel.send({
@@ -577,9 +578,11 @@ export default function SessionScreen() {
   useEffect(() => {
     if (!sessionData?.id || !supabase || !sessionEnded) return;
 
+    // Capture reference for use in cleanup
+    const sb = supabase;
     const channelId = `post-call-${sessionData.id}`;
 
-    const channel = supabase
+    const channel = sb
       .channel(channelId)
       .on('broadcast', { event: 'chat_opened' }, (payload) => {
         // Other participant opened the chat - auto-open it for us too
@@ -604,7 +607,7 @@ export default function SessionScreen() {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      sb.removeChannel(channel);
     };
   }, [sessionData?.id, sessionEnded, currentUserId, showPostCallContact, sessionData?.participant?.name]);
 

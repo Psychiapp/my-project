@@ -82,9 +82,12 @@ export default function ChatSession({
   useEffect(() => {
     if (!supabase || !otherParticipant.id) return;
 
+    // Capture reference for use in async callback and cleanup
+    const sb = supabase;
+
     // Fetch initial status
     const fetchInitialStatus = async () => {
-      const { data } = await supabase
+      const { data } = await sb
         .from('profiles')
         .select('is_online')
         .eq('id', otherParticipant.id)
@@ -97,7 +100,7 @@ export default function ChatSession({
     fetchInitialStatus();
 
     // Subscribe to real-time changes
-    const channel = supabase
+    const channel = sb
       .channel(`presence:${otherParticipant.id}`)
       .on(
         'postgres_changes',
@@ -116,7 +119,7 @@ export default function ChatSession({
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      sb.removeChannel(channel);
     };
   }, [otherParticipant.id]);
 

@@ -797,7 +797,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(0,0,0,0.1)',
     zIndex: 1000,
-    elevation: 10,
     ...Shadows.medium,
   },
   statePickerScroll: {

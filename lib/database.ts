@@ -2761,9 +2761,13 @@ const topicToSpecialtyMap: Record<string, string[]> = {
  * Match supporters to a client based on their preferences
  * Returns sorted list of supporters with compatibility scores
  * Only matches supporters who have completed full onboarding
+ *
+ * @param preferences - Client preferences for matching
+ * @param excludeSupporterIds - Optional array of supporter IDs to exclude from matching
  */
 export async function matchSupportersToClient(
-  preferences: ClientPreferences
+  preferences: ClientPreferences,
+  excludeSupporterIds?: string[]
 ): Promise<MatchedSupporter[]> {
   if (!supabase) return [];
 
@@ -2808,6 +2812,11 @@ export async function matchSupportersToClient(
   const matchedSupporters: MatchedSupporter[] = [];
 
   for (const supporter of data || []) {
+    // Skip if this supporter is in the exclusion list
+    if (excludeSupporterIds?.includes(supporter.id)) {
+      continue;
+    }
+
     const details = supporter.supporter_details as any;
 
     // Skip if not fully active (verified, accepting clients, has Stripe Connect enabled, and not suspended)
@@ -3126,18 +3135,45 @@ export async function assignSupporterToClient(
 /**
  * Match a client with the best available supporter based on preferences
  * and create the assignment. Returns the assigned supporter info.
+ *
+ * @param clientId - The client's user ID
+ * @param preferences - Optional client preferences. If not provided, fetched from database.
+ * @param excludeSupporterIds - Optional array of supporter IDs to exclude from matching
  */
 export async function matchAndAssignSupporter(
   clientId: string,
-  preferences: ClientPreferences
+  preferences?: ClientPreferences | null,
+  excludeSupporterIds?: string[]
 ): Promise<{ success: boolean; supporter?: { id: string; name: string; specialty: string }; error?: string }> {
   if (!supabase) {
     return { success: false, error: 'Database not available' };
   }
 
   try {
+    // Get preferences from database if not provided
+    let clientPreferences = preferences;
+    if (!clientPreferences) {
+      clientPreferences = await getClientPreferences(clientId);
+    }
+
+    // Use default preferences if still not available
+    if (!clientPreferences) {
+      clientPreferences = {
+        mood: 5,
+        topics: [],
+        communication_style: 'supportive',
+        preferred_session_types: ['chat', 'phone', 'video'],
+        scheduling_preference: 'flexible',
+        preferred_times: [],
+        personality_preference: 'warm',
+        goals: [],
+        urgency: 'not_urgent',
+        timezone: 'America/Chicago',
+      };
+    }
+
     // Find matching supporters based on preferences
-    const matches = await matchSupportersToClient(preferences);
+    const matches = await matchSupportersToClient(clientPreferences, excludeSupporterIds);
 
     if (matches.length === 0) {
       return {
@@ -3473,7 +3509,7 @@ export async function reportUser(
         .eq('is_active', true);
 
       // Match with a new supporter (excluding the reported one)
-      const newMatch = await matchAndAssignSupporter(clientId, [oldSupporterId]);
+      const newMatch = await matchAndAssignSupporter(clientId, null, [oldSupporterId]);
 
       // Rematch processed silently
     }

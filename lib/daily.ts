@@ -49,6 +49,10 @@ export const createRoom = async (options: CreateRoomOptions = {}): Promise<Daily
     startAudioOff = false,
   } = options;
 
+  if (!supabase) {
+    throw new Error('Supabase client not initialized');
+  }
+
   try {
     console.log('Daily.co: Creating room via Edge Function:', name);
 
@@ -84,6 +88,11 @@ export const createRoom = async (options: CreateRoomOptions = {}): Promise<Daily
 
 // Delete a Daily.co room via Edge Function (API key is server-side)
 export const deleteRoom = async (roomName: string): Promise<boolean> => {
+  if (!supabase) {
+    console.error('Supabase client not initialized');
+    return false;
+  }
+
   try {
     console.log('Daily.co: Deleting room via Edge Function:', roomName);
 
