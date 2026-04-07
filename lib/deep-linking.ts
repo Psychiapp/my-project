@@ -132,18 +132,74 @@ export function handleNotificationResponse(
 
   if (!data) return;
 
+  console.log('[DeepLinking] Handling notification response:', data.type, data);
+
   // Handle different notification types
-  if (data.type === 'session_reminder' && data.sessionId) {
-    router.push(`/session/${data.sessionId}` as any);
-  } else if (data.type === 'new_message' && data.conversationId) {
-    // Messages are handled within sessions
-    router.push('/(client)/sessions' as any);
-  } else if (data.type === 'supporter_update' && data.supporterId) {
-    router.push(`/(client)/supporter/${data.supporterId}` as any);
-  } else if (data.deepLink) {
-    // Generic deep link in notification
-    const parsed = parseDeepLink(data.deepLink as string);
-    handleDeepLink(parsed);
+  switch (data.type) {
+    // Session-related notifications - navigate to the session
+    case 'session_reminder':
+    case 'session_starting':
+    case 'session_entered':
+    case 'new_booking':
+    case 'booking_confirmed':
+    case 'live_support_accepted':
+      if (data.sessionId) {
+        console.log('[DeepLinking] Navigating to session:', data.sessionId);
+        router.push(`/session/${data.sessionId}` as any);
+      }
+      break;
+
+    // Chat message notifications - navigate to the session/conversation
+    case 'chat_message':
+    case 'supporter_message':
+    case 'post_call_message':
+      // These notifications include conversationId or sessionId
+      const chatSessionId = data.sessionId || data.conversationId;
+      if (chatSessionId) {
+        console.log('[DeepLinking] Navigating to chat session:', chatSessionId);
+        router.push(`/session/${chatSessionId}` as any);
+      }
+      break;
+
+    // Supporter profile notifications
+    case 'supporter_update':
+      if (data.supporterId) {
+        router.push(`/(client)/supporter/${data.supporterId}` as any);
+      }
+      break;
+
+    // Live support request - open the dashboard to see the request
+    case 'live_support_request':
+      // Supporters see requests on their dashboard
+      router.push('/(supporter)/' as any);
+      break;
+
+    // Verification notifications
+    case 'verification_approved':
+      router.push('/(supporter)/' as any);
+      break;
+
+    case 'verification_rejected':
+      router.push('/(supporter)/verification' as any);
+      break;
+
+    // Client assignment
+    case 'new_client_assigned':
+      router.push('/(supporter)/clients' as any);
+      break;
+
+    // Availability reminder
+    case 'availability_reminder':
+      router.push('/(supporter)/availability' as any);
+      break;
+
+    default:
+      // Check for generic deep link
+      if (data.deepLink) {
+        const parsed = parseDeepLink(data.deepLink as string);
+        handleDeepLink(parsed);
+      }
+      break;
   }
 }
 
