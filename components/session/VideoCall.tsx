@@ -157,7 +157,13 @@ export default function VideoCall({
         });
 
         const call = Daily.createCallObject({
-          videoSource: isVideoEnabled,
+          videoSource: isVideoEnabled ? {
+            // Request high quality video capture (720p)
+            width: { ideal: 1280, min: 640 },
+            height: { ideal: 720, min: 480 },
+            frameRate: { ideal: 30, min: 24 },
+            facingMode: 'user',
+          } : false,
           audioSource: true,
           // Keep subscribed to tracks even when app is backgrounded
           subscribeToTracksAutomatically: true,
@@ -171,6 +177,12 @@ export default function VideoCall({
             autoGainControlEnabled: true,
             // Keep call alive when app is in background
             keepDeviceAwake: true,
+            // Enable simulcast for adaptive quality based on bandwidth
+            camSimulcastEncodings: [
+              { maxBitrate: 150000, maxFramerate: 15, scaleResolutionDownBy: 4 }, // Low
+              { maxBitrate: 500000, maxFramerate: 24, scaleResolutionDownBy: 2 }, // Medium
+              { maxBitrate: 2500000, maxFramerate: 30, scaleResolutionDownBy: 1 }, // High (720p)
+            ],
           },
         });
 
@@ -710,7 +722,13 @@ export default function VideoCall({
         });
 
         const call = Daily.createCallObject({
-          videoSource: isVideoEnabled,
+          videoSource: isVideoEnabled ? {
+            // Request high quality video capture (720p)
+            width: { ideal: 1280, min: 640 },
+            height: { ideal: 720, min: 480 },
+            frameRate: { ideal: 30, min: 24 },
+            facingMode: 'user',
+          } : false,
           audioSource: true,
           subscribeToTracksAutomatically: true,
           dailyConfig: {
@@ -718,6 +736,12 @@ export default function VideoCall({
             echoCancellationEnabled: true,
             autoGainControlEnabled: true,
             keepDeviceAwake: true,
+            // Enable simulcast for adaptive quality based on bandwidth
+            camSimulcastEncodings: [
+              { maxBitrate: 150000, maxFramerate: 15, scaleResolutionDownBy: 4 }, // Low
+              { maxBitrate: 500000, maxFramerate: 24, scaleResolutionDownBy: 2 }, // Medium
+              { maxBitrate: 2500000, maxFramerate: 30, scaleResolutionDownBy: 1 }, // High (720p)
+            ],
           },
         });
 
