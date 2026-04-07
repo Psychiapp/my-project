@@ -715,7 +715,7 @@ export default function ProfileSetupScreen() {
                       style={styles.nameTextInput}
                       value={firstName}
                       onChangeText={setFirstName}
-                      placeholder="Given name"
+                      placeholder="First name"
                       placeholderTextColor={PsychiColors.textMuted}
                       autoCapitalize="words"
                       autoComplete="given-name"
@@ -732,7 +732,7 @@ export default function ProfileSetupScreen() {
                       style={styles.nameTextInput}
                       value={lastName}
                       onChangeText={setLastName}
-                      placeholder="Family name"
+                      placeholder="Last name"
                       placeholderTextColor={PsychiColors.textMuted}
                       autoCapitalize="words"
                       autoComplete="family-name"
