@@ -24,6 +24,7 @@ import { ClockIcon, SendIcon, AlertIcon } from '@/components/icons';
 import { supabase } from '@/lib/supabase';
 import { savePostCallMessage, sendLiveSupportPushNotification } from '@/lib/database';
 import { logSessionEvent } from '@/lib/sessionLogger';
+import { setActiveSession } from '@/lib/notifications';
 
 const CONTACT_WINDOW_MINUTES = 10;
 const CONTACT_WINDOW_MS = CONTACT_WINDOW_MINUTES * 60 * 1000;
@@ -72,6 +73,13 @@ export default function PostCallContact({
   // Store the channel reference for sending broadcasts
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const channelRef = useRef<any>(null);
+
+  // Track active session for notification suppression
+  // When viewing this chat, suppress incoming chat notifications for this session
+  useEffect(() => {
+    setActiveSession(sessionId);
+    return () => setActiveSession(null);
+  }, [sessionId]);
 
   // Check if already expired on mount
   useEffect(() => {

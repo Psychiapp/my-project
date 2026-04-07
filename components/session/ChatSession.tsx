@@ -22,6 +22,7 @@ import EmergencyButton from './EmergencyButton';
 import ReportUserModal from '@/components/ReportUserModal';
 import { logSessionEvent } from '@/lib/sessionLogger';
 import { supabase } from '@/lib/supabase';
+import { setActiveSession } from '@/lib/notifications';
 
 interface Message {
   id: string;
@@ -74,6 +75,18 @@ export default function ChatSession({
   // Session timer state
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [hasAutoEnded, setHasAutoEnded] = useState(false);
+
+  // Track active session for notification suppression
+  // When viewing this chat, suppress incoming chat notifications for this session
+  useEffect(() => {
+    setActiveSession(sessionId);
+    console.log('[ChatSession] Set active session:', sessionId);
+
+    return () => {
+      setActiveSession(null);
+      console.log('[ChatSession] Cleared active session');
+    };
+  }, [sessionId]);
 
   // Other participant's online status
   const [isOtherParticipantOnline, setIsOtherParticipantOnline] = useState(true);

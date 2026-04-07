@@ -12,15 +12,62 @@ import {
 } from '@/constants/notifications';
 import { saveExpoPushToken } from '@/lib/database';
 
+// ============================================
+// Active Session Tracking (for notification suppression)
+// ============================================
+
+// Track the session ID the user is currently actively viewing
+// When set, chat notifications for this session are suppressed
+let activeSessionId: string | null = null;
+
+/**
+ * Set the active session ID when user enters a chat session
+ * Notifications for this session will be suppressed while app is open
+ */
+export function setActiveSession(sessionId: string | null): void {
+  activeSessionId = sessionId;
+  console.log('[Notifications] Active session set to:', sessionId);
+}
+
+/**
+ * Get the current active session ID
+ */
+export function getActiveSession(): string | null {
+  return activeSessionId;
+}
+
 // Configure notification behavior
+// Suppresses chat notifications when user is actively viewing that chat
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
+  handleNotification: async (notification) => {
+    const data = notification.request.content.data;
+
+    // Check if this is a chat message notification for the active session
+    if (data?.type === 'chat_message' || data?.type === 'supporter_message' || data?.type === 'post_call_message') {
+      const notificationSessionId = data?.sessionId || data?.conversationId;
+
+      // Suppress notification if user is actively viewing this chat session
+      if (activeSessionId && notificationSessionId === activeSessionId) {
+        console.log('[Notifications] Suppressing notification - user is in active session:', activeSessionId);
+        return {
+          shouldShowAlert: false,
+          shouldPlaySound: false,
+          shouldSetBadge: false,
+          shouldShowBanner: false,
+          shouldShowList: false,
+        };
+      }
+    }
+
+    // Show all other notifications normally
+    return {
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    };
+  },
 });
 
 export interface NotificationSettings {
