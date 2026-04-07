@@ -104,11 +104,15 @@ export default function ClientHomeScreen() {
   } = useLiveSupportRequest(user?.id || null, 'client', {
     onRequestAccepted: (request) => {
       setShowLiveSupportSheet(false);
-      Alert.alert(
-        'Request Accepted!',
-        'A supporter has accepted your request. Starting session...',
-        [{ text: 'OK', onPress: () => router.push(`/session/${request.id}` as any) }]
-      );
+      if (request.sessionId) {
+        Alert.alert(
+          'Request Accepted!',
+          'A supporter has accepted your request. Starting session...',
+          [{ text: 'OK', onPress: () => router.push(`/session/${request.sessionId}` as any) }]
+        );
+      } else {
+        Alert.alert('Error', 'Session was not created properly. Please try again.');
+      }
     },
     onNoSupportersAvailable: () => {
       setShowLiveSupportSheet(false);

@@ -16,7 +16,7 @@ import VideoCall from '@/components/session/VideoCall';
 import PostCallContact from '@/components/session/PostCallContact';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
 import { createSession as createDailySession, SessionConfig, deleteRoom, getRoomNameFromUrl } from '@/lib/daily';
-import { getSession, updateSessionStatus, updateSessionRoomUrl, notifySessionEntered } from '@/lib/database';
+import { getSession, updateSessionStatus, updateSessionRoomUrl, notifySessionEntered, setInSessionStatus } from '@/lib/database';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { logSessionEvent } from '@/lib/sessionLogger';
@@ -277,6 +277,12 @@ export default function SessionScreen() {
         'session_end',
         { endedBy: 'other_participant', participantId: sessionData.participant.id }
       );
+
+      // Reset supporter's in_session flag
+      const supporterId = currentUserRole === 'supporter'
+        ? currentUserId
+        : sessionData.participant.id;
+      await setInSessionStatus(supporterId, false);
     }
 
     // Show alert that session was ended by other participant
@@ -299,6 +305,14 @@ export default function SessionScreen() {
       await updateSessionStatus(sessionData.id, 'completed', {
         ended_at: endTime.toISOString()
       });
+
+      // Reset supporter's in_session flag
+      // If current user is supporter, reset their flag
+      // If current user is client, the other participant is the supporter
+      const supporterId = currentUserRole === 'supporter'
+        ? currentUserId
+        : sessionData.participant.id;
+      await setInSessionStatus(supporterId, false);
 
       // Log session end
       logSessionEvent(
@@ -439,6 +453,12 @@ export default function SessionScreen() {
         'session_end',
         { endedBy: endedBy === 'other' ? 'other_participant' : 'self', participantId: sessionData.participant.id }
       );
+
+      // Reset supporter's in_session flag
+      const supporterId = currentUserRole === 'supporter'
+        ? currentUserId
+        : sessionData.participant.id;
+      setInSessionStatus(supporterId, false); // Fire-and-forget
 
       // Show alert only if ended by other participant
       if (endedBy === 'other') {

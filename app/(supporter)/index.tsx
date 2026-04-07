@@ -69,8 +69,12 @@ export default function SupporterHomeScreen() {
     declineRequest,
   } = useLiveSupportRequest(user?.id || null, 'supporter', {
     onRequestAccepted: (request) => {
-      // Navigate to session
-      router.push(`/session/${request.id}` as any);
+      // Navigate to session using the created session ID, not the request ID
+      if (request.sessionId) {
+        router.push(`/session/${request.sessionId}` as any);
+      } else {
+        Alert.alert('Error', 'Session was not created properly. Please try again.');
+      }
     },
     onError: (error) => {
       Alert.alert('Error', error);

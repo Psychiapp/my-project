@@ -96,9 +96,13 @@ export function useLiveSupportRequest(
       const { data: clientTimezone } = await supabase
         .rpc('get_client_timezone', { p_client_id: userId });
 
-      // Check if there are any eligible supporters in the same timezone (max 10)
+      // Check if there are any eligible supporters in the same timezone
+      // Pass session type to check for schedule conflicts (e.g., 45min phone call needs 60min free)
       const { data: supporters, error: supportersError } = await supabase
-        .rpc('get_all_eligible_supporters', { p_timezone: clientTimezone });
+        .rpc('get_all_eligible_supporters', {
+          p_timezone: clientTimezone,
+          p_session_type: sessionType,
+        });
 
       if (supportersError) {
         console.error('Error checking eligible supporters:', supportersError);
@@ -107,7 +111,7 @@ export function useLiveSupportRequest(
       if (!supporters || supporters.length === 0) {
         return {
           success: false,
-          error: 'No supporters are currently available in your timezone. Please try again later.',
+          error: 'No supporters are currently available. Please try again later.',
         };
       }
 
