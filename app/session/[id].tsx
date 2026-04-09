@@ -104,7 +104,8 @@ export default function SessionScreen() {
 
         // CRITICAL: Verify payment before allowing session to start
         // This prevents sessions from proceeding without payment
-        if (session.payment_status !== 'completed') {
+        // Valid states: 'completed' (paid) or 'not_required' (included in subscription/live support)
+        if (session.payment_status !== 'completed' && session.payment_status !== 'not_required') {
           console.error('Session payment not completed:', session.id, session.payment_status);
           setLoadError('Payment required. This session cannot start until payment is confirmed. Please contact support if you believe this is an error.');
           setIsLoadingSession(false);

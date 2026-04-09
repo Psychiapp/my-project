@@ -54,8 +54,12 @@ serve(async (req) => {
     console.log(`Client ${clientId} timezone: ${clientTimezone}`);
 
     // Get up to 10 eligible supporters in the same timezone
+    // Pass session type for schedule conflict checking (e.g., phone calls need 60min free)
     const { data: supporters, error: supportersError } = await supabase
-      .rpc('get_all_eligible_supporters', { p_timezone: clientTimezone });
+      .rpc('get_all_eligible_supporters', {
+        p_timezone: clientTimezone,
+        p_session_type: sessionType,
+      });
 
     if (supportersError) {
       console.error('Error fetching eligible supporters:', supportersError);
