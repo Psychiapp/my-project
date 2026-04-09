@@ -44,7 +44,7 @@ interface SessionData {
 
 export default function SessionScreen() {
   const { id, type } = useLocalSearchParams<{ id: string; type?: string }>();
-  const { user, profile } = useAuth();
+  const { user, profile, isLoading: isAuthLoading } = useAuth();
   const [sessionData, setSessionData] = useState<SessionData | null>(null);
   const [dailySession, setDailySession] = useState<SessionConfig | null>(null);
   const [isCreatingRoom, setIsCreatingRoom] = useState(false);
@@ -73,6 +73,12 @@ export default function SessionScreen() {
       if (!id) {
         setLoadError('No session ID provided');
         setIsLoadingSession(false);
+        return;
+      }
+
+      // Wait for auth to be ready before fetching session
+      // This prevents RLS errors when opening from a notification before session is restored
+      if (isAuthLoading) {
         return;
       }
 
@@ -149,7 +155,7 @@ export default function SessionScreen() {
     };
 
     fetchSessionData();
-  }, [id, type, currentUserId, currentUserRole]);
+  }, [id, type, currentUserId, currentUserRole, isAuthLoading]);
 
   // Check permissions and create Daily.co room for video/voice calls
   useEffect(() => {
