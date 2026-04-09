@@ -1325,6 +1325,21 @@ export async function updateSessionStatus(
     updateData.room_url = additionalFields.room_url;
   }
 
+  // If the session is ending (completed, cancelled, no_show), we need to reset
+  // the supporter's in_session flag so they can accept new live support requests
+  const isSessionEnding = ['completed', 'cancelled', 'no_show'].includes(status);
+  let supporterId: string | null = null;
+
+  if (isSessionEnding) {
+    // Get the supporter_id before updating
+    const { data: session } = await supabase
+      .from('sessions')
+      .select('supporter_id')
+      .eq('id', sessionId)
+      .single();
+    supporterId = session?.supporter_id || null;
+  }
+
   const { error } = await supabase
     .from('sessions')
     .update(updateData)
@@ -1333,6 +1348,19 @@ export async function updateSessionStatus(
   if (error) {
     console.error('Error updating session status:', error);
     return false;
+  }
+
+  // Reset supporter's in_session flag when session ends
+  if (isSessionEnding && supporterId) {
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .update({ in_session: false })
+      .eq('id', supporterId);
+
+    if (profileError) {
+      console.error('Error resetting supporter in_session flag:', profileError);
+      // Don't fail the whole operation, just log it
+    }
   }
 
   return true;
