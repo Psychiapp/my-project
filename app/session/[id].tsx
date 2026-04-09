@@ -54,6 +54,8 @@ export default function SessionScreen() {
   const [checkingPermissions, setCheckingPermissions] = useState(false);
   const [isLoadingSession, setIsLoadingSession] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [isRetryable, setIsRetryable] = useState(false); // Whether the error can be retried
+  const [retryCount, setRetryCount] = useState(0); // Track retries for dependency
   const [showPostCallContact, setShowPostCallContact] = useState(false); // 10-min contact window
   const [connectionIssueReason, setConnectionIssueReason] = useState<'timeout' | 'disconnect' | 'network' | 'session_ended' | null>(null);
   const [sessionEndedAt, setSessionEndedAt] = useState<Date | null>(null); // Track when session ended for 10-min window
@@ -72,6 +74,7 @@ export default function SessionScreen() {
     const fetchSessionData = async () => {
       if (!id) {
         setLoadError('No session ID provided');
+        setIsRetryable(false);
         setIsLoadingSession(false);
         return;
       }
@@ -82,12 +85,25 @@ export default function SessionScreen() {
         return;
       }
 
+      // If auth finished loading but user is not logged in, show appropriate error
+      if (!user) {
+        setLoadError('Please sign in to access this session');
+        setIsRetryable(false);
+        setIsLoadingSession(false);
+        return;
+      }
+
+      // Reset error state on new fetch attempt (for retries)
+      setLoadError(null);
+      setIsRetryable(false);
+
       try {
         setIsLoadingSession(true);
         const session = await getSession(id);
 
         if (!session) {
-          setLoadError('Session not found');
+          setLoadError('Session not found. It may have been cancelled or does not exist.');
+          setIsRetryable(false);
           setIsLoadingSession(false);
           return;
         }
@@ -98,6 +114,7 @@ export default function SessionScreen() {
 
         if (!otherParticipant) {
           setLoadError('Could not find session participant');
+          setIsRetryable(false);
           setIsLoadingSession(false);
           return;
         }
@@ -108,6 +125,7 @@ export default function SessionScreen() {
         if (session.payment_status !== 'completed' && session.payment_status !== 'not_required') {
           console.error('Session payment not completed:', session.id, session.payment_status);
           setLoadError('Payment required. This session cannot start until payment is confirmed. Please contact support if you believe this is an error.');
+          setIsRetryable(false);
           setIsLoadingSession(false);
           return;
         }
@@ -131,6 +149,7 @@ export default function SessionScreen() {
 
           const formattedTime = scheduledTime.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
           setLoadError(`This session is scheduled for ${formattedTime}. You can enter ${timeMessage} from now (5 minutes before the session starts).`);
+          setIsRetryable(false);
           setIsLoadingSession(false);
           return;
         }
@@ -148,15 +167,26 @@ export default function SessionScreen() {
           roomUrl: session.room_url || undefined, // Pass existing room URL if another participant created it
         });
         setIsLoadingSession(false);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error fetching session:', error);
-        setLoadError('Failed to load session');
+        // Check if this is a network/connection error that can be retried
+        const errorMessage = error?.message || 'Unknown error';
+        const isNetworkError = errorMessage.includes('network') ||
+          errorMessage.includes('timeout') ||
+          errorMessage.includes('fetch') ||
+          errorMessage.includes('Failed to fetch') ||
+          error?.code === 'NETWORK_ERROR';
+
+        setLoadError(isNetworkError
+          ? 'Connection error. Please check your internet and try again.'
+          : 'Failed to load session. Please try again.');
+        setIsRetryable(true); // Allow retry for all fetch errors
         setIsLoadingSession(false);
       }
     };
 
     fetchSessionData();
-  }, [id, type, currentUserId, currentUserRole, isAuthLoading]);
+  }, [id, type, currentUserId, currentUserRole, isAuthLoading, retryCount]);
 
   // Check permissions and create Daily.co room for video/voice calls
   useEffect(() => {
@@ -662,28 +692,66 @@ export default function SessionScreen() {
     );
   }
 
+  // Retry function for retryable errors
+  const handleRetry = () => {
+    setLoadError(null);
+    setIsRetryable(false);
+    setIsLoadingSession(true);
+    setRetryCount(prev => prev + 1);
+  };
+
   // Error state
   if (loadError || !sessionData) {
+    // Determine error title based on error type
+    const errorTitle = loadError?.includes('sign in')
+      ? 'Sign In Required'
+      : loadError?.includes('Connection')
+        ? 'Connection Error'
+        : loadError?.includes('scheduled for')
+          ? 'Too Early'
+          : loadError?.includes('Payment')
+            ? 'Payment Required'
+            : 'Session Not Found';
+
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.errorContainer}>
           <View style={styles.errorIcon}>
             <Text style={styles.errorIconText}>!</Text>
           </View>
-          <Text style={styles.errorTitle}>Session Not Found</Text>
+          <Text style={styles.errorTitle}>{errorTitle}</Text>
           <Text style={styles.errorMessage}>
             {loadError || 'This session could not be loaded. It may have been cancelled or does not exist.'}
           </Text>
+          {isRetryable && (
+            <TouchableOpacity
+              style={[styles.errorButton, { marginBottom: Spacing.md }]}
+              onPress={handleRetry}
+            >
+              <LinearGradient
+                colors={[PsychiColors.azure, PsychiColors.deep]}
+                style={styles.errorButtonGradient}
+              >
+                <Text style={styles.errorButtonText}>Try Again</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
-            style={styles.errorButton}
+            style={[styles.errorButton, isRetryable && styles.errorButtonSecondary]}
             onPress={() => router.back()}
           >
-            <LinearGradient
-              colors={[PsychiColors.azure, PsychiColors.deep]}
-              style={styles.errorButtonGradient}
-            >
-              <Text style={styles.errorButtonText}>Go Back</Text>
-            </LinearGradient>
+            {isRetryable ? (
+              <View style={styles.errorButtonOutline}>
+                <Text style={styles.errorButtonTextOutline}>Go Back</Text>
+              </View>
+            ) : (
+              <LinearGradient
+                colors={[PsychiColors.azure, PsychiColors.deep]}
+                style={styles.errorButtonGradient}
+              >
+                <Text style={styles.errorButtonText}>Go Back</Text>
+              </LinearGradient>
+            )}
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -1139,5 +1207,20 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '600',
     color: PsychiColors.white,
+  },
+  errorButtonSecondary: {
+    // No additional styles needed - used as a marker for conditional rendering
+  },
+  errorButtonOutline: {
+    paddingVertical: Spacing.md,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: PsychiColors.azure,
+    borderRadius: BorderRadius.lg,
+  },
+  errorButtonTextOutline: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: PsychiColors.azure,
   },
 });
