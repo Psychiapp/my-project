@@ -16,7 +16,7 @@ import VideoCall from '@/components/session/VideoCall';
 import PostCallContact from '@/components/session/PostCallContact';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
 import { createSession as createDailySession, SessionConfig, deleteRoom, getRoomNameFromUrl } from '@/lib/daily';
-import { getSession, updateSessionStatus, updateSessionRoomUrl, notifySessionEntered, setInSessionStatus } from '@/lib/database';
+import { getSession, updateSessionStatus, updateSessionRoomUrl, notifySessionEntered, setInSessionStatus, checkAndMarkEnteredNotificationSent } from '@/lib/database';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { logSessionEvent } from '@/lib/sessionLogger';
@@ -69,6 +69,9 @@ export default function SessionScreen() {
   const currentUserId = user?.id || '';
   const currentUserRole = profile?.role || 'client';
 
+  // Track auth retry attempts for deep link scenarios
+  const authRetryAttempted = useRef(false);
+
   // Fetch real session data from database
   useEffect(() => {
     const fetchSessionData = async () => {
@@ -85,8 +88,20 @@ export default function SessionScreen() {
         return;
       }
 
-      // If auth finished loading but user is not logged in, show appropriate error
+      // If auth finished loading but user is not logged in, retry once after a brief delay
+      // This handles the race condition when opening from a push notification where
+      // auth state may not be fully restored yet (e.g., device waking from sleep)
       if (!user) {
+        if (!authRetryAttempted.current) {
+          authRetryAttempted.current = true;
+          console.log('[Session] Auth appears unloaded, retrying after delay...');
+          // Wait 1.5 seconds for auth state to potentially restore
+          setTimeout(() => {
+            setRetryCount(prev => prev + 1);
+          }, 1500);
+          return;
+        }
+        // Already retried once, show error
         setLoadError('Please sign in to access this session');
         setIsRetryable(false);
         setIsLoadingSession(false);
@@ -461,9 +476,9 @@ export default function SessionScreen() {
         hasDailyRoomUrl: !!dailySession?.roomUrl,
       });
 
-      // Only send once per session
+      // Quick local check - useRef serves as a cache for same-mount-cycle
       if (enteredNotificationSent.current) {
-        console.log('[Session] Notification already sent, skipping');
+        console.log('[Session] Notification already sent (local cache), skipping');
         return;
       }
       if (!sessionData) {
@@ -476,6 +491,19 @@ export default function SessionScreen() {
       const isReady = sessionData.type === 'chat' || dailySession?.roomUrl;
       if (!isReady) {
         console.log('[Session] Session not ready yet (waiting for room URL)');
+        return;
+      }
+
+      // Check database flag - this is the authoritative check that persists across remounts
+      // The function atomically checks and sets the flag, returning true only if this is the first time
+      const shouldSend = await checkAndMarkEnteredNotificationSent(
+        sessionData.id,
+        currentUserRole as 'client' | 'supporter'
+      );
+
+      if (!shouldSend) {
+        console.log('[Session] Notification already sent (database flag), skipping');
+        enteredNotificationSent.current = true; // Sync local cache
         return;
       }
 

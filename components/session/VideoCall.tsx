@@ -156,14 +156,10 @@ export default function VideoCall({
           interruptionModeAndroid: 1,
         });
 
+        // Note: React Native Daily SDK uses simple booleans for videoSource/audioSource
+        // Video constraints (width, height, etc.) are not supported in RN SDK - those are web-only
         const call = Daily.createCallObject({
-          videoSource: isVideoEnabled ? {
-            // Request high quality video capture (720p)
-            width: { ideal: 1280, min: 640 },
-            height: { ideal: 720, min: 480 },
-            frameRate: { ideal: 30, min: 24 },
-            facingMode: 'user',
-          } : false,
+          videoSource: isVideoEnabled, // true or false
           audioSource: true,
           // Keep subscribed to tracks even when app is backgrounded
           subscribeToTracksAutomatically: true,

@@ -5,12 +5,13 @@
 
 import type { SessionType } from './database';
 
-// Subscription tier allowances per WEEK
+// Subscription tier allowances
+// NOTE: Calls (phone/video) reset WEEKLY, chats reset MONTHLY (with subscription renewal)
 // Voice and video share a combined quota
 export const TIER_ALLOWANCES = {
-  1: { voiceVideo: 1, chat: 2 },     // Tier 1 ($55/mo): 1 call + 2 chats per week
-  2: { voiceVideo: 2, chat: 3 },     // Tier 2 ($109/mo): 2 calls + 3 chats per week
-  3: { voiceVideo: 3, chat: Infinity }, // Tier 3 ($149/mo): 3 calls + unlimited chats
+  1: { voiceVideo: 1, chat: 2 },     // Basic ($55/mo): 1 call/WEEK, 2 chats/MONTH
+  2: { voiceVideo: 2, chat: 3 },     // Standard ($109/mo): 2 calls/WEEK, 3 chats/MONTH
+  3: { voiceVideo: 3, chat: Infinity }, // Premium ($149/mo): 3 calls/WEEK, unlimited chats
 } as const;
 
 // Pay-as-you-go prices (in cents)

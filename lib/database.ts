@@ -4,7 +4,11 @@
  */
 
 import { supabase } from './supabase';
-import { sendNewClientAssignedNotification } from './notifications';
+import {
+  sendNewClientAssignedNotification,
+  sendVerificationApprovedNotification,
+  sendVerificationRejectedNotification,
+} from './notifications';
 import type {
   UserProfile,
   ClientProfile,
@@ -4133,6 +4137,15 @@ export async function updateVerificationStatus(
     // This will auto-enable client matching if all steps are complete
     await checkAndCompleteOnboarding(supporterId);
 
+    // Send push notification to supporter about approval
+    try {
+      const result = await sendVerificationApprovedNotification(supporterId);
+      console.log('[updateVerificationStatus] Approval notification sent:', result);
+    } catch (notifyError) {
+      console.error('[updateVerificationStatus] Failed to send approval notification:', notifyError);
+      // Don't fail the overall operation if notification fails
+    }
+
     return true;
   } else {
     // Rejected
@@ -4158,6 +4171,15 @@ export async function updateVerificationStatus(
     if (profileError) {
       console.error('Error updating profile verification status:', profileError);
       // Continue anyway, main update succeeded
+    }
+
+    // Send push notification to supporter about rejection
+    try {
+      const result = await sendVerificationRejectedNotification(supporterId, rejectionReason);
+      console.log('[updateVerificationStatus] Rejection notification sent:', result);
+    } catch (notifyError) {
+      console.error('[updateVerificationStatus] Failed to send rejection notification:', notifyError);
+      // Don't fail the overall operation if notification fails
     }
 
     return true;
@@ -5012,6 +5034,49 @@ export async function notifyClientNoSupportersAvailable(params: {
   });
 
   return result.sent;
+}
+
+/**
+ * Check if the "entered" notification for this session has already been sent,
+ * and if not, mark it as sent. This ensures we only send the notification once
+ * per session even if the component remounts multiple times.
+ *
+ * @returns true if we should send the notification (first time), false if already sent
+ */
+export async function checkAndMarkEnteredNotificationSent(
+  sessionId: string,
+  enteredByRole: 'client' | 'supporter'
+): Promise<boolean> {
+  if (!supabase) return false;
+
+  const columnName = enteredByRole === 'client'
+    ? 'client_entered_notified'
+    : 'supporter_entered_notified';
+
+  // Use update with a WHERE clause to atomically check and set the flag
+  // This returns the row only if it was updated (i.e., flag was false)
+  const { data, error } = await supabase
+    .from('sessions')
+    .update({ [columnName]: true })
+    .eq('id', sessionId)
+    .eq(columnName, false) // Only update if not already notified
+    .select('id');
+
+  if (error) {
+    console.error('[checkAndMarkEnteredNotificationSent] Error:', error);
+    return false;
+  }
+
+  // If data has a row, the update succeeded (flag was false -> now true)
+  // If data is empty, the flag was already true (notification already sent)
+  const shouldSendNotification = data && data.length > 0;
+  console.log('[checkAndMarkEnteredNotificationSent]', {
+    sessionId,
+    enteredByRole,
+    shouldSendNotification,
+  });
+
+  return shouldSendNotification;
 }
 
 /**

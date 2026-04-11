@@ -208,9 +208,11 @@ serve(async (req) => {
           const clientId = paymentIntent.metadata.client_id;
 
           // Define sessions based on tier (same as client-side updateClientSubscription)
+          // Note: phone/video reset weekly, chat resets monthly (with subscription renewal)
+          // Basic: 1 call/week, 2 chats/month | Standard: 2 calls/week, 3 chats/month | Premium: 3 calls/week, unlimited
           const sessionsRemaining = {
-            basic: { chat: 4, phone: 0, video: 0 },
-            standard: { chat: 8, phone: 1, video: 0 },
+            basic: { chat: 2, phone: 1, video: 0 },
+            standard: { chat: 3, phone: 2, video: 0 },
             premium: { chat: 999, phone: 3, video: 0 },
           }[tier];
 

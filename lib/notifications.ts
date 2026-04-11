@@ -42,8 +42,8 @@ Notifications.setNotificationHandler({
   handleNotification: async (notification) => {
     const data = notification.request.content.data;
 
-    // Check if this is a chat message notification for the active session
-    if (data?.type === 'chat_message' || data?.type === 'supporter_message' || data?.type === 'post_call_message') {
+    // Check if this is a notification for the active session (suppress when user is viewing it)
+    if (data?.type === 'chat_message' || data?.type === 'supporter_message' || data?.type === 'post_call_message' || data?.type === 'session_entered') {
       const notificationSessionId = data?.sessionId || data?.conversationId;
 
       // Suppress notification if user is actively viewing this chat session
