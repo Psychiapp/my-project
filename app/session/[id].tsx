@@ -405,6 +405,7 @@ export default function SessionScreen() {
   };
 
   // Mark chat session as in_progress when starting
+  // Also cleanup on unmount (user navigates away without ending)
   useEffect(() => {
     if (sessionData?.type === 'chat' && sessionData?.id) {
       updateSessionStatus(sessionData.id, 'in_progress');
@@ -418,7 +419,37 @@ export default function SessionScreen() {
         { participantId: sessionData.participant.id }
       );
     }
-  }, [sessionData?.id, sessionData?.type, currentUserId, sessionData?.participant?.id]);
+
+    // Cleanup function: end session when user navigates away without explicitly ending
+    return () => {
+      // Only cleanup chat sessions that haven't been explicitly ended
+      if (sessionData?.type === 'chat' && sessionData?.id && !sessionEnded) {
+        console.log('[Session] Cleanup: User navigated away, ending session automatically');
+
+        // End the session
+        updateSessionStatus(sessionData.id, 'completed', {
+          ended_at: new Date().toISOString()
+        });
+
+        // Reset supporter's in_session flag
+        const supporterId = currentUserRole === 'supporter'
+          ? currentUserId
+          : sessionData.participant?.id;
+        if (supporterId) {
+          setInSessionStatus(supporterId, false);
+        }
+
+        // Log the auto-end
+        logSessionEvent(
+          sessionData.id,
+          'chat',
+          currentUserId,
+          'session_end',
+          { endedBy: 'navigation_cleanup', participantId: sessionData.participant?.id }
+        );
+      }
+    };
+  }, [sessionData?.id, sessionData?.type, currentUserId, sessionData?.participant?.id, sessionEnded, currentUserRole]);
 
   // Notify other participant when session is entered
   useEffect(() => {
