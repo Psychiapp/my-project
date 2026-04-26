@@ -71,36 +71,16 @@ export function useLiveSupportRequest(
     processPayment: () => Promise<{ success: boolean; paymentIntentId?: string; error?: string }>
   ): Promise<{ success: boolean; error?: string }> => {
     if (!userId || !supabase) {
-      Alert.alert('DEBUG: Early Return #1', `Not authenticated - userId: ${userId}, supabase: ${!!supabase}`);
       return { success: false, error: 'Not authenticated' };
     }
 
     setIsSubmitting(true);
 
     try {
-      let paymentIntentId: string | null = null;
-
-      // Process PAYG payment if needed
-      if (allowanceCheck.paygRequired) {
-        const paymentResult = await processPayment();
-
-        if (!paymentResult.success) {
-          Alert.alert('DEBUG: Early Return #2', `PAYG payment failed: ${paymentResult.error}`);
-          return {
-            success: false,
-            error: paymentResult.error || 'Payment failed',
-          };
-        }
-
-        paymentIntentId = paymentResult.paymentIntentId || null;
-      }
-
-      // Get client's timezone first
+      // Check supporter availability FIRST — before charging anything
       const { data: clientTimezone } = await supabase
         .rpc('get_client_timezone', { p_client_id: userId });
 
-      // Check if there are any eligible supporters in the same timezone
-      // Pass session type to check for schedule conflicts (e.g., 45min phone call needs 60min free)
       const { data: supporters, error: supportersError } = await supabase
         .rpc('get_all_eligible_supporters', {
           p_timezone: clientTimezone,
@@ -112,11 +92,26 @@ export function useLiveSupportRequest(
       }
 
       if (!supporters || supporters.length === 0) {
-        Alert.alert('DEBUG: Early Return #3', `No supporters available - timezone: ${clientTimezone}, error: ${supportersError?.message || 'none'}`);
         return {
           success: false,
           error: 'No supporters are currently available. Please try again later.',
         };
+      }
+
+      // Supporters are available — now process PAYG payment if needed
+      let paymentIntentId: string | null = null;
+
+      if (allowanceCheck.paygRequired) {
+        const paymentResult = await processPayment();
+
+        if (!paymentResult.success) {
+          return {
+            success: false,
+            error: paymentResult.error || 'Payment failed',
+          };
+        }
+
+        paymentIntentId = paymentResult.paymentIntentId || null;
       }
 
       // Create the request (no specific supporter assigned - broadcast model)
@@ -145,15 +140,6 @@ export function useLiveSupportRequest(
       setActiveRequest(transformedRequest);
       setCountdown(Math.floor(REQUEST_TIMEOUT_MS / 1000));
 
-      // Broadcast push notification to eligible supporters in same timezone (max 10)
-      console.log('=== BROADCAST INVOKE DEBUG ===');
-      console.log('About to call broadcast-live-support-request Edge Function');
-      console.log('Request ID:', request.id);
-      console.log('Session Type:', sessionType);
-      console.log('Client ID:', userId);
-
-      Alert.alert('DEBUG: Reached Invoke #4', `About to call Edge Function - requestId: ${request.id}, sessionType: ${sessionType}`);
-
       try {
         const broadcastResponse = await supabase.functions.invoke('broadcast-live-support-request', {
           body: {
@@ -163,23 +149,11 @@ export function useLiveSupportRequest(
           },
         });
 
-        console.log('=== BROADCAST RESPONSE ===');
-        console.log('Full response:', JSON.stringify(broadcastResponse, null, 2));
-        console.log('Error:', broadcastResponse.error);
-        console.log('Data:', JSON.stringify(broadcastResponse.data, null, 2));
-
         if (broadcastResponse.error) {
           console.error('Broadcast notification error:', broadcastResponse.error);
-          // Don't fail the request - notification is best-effort
-        } else {
-          console.log('Broadcast sent to', broadcastResponse.data?.sent, 'supporters');
         }
       } catch (notifyError) {
-        console.error('=== BROADCAST CATCH ERROR ===');
         console.error('Failed to send broadcast notification:', notifyError);
-        console.error('Error type:', typeof notifyError);
-        console.error('Error message:', notifyError instanceof Error ? notifyError.message : String(notifyError));
-        console.error('Error stack:', notifyError instanceof Error ? notifyError.stack : 'N/A');
         // Don't fail the request - notification is best-effort
       }
 
@@ -496,10 +470,11 @@ export function useLiveSupportRequest(
 
     const db = supabase;
     const loadPendingRequests = async () => {
+      // Broadcast model: all requests have requested_supporter_id=null
       const { data, error } = await db
         .from('live_support_requests')
         .select('*')
-        .or(`requested_supporter_id.eq.${userId},requested_supporter_id.is.null`)
+        .is('requested_supporter_id', null)
         .eq('status', 'pending');
 
       if (data && !error) {

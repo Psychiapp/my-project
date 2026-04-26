@@ -473,11 +473,13 @@ export async function updateClientSubscription(
   const expiresAt = new Date();
   expiresAt.setMonth(expiresAt.getMonth() + 1);
 
-  // Default sessions based on tier
+  // Default sessions based on tier.
+  // phone and video share the weekly voiceVideo quota — each gets the full quota so the
+  // client can use either type (deduction is per-type in accept_live_support_request).
   const sessionsRemaining = {
-    basic: { chat: 2, phone: 1, video: 0 },
-    standard: { chat: 3, phone: 2, video: 0 },
-    premium: { chat: 999, phone: 3, video: 0 },
+    basic:    { chat: 2,   phone: 1, video: 1 },
+    standard: { chat: 3,   phone: 2, video: 2 },
+    premium:  { chat: 999, phone: 3, video: 3 },
   }[tier];
 
   const { error } = await supabase
@@ -495,6 +497,45 @@ export async function updateClientSubscription(
 
   if (error) {
     console.error('Error updating subscription:', error);
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Restore one session credit after a full refund.
+ * Increments sessions_remaining[sessionType] by 1 for the active subscription.
+ */
+export async function restoreSessionCredit(
+  userId: string,
+  sessionType: 'chat' | 'phone' | 'video'
+): Promise<boolean> {
+  if (!supabase) return false;
+
+  const { data: sub, error } = await supabase
+    .from('subscriptions')
+    .select('sessions_remaining')
+    .eq('user_id', userId)
+    .eq('status', 'active')
+    .single();
+
+  if (error || !sub) return false;
+
+  const current = (sub.sessions_remaining as Record<string, number>) || {};
+  const updated = {
+    ...current,
+    [sessionType]: (current[sessionType] || 0) + 1,
+  };
+
+  const { error: updateError } = await supabase
+    .from('subscriptions')
+    .update({ sessions_remaining: updated, updated_at: new Date().toISOString() })
+    .eq('user_id', userId)
+    .eq('status', 'active');
+
+  if (updateError) {
+    console.error('Error restoring session credit:', updateError);
     return false;
   }
 
@@ -1987,16 +2028,23 @@ export function isDayAvailable(
 }
 
 /**
- * Get available time slots for a supporter on a specific date
+ * Get available time slots for a supporter on a specific date.
+ * supporterTimezone (e.g. 'America/New_York') is used so day-of-week and
+ * "now" comparisons are in the supporter's local time, not the client's device time.
  */
 export function getAvailableTimeSlots(
   date: Date,
   availability: Record<string, string[]>,
   bookedSlots: { startTime: string; endTime: string }[],
-  sessionDurationMinutes: number
+  sessionDurationMinutes: number,
+  supporterTimezone?: string
 ): { startTime: string; endTime: string; display: string }[] {
+  const tz = supporterTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+  // Determine day-of-week in the supporter's timezone
   const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-  const dayName = dayNames[date.getDay()];
+  const dayIndex = new Date(date.toLocaleString('en-US', { timeZone: tz })).getDay();
+  const dayName = dayNames[dayIndex];
 
   // Try both lowercase and capitalized day names
   const dayAvailability = availability[dayName] || availability[dayName.charAt(0).toUpperCase() + dayName.slice(1)] || [];
@@ -2007,7 +2055,10 @@ export function getAvailableTimeSlots(
 
   const slots: { startTime: string; endTime: string; display: string }[] = [];
   const now = new Date();
-  const isToday = date.toDateString() === now.toDateString();
+  // Compare dates in supporter's timezone to avoid day boundary mismatches
+  const dateInTz = new Date(date.toLocaleString('en-US', { timeZone: tz }));
+  const nowInTz = new Date(now.toLocaleString('en-US', { timeZone: tz }));
+  const isToday = dateInTz.toDateString() === nowInTz.toDateString();
 
   // Parse availability ranges and generate slots
   for (const range of dayAvailability) {
@@ -2027,8 +2078,8 @@ export function getAvailableTimeSlots(
           break;
         }
 
-        // Skip past times for today
-        if (isToday && (hour < now.getHours() || (hour === now.getHours() && minute <= now.getMinutes()))) {
+        // Skip past times for today (compare in supporter's timezone)
+        if (isToday && (hour < nowInTz.getHours() || (hour === nowInTz.getHours() && minute <= nowInTz.getMinutes()))) {
           continue;
         }
 
@@ -4215,7 +4266,7 @@ export async function checkAndCompleteOnboarding(supporterId: string): Promise<{
         .single(),
       supabase
         .from('supporter_details')
-        .select('availability')
+        .select('availability, suspended_at')
         .eq('supporter_id', supporterId)
         .single(),
     ]);
@@ -4227,6 +4278,11 @@ export async function checkAndCompleteOnboarding(supporterId: string): Promise<{
     if (profileError || !profile) {
       console.error('Error fetching profile for onboarding check:', profileError);
       return { isComplete: false, missingSteps: ['Could not fetch profile'] };
+    }
+
+    // Suspended supporters cannot complete onboarding regardless of other steps
+    if (supporterDetails?.suspended_at) {
+      return { isComplete: false, missingSteps: ['Account suspended'] };
     }
 
     // Check if availability is set (at least one day with time slots)

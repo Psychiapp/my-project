@@ -16,6 +16,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { getStripe } from '../_shared/stripe.ts';
+import { requireServiceRole, unauthorizedResponse } from '../_shared/auth.ts';
 
 const stripe = getStripe();
 
@@ -42,15 +43,17 @@ const DAY_NAME_TO_NUMBER: Record<string, number> = {
 
 function shouldProcessToday(
   schedule: string | null,
-  scheduleDay: string | null
+  scheduleDay: string | null,
+  supporterTimezone?: string | null
 ): boolean {
   if (!schedule || schedule === 'manual') {
     return false;
   }
 
-  const now = new Date();
-  const dayOfWeek = now.getUTCDay(); // 0-6 (Sunday-Saturday)
-  const dayOfMonth = now.getUTCDate(); // 1-31
+  const tz = supporterTimezone || 'UTC';
+  const nowInTz = new Date(new Date().toLocaleString('en-US', { timeZone: tz }));
+  const dayOfWeek = nowInTz.getDay(); // 0-6 (Sunday-Saturday) in supporter's timezone
+  const dayOfMonth = nowInTz.getDate(); // 1-31 in supporter's timezone
 
   switch (schedule) {
     case 'daily':
@@ -84,6 +87,9 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  // Only the cron scheduler (service role) may invoke this
+  if (!requireServiceRole(req)) return unauthorizedResponse(corsHeaders);
+
   try {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     const now = new Date();
@@ -105,6 +111,7 @@ serve(async (req) => {
         payout_schedule,
         payout_schedule_day,
         stripe_connect_id,
+        timezone,
         supporter_details!inner (
           pending_payout
         )
@@ -148,10 +155,10 @@ serve(async (req) => {
     for (const supporter of eligibleSupporters) {
       const supporter_id = supporter.id;
       const pending_payout = supporter.supporter_details?.pending_payout || 0;
-      const { payout_schedule, payout_schedule_day, stripe_connect_id } = supporter;
+      const { payout_schedule, payout_schedule_day, stripe_connect_id, timezone } = supporter;
 
-      // Check if we should process today based on their schedule
-      if (!shouldProcessToday(payout_schedule, payout_schedule_day)) {
+      // Check if we should process today based on their schedule and local timezone
+      if (!shouldProcessToday(payout_schedule, payout_schedule_day, timezone)) {
         results.push({
           supporterId: supporter_id,
           status: 'skipped',

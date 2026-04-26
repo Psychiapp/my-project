@@ -1,6 +1,6 @@
 import { Alert } from 'react-native';
 import { StripeConfig, Config, SupabaseConfig } from '@/constants/config';
-import { markPaymentRefunded } from './database';
+import { markPaymentRefunded, restoreSessionCredit } from './database';
 
 export interface RefundRequest {
   sessionId: string;
@@ -18,12 +18,14 @@ export interface RefundResult {
 
 export interface SessionRefundInfo {
   sessionId: string;
+  clientId?: string;
   clientName: string;
   clientEmail: string;
   sessionType: 'chat' | 'phone' | 'video';
   amount: number;
   scheduledAt: string;
   stripePaymentIntentId?: string;
+  chargedAsPayg?: boolean;
 }
 
 // Refund policies
@@ -187,6 +189,13 @@ export async function cancelSessionWithRefund(
       refundResult.refundId,
       refundCalc.amount
     );
+  }
+
+  // Restore the session credit for subscription users when a full refund is issued
+  // (partial refunds on late cancellations don't restore credits — session was partly rendered)
+  const isFullRefund = refundCalc.amount >= sessionInfo.amount;
+  if (isFullRefund && sessionInfo.clientId && !sessionInfo.chargedAsPayg) {
+    await restoreSessionCredit(sessionInfo.clientId, sessionInfo.sessionType);
   }
 
   // Send notification to client about refund

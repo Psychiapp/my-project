@@ -623,6 +623,7 @@ export async function sendNewBookingNotification(params: {
     title: content.title,
     body: content.body,
     data: content.data as Record<string, unknown>,
+    channelId: NOTIFICATION_CHANNELS.BOOKINGS,
   });
 }
 
@@ -966,6 +967,7 @@ async function sendPushNotificationViaEdgeFunction(params: {
   title: string;
   body: string;
   data?: Record<string, unknown>;
+  channelId?: string;
 }): Promise<{ sent: boolean; error?: string }> {
   console.log('[sendPushNotificationViaEdgeFunction] START:', {
     userId: params.userId,
@@ -989,6 +991,7 @@ async function sendPushNotificationViaEdgeFunction(params: {
         body: params.body,
         data: params.data || {},
         priority: 'high',
+        channelId: params.channelId || 'default',
       },
     });
 

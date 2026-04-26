@@ -14,6 +14,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import Stripe from 'https://esm.sh/stripe@14.14.0?target=deno';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { getStripe } from '../_shared/stripe.ts';
+import { requireServiceRole, unauthorizedResponse } from '../_shared/auth.ts';
 
 const stripe = getStripe();
 
@@ -43,6 +44,9 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  // Only internal service-role callers (cleanup-stale-sessions, process-refund) may invoke this
+  if (!requireServiceRole(req)) return unauthorizedResponse(corsHeaders);
+
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
   try {
@@ -59,16 +63,40 @@ serve(async (req) => {
     // Get the PaymentIntent to find supporter info
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
 
-    const supporterStripeAccountId = paymentIntent.metadata?.supporter_stripe_account_id;
-    const supporterId = paymentIntent.metadata?.supporter_id;
+    let supporterStripeAccountId = paymentIntent.metadata?.supporter_stripe_account_id;
+    let supporterId = paymentIntent.metadata?.supporter_id;
+
+    // For live-support PAYG, supporter info isn't in the PI metadata (no supporter was
+    // assigned at charge time). Fall back to the session's supporter_id and look up their
+    // Stripe Connect ID from the database.
+    if (!supporterStripeAccountId) {
+      if (!supporterId) {
+        // Try to get supporter_id from the session
+        const { data: session } = await supabase
+          .from('sessions')
+          .select('supporter_id')
+          .eq('id', sessionId)
+          .single();
+        supporterId = session?.supporter_id;
+      }
+
+      if (supporterId) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('stripe_connect_id')
+          .eq('id', supporterId)
+          .single();
+        supporterStripeAccountId = profile?.stripe_connect_id;
+      }
+    }
 
     if (!supporterStripeAccountId) {
-      console.log(`No supporter_stripe_account_id in PaymentIntent ${paymentIntentId} - skipping transfer`);
+      console.log(`No Stripe Connect account for supporter of session ${sessionId} - skipping transfer`);
       return new Response(
         JSON.stringify({
           success: true,
           skipped: true,
-          reason: 'No connected account for supporter',
+          reason: 'Supporter has no connected Stripe account',
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -195,8 +223,10 @@ serve(async (req) => {
         await supabase
           .from('supporter_details')
           .update({
+            // total_earnings tracks lifetime earnings (credited once here when transfer happens)
             total_earnings: (supporterDetails.total_earnings || 0) + amountToTransfer,
-            // Note: We don't add to pending_payout since transfer is already complete
+            // pending_payout tracks balance sitting in connected account awaiting bank payout
+            pending_payout: (supporterDetails.pending_payout || 0) + amountToTransfer,
           })
           .eq('supporter_id', supporterId);
       }

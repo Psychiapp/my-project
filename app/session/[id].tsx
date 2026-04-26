@@ -56,11 +56,12 @@ export default function SessionScreen() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isRetryable, setIsRetryable] = useState(false); // Whether the error can be retried
   const [retryCount, setRetryCount] = useState(0); // Track retries for dependency
-  const [showPostCallContact, setShowPostCallContact] = useState(false); // 10-min contact window
+  const [showPostCallContact, setShowPostCallContact] = useState(false); // 5-min contact window
   const [connectionIssueReason, setConnectionIssueReason] = useState<'timeout' | 'disconnect' | 'network' | 'session_ended' | null>(null);
-  const [sessionEndedAt, setSessionEndedAt] = useState<Date | null>(null); // Track when session ended for 10-min window
-  const [followUpTimeRemaining, setFollowUpTimeRemaining] = useState<number>(10 * 60 * 1000); // 10 minutes in ms
+  const [sessionEndedAt, setSessionEndedAt] = useState<Date | null>(null); // Track when session ended for 5-min window
+  const [followUpTimeRemaining, setFollowUpTimeRemaining] = useState<number>(5 * 60 * 1000); // 5 minutes in ms
   const enteredNotificationSent = useRef(false); // Track if we've notified the other participant
+  const sessionExplicitlyEnded = useRef(false); // Set to true only when user taps End Session
 
   // Get current user name from auth context
   const currentUserName = profile?.firstName
@@ -240,28 +241,36 @@ export default function SessionScreen() {
       setPermissionsGranted(true);
       setIsCreatingRoom(true);
 
-      // Check if another participant already created a room for this session
-      if (sessionData.roomUrl) {
-        // Join existing room instead of creating a new one
+      // Re-read room_url from DB immediately before creating — another participant
+      // may have created the room in the window between our initial load and now.
+      const { data: freshSession } = await supabase
+        .from('sessions')
+        .select('room_url')
+        .eq('id', sessionData.id)
+        .single();
+
+      const existingRoomUrl = freshSession?.room_url || sessionData.roomUrl;
+
+      if (existingRoomUrl) {
+        // Another participant already created the room — join it
         setDailySession({
           type: sessionData.type === 'video' ? 'video' : 'voice',
-          roomUrl: sessionData.roomUrl,
+          roomUrl: existingRoomUrl,
           participantName: currentUserName,
         });
 
-        // Log joining existing room
         logSessionEvent(
           sessionData.id,
           sessionData.type,
           currentUserId,
           'session_join',
-          { roomUrl: sessionData.roomUrl, participantId: sessionData.participant.id }
+          { roomUrl: existingRoomUrl, participantId: sessionData.participant.id }
         );
         setIsCreatingRoom(false);
         return;
       }
 
-      // No existing room - create a new one
+      // No existing room — create one
       const dailyType = sessionData.type === 'video' ? 'video' : 'voice';
 
       try {
@@ -350,6 +359,7 @@ export default function SessionScreen() {
 
   const confirmEndSession = async () => {
     setShowEndConfirm(false);
+    sessionExplicitlyEnded.current = true; // Mark as intentional before any state changes
     const endTime = new Date();
 
     // Mark session as completed with ended timestamp
@@ -435,10 +445,11 @@ export default function SessionScreen() {
       );
     }
 
-    // Cleanup function: end session when user navigates away without explicitly ending
+    // Cleanup function: end session when user navigates away without explicitly ending.
+    // Guard with the ref (not state) so we read the current value at unmount time,
+    // not the value captured when the effect ran.
     return () => {
-      // Only cleanup chat sessions that haven't been explicitly ended
-      if (sessionData?.type === 'chat' && sessionData?.id && !sessionEnded) {
+      if (sessionData?.type === 'chat' && sessionData?.id && !sessionExplicitlyEnded.current && !sessionEnded) {
         console.log('[Session] Cleanup: User navigated away, ending session automatically');
 
         // End the session
@@ -652,11 +663,11 @@ export default function SessionScreen() {
     // Check if 10-minute window has expired
     if (sessionEndedAt) {
       const elapsed = Date.now() - sessionEndedAt.getTime();
-      const tenMinutesMs = 10 * 60 * 1000;
+      const tenMinutesMs = 5 * 60 * 1000;
       if (elapsed >= tenMinutesMs) {
         Alert.alert(
           'Contact Window Expired',
-          'The 10-minute follow-up window has ended. You can contact your supporter through the messages feature.',
+          'The 5-minute follow-up window has ended. You can contact your supporter through the messages feature.',
           [{ text: 'OK' }]
         );
         return;
@@ -676,7 +687,7 @@ export default function SessionScreen() {
   useEffect(() => {
     if (!sessionEndedAt || !sessionEnded) return;
 
-    const tenMinutesMs = 10 * 60 * 1000;
+    const tenMinutesMs = 5 * 60 * 1000;
     const interval = setInterval(() => {
       const elapsed = Date.now() - sessionEndedAt.getTime();
       const remaining = Math.max(0, tenMinutesMs - elapsed);

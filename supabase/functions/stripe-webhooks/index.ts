@@ -179,27 +179,9 @@ serve(async (req) => {
             .eq('id', paymentIntent.metadata.session_id);
         }
 
-        // Calculate and add to supporter's pending payout (75% cut)
-        // This runs even without session_id since earnings are tied to supporter, not session
-        if (paymentIntent.metadata?.supporter_id) {
-          const supporterCut = Math.floor(paymentIntent.amount * 0.75);
-
-          const { data: supporterDetails } = await supabase
-            .from('supporter_details')
-            .select('pending_payout, total_earnings')
-            .eq('supporter_id', paymentIntent.metadata.supporter_id)
-            .single();
-
-          if (supporterDetails) {
-            await supabase
-              .from('supporter_details')
-              .update({
-                pending_payout: (supporterDetails.pending_payout || 0) + supporterCut,
-                total_earnings: (supporterDetails.total_earnings || 0) + supporterCut,
-              })
-              .eq('supporter_id', paymentIntent.metadata.supporter_id);
-          }
-        }
+        // NOTE: Do NOT credit pending_payout or total_earnings here.
+        // earnings are credited in transfer-to-supporter AFTER the session completes,
+        // so we never pre-credit funds for sessions that haven't happened yet.
 
         // SUBSCRIPTION FALLBACK: If this is a subscription payment, ensure subscription is updated
         // This is a safety net in case the client-side update fails (app crash, network issue, etc.)
@@ -211,9 +193,9 @@ serve(async (req) => {
           // Note: phone/video reset weekly, chat resets monthly (with subscription renewal)
           // Basic: 1 call/week, 2 chats/month | Standard: 2 calls/week, 3 chats/month | Premium: 3 calls/week, unlimited
           const sessionsRemaining = {
-            basic: { chat: 2, phone: 1, video: 0 },
-            standard: { chat: 3, phone: 2, video: 0 },
-            premium: { chat: 999, phone: 3, video: 0 },
+            basic:    { chat: 2,   phone: 1, video: 1 },
+            standard: { chat: 3,   phone: 2, video: 2 },
+            premium:  { chat: 999, phone: 3, video: 3 },
           }[tier];
 
           if (sessionsRemaining) {

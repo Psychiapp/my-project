@@ -717,14 +717,10 @@ export default function VideoCall({
           interruptionModeAndroid: 1,
         });
 
+        // Note: React Native Daily SDK uses simple booleans for videoSource/audioSource.
+        // Constraint objects (width/height/frameRate) are web-only and crash on RN.
         const call = Daily.createCallObject({
-          videoSource: isVideoEnabled ? {
-            // Request high quality video capture (720p)
-            width: { ideal: 1280, min: 640 },
-            height: { ideal: 720, min: 480 },
-            frameRate: { ideal: 30, min: 24 },
-            facingMode: 'user',
-          } : false,
+          videoSource: isVideoEnabled,
           audioSource: true,
           subscribeToTracksAutomatically: true,
           dailyConfig: {
@@ -732,12 +728,6 @@ export default function VideoCall({
             echoCancellationEnabled: true,
             autoGainControlEnabled: true,
             keepDeviceAwake: true,
-            // Enable simulcast for adaptive quality based on bandwidth
-            camSimulcastEncodings: [
-              { maxBitrate: 150000, maxFramerate: 15, scaleResolutionDownBy: 4 }, // Low
-              { maxBitrate: 500000, maxFramerate: 24, scaleResolutionDownBy: 2 }, // Medium
-              { maxBitrate: 2500000, maxFramerate: 30, scaleResolutionDownBy: 1 }, // High (720p)
-            ],
           },
         });
 

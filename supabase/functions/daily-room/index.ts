@@ -1,4 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { requireUserAuth, unauthorizedResponse } from '../_shared/auth.ts';
 
 const DAILY_API_URL = 'https://api.daily.co/v1';
 
@@ -12,6 +13,9 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
+
+  const user = await requireUserAuth(req);
+  if (!user) return unauthorizedResponse(corsHeaders);
 
   try {
     const DAILY_API_KEY = Deno.env.get('DAILY_API_KEY');

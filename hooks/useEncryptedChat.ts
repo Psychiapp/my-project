@@ -7,6 +7,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { AppState, AppStateStatus } from 'react-native';
 import { supabase } from '@/lib/supabase';
 import {
   encryptMessage,
@@ -105,8 +106,20 @@ export const useEncryptedChat = (
 
     initKeys();
 
+    // Re-fetch messages when app foregrounds — Realtime WebSocket is suspended
+    // in background so INSERTs are missed while the app isn't active.
+    const appStateRef = { current: AppState.currentState };
+    const appStateSub = AppState.addEventListener('change', async (nextState: AppStateStatus) => {
+      if (appStateRef.current.match(/inactive|background/) && nextState === 'active') {
+        if (myKeyPairRef.current && state.recipientPublicKey) {
+          await loadMessages(state.recipientPublicKey);
+        }
+      }
+      appStateRef.current = nextState;
+    });
+
     return () => {
-      // Cleanup subscription
+      appStateSub.remove();
       if (subscriptionRef.current) {
         subscriptionRef.current.unsubscribe();
       }

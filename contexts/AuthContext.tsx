@@ -71,7 +71,7 @@ function transformDbProfile(dbProfile: DbUserProfile & { first_name?: string; la
     role: dbProfile.role,
     avatarUrl: dbProfile.avatar_url || undefined,
     createdAt: dbProfile.created_at,
-    onboardingCompleted: Boolean(firstName && lastName),
+    onboardingCompleted: Boolean(dbProfile.onboarding_complete),
   };
 }
 
@@ -276,6 +276,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (data.user) {
+        // Block unverified accounts from signing in
+        if (!data.user.email_confirmed_at) {
+          await supabase.auth.signOut();
+          return {
+            error: new Error(
+              'Please verify your email address before signing in. Check your inbox for a confirmation link.'
+            ),
+          };
+        }
+
         const authUser = { id: data.user.id, email: data.user.email || '' };
         setUser(authUser);
         setIsDemoMode(false);
@@ -492,13 +502,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await supabase.auth.signOut();
       }
 
+      // Delete E2E encryption keys so the next user on this device generates fresh ones
+      try {
+        const { deleteStoredKeys } = await import('@/lib/encryption');
+        await deleteStoredKeys();
+      } catch (keyErr) {
+        console.warn('Failed to delete encryption keys on sign out:', keyErr);
+      }
+
       setUser(null);
       setProfile(null);
       setIsDemoMode(false);
       router.replace('/(auth)/welcome' as any);
     } catch (error) {
       console.error('Sign out error:', error);
-      // Still clear local state even if Supabase signout fails
       setUser(null);
       setProfile(null);
       setIsDemoMode(false);
