@@ -47,47 +47,25 @@ interface CreatePaymentParams {
 export async function createPaymentIntent(params: CreatePaymentParams): Promise<PaymentIntentResponse> {
   const { amount, currency = 'usd', customerId, metadata, supporterStripeAccountId } = params;
 
-  if (!SupabaseConfig.url || !SupabaseConfig.anonKey) {
-    throw new Error('Supabase configuration missing');
-  }
-
   try {
-    const response = await fetch(`${SupabaseConfig.url}/functions/v1/create-payment-intent`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${SupabaseConfig.anonKey}`,
-      },
-      body: JSON.stringify({ amount, currency, customerId, metadata, supporterStripeAccountId }),
+    // Use supabase.functions.invoke so the user's session JWT is automatically attached.
+    // Raw fetch with just the anon key was rejected after we added auth to the function.
+    const { supabase } = await import('@/lib/supabase');
+    if (!supabase) throw new Error('Supabase not configured');
+
+    const { data, error } = await supabase.functions.invoke('create-payment-intent', {
+      body: { amount, currency, customerId, metadata, supporterStripeAccountId },
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      let errorMessage = 'Failed to create payment intent';
-      try {
-        const errorJson = JSON.parse(errorText);
-        errorMessage = errorJson.error || errorMessage;
-      } catch {
-        // Response wasn't JSON
-        if (response.status === 404) {
-          errorMessage = 'Payment service not available. Please try again later.';
-        } else if (response.status === 500) {
-          errorMessage = 'Payment service error. Please try again.';
-        }
-      }
-      throw new Error(errorMessage);
-    }
+    if (error) throw new Error(error.message || 'Failed to create payment intent');
+    if (!data?.clientSecret) throw new Error('No client secret returned');
 
-    return response.json();
+    return data as PaymentIntentResponse;
   } catch (error) {
-    // Handle network errors (SSL, DNS, timeout)
     if (error instanceof TypeError && error.message.includes('Network request failed')) {
       throw new Error('Unable to connect to payment service. Please check your internet connection.');
     }
-    // Re-throw if it's already an Error we created
-    if (error instanceof Error) {
-      throw error;
-    }
+    if (error instanceof Error) throw error;
     throw new Error('Payment service unavailable. Please try again later.');
   }
 }
@@ -464,48 +442,17 @@ export async function createConnectAccount(
   email: string,
   fullName: string
 ): Promise<ConnectAccountResponse> {
-  if (!SupabaseConfig.url || !SupabaseConfig.anonKey) {
-    throw new Error('App configuration missing. Please restart the app.');
-  }
+  const { supabase } = await import('@/lib/supabase');
+  if (!supabase) throw new Error('App configuration missing. Please restart the app.');
 
   try {
-    const response = await fetch(`${SupabaseConfig.url}/functions/v1/create-connect-account`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${SupabaseConfig.anonKey}`,
-      },
-      body: JSON.stringify({ supporterId, email, fullName }),
+    const { data, error } = await supabase.functions.invoke('create-connect-account', {
+      body: { supporterId, email, fullName },
     });
 
-    if (!response.ok) {
-      let errorMessage = 'Failed to create payout account';
-      let errorCode = '';
-      try {
-        const errorData = await response.json();
-        errorMessage = errorData.error || errorMessage;
-        errorCode = errorData.code || '';
-      } catch {
-        // Response wasn't JSON
-        if (response.status === 404) {
-          errorMessage = 'Payout service not available. Please try again later.';
-        } else if (response.status === 503) {
-          errorMessage = 'Payout setup is temporarily unavailable. Please try again later.';
-        } else if (response.status === 500) {
-          errorMessage = 'Payout service error. Please try again later.';
-        }
-      }
-      // Include diagnostic info in the error message
-      if (errorCode === 'PLATFORM_NOT_READY' || errorCode === 'PLATFORM_PROFILE_ERROR') {
-        // Return the full error message which includes diagnostic info
-        throw new Error(errorMessage);
-      }
-      throw new Error(errorMessage);
-    }
-
-    return response.json();
+    if (error) throw new Error(error.message || 'Failed to create payout account');
+    return data as ConnectAccountResponse;
   } catch (error) {
-    // Handle network errors
     if (error instanceof TypeError && error.message.includes('Network request failed')) {
       throw new Error('Unable to connect. Please check your internet connection.');
     }
@@ -521,36 +468,16 @@ export async function getConnectOnboardingLink(
   refreshUrl?: string,
   returnUrl?: string
 ): Promise<AccountLinkResponse> {
-  if (!SupabaseConfig.url || !SupabaseConfig.anonKey) {
-    throw new Error('App configuration missing. Please restart the app.');
-  }
+  const { supabase } = await import('@/lib/supabase');
+  if (!supabase) throw new Error('App configuration missing. Please restart the app.');
 
   try {
-    const response = await fetch(`${SupabaseConfig.url}/functions/v1/create-account-link`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${SupabaseConfig.anonKey}`,
-      },
-      body: JSON.stringify({ accountId, refreshUrl, returnUrl }),
+    const { data, error } = await supabase.functions.invoke('create-account-link', {
+      body: { accountId, refreshUrl, returnUrl },
     });
 
-    if (!response.ok) {
-      let errorMessage = 'Failed to start account setup';
-      try {
-        const errorData = await response.json();
-        errorMessage = errorData.error || errorMessage;
-      } catch {
-        if (response.status === 404) {
-          errorMessage = 'Payout service not available. Please try again later.';
-        } else if (response.status === 500) {
-          errorMessage = 'Payout service error. Please try again later.';
-        }
-      }
-      throw new Error(errorMessage);
-    }
-
-    return response.json();
+    if (error) throw new Error(error.message || 'Failed to start account setup');
+    return data as AccountLinkResponse;
   } catch (error) {
     if (error instanceof TypeError && error.message.includes('Network request failed')) {
       throw new Error('Unable to connect. Please check your internet connection.');
@@ -590,30 +517,19 @@ export async function requestPayout(
   amount: number,
   stripeConnectId: string
 ): Promise<PayoutResponse> {
-  if (!SupabaseConfig.url || !SupabaseConfig.anonKey) {
-    throw new Error('Supabase configuration missing');
-  }
-
-  // Minimum payout check
   if (amount < 2500) {
     throw new Error('Minimum payout amount is $25.00');
   }
 
-  const response = await fetch(`${SupabaseConfig.url}/functions/v1/create-payout`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${SupabaseConfig.anonKey}`,
-    },
-    body: JSON.stringify({ supporterId, amount, stripeConnectId }),
+  const { supabase } = await import('@/lib/supabase');
+  if (!supabase) throw new Error('Supabase configuration missing');
+
+  const { data, error } = await supabase.functions.invoke('create-payout', {
+    body: { supporterId, amount, stripeConnectId },
   });
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to process payout');
-  }
-
-  return response.json();
+  if (error) throw new Error(error.message || 'Failed to process payout');
+  return data as PayoutResponse;
 }
 
 /**
