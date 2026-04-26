@@ -37,7 +37,12 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') as string
     );
 
-    const { requestId, sessionType, clientId, clientName }: BroadcastRequest = await req.json();
+    const requestBody = await req.json();
+    const { requestId, sessionType, clientId, clientName }: BroadcastRequest = requestBody;
+
+    // DEBUG: Log full request body
+    console.log('=== BROADCAST REQUEST RECEIVED ===');
+    console.log('Request body:', JSON.stringify(requestBody, null, 2));
 
     // Validate required fields
     if (!requestId || !sessionType || !clientId) {
@@ -68,6 +73,11 @@ serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // DEBUG: Log RPC result
+    console.log('=== ELIGIBLE SUPPORTERS RPC RESULT ===');
+    console.log('Supporters count:', supporters?.length || 0);
+    console.log('Supporters data:', JSON.stringify(supporters, null, 2));
 
     if (!supporters || supporters.length === 0) {
       console.log(`No eligible supporters found in timezone: ${clientTimezone}`);
@@ -108,6 +118,11 @@ serve(async (req) => {
         channelId: 'live_support',
       }));
 
+    // DEBUG: Log push messages array
+    console.log('=== PUSH MESSAGES TO SEND ===');
+    console.log('Push messages count:', pushMessages.length);
+    console.log('Push messages:', JSON.stringify(pushMessages, null, 2));
+
     if (pushMessages.length === 0) {
       console.log('No supporters with push tokens');
       return new Response(
@@ -128,6 +143,11 @@ serve(async (req) => {
     });
 
     const pushResult = await pushResponse.json();
+
+    // DEBUG: Log full Expo Push API response
+    console.log('=== EXPO PUSH API RESPONSE ===');
+    console.log('HTTP Status:', pushResponse.status);
+    console.log('Response body:', JSON.stringify(pushResult, null, 2));
 
     if (!pushResponse.ok) {
       console.error('Expo Push API error:', pushResult);

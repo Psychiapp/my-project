@@ -243,6 +243,66 @@ export interface SessionPaymentResult {
 }
 
 /**
+ * Process PAYG payment for a live support request.
+ * Called before a request is created, so no supporter is assigned yet —
+ * no Connect account is used; the platform holds the funds and pays out
+ * the supporter after they accept.
+ */
+export async function processLiveSupportPayment(
+  sessionType: 'chat' | 'phone' | 'video',
+  clientId: string
+): Promise<SessionPaymentResult> {
+  const pricing = Config.pricing[sessionType];
+
+  if (!StripeConfig.publishableKey || !stripeAvailable || !initPaymentSheet) {
+    Alert.alert(
+      'Payment Not Available',
+      'Payment processing is not available in this environment.',
+      [{ text: 'OK' }]
+    );
+    return { success: false };
+  }
+
+  try {
+    const paymentIntent = await createPaymentIntent({
+      amount: pricing.amount,
+      metadata: {
+        type: 'live_support_payg',
+        sessionType,
+        clientId,
+      },
+    });
+
+    const { error: initError } = await initPaymentSheet({
+      merchantDisplayName: Config.appName,
+      paymentIntentClientSecret: paymentIntent.clientSecret,
+      allowsDelayedPaymentMethods: false,
+    });
+
+    if (initError) {
+      console.error('Error initializing payment sheet:', initError);
+      Alert.alert('Error', 'Unable to load payment form. Please try again.');
+      return { success: false };
+    }
+
+    const { error: presentError } = await presentPaymentSheet();
+
+    if (presentError) {
+      if (presentError.code !== 'Canceled') {
+        Alert.alert('Payment Failed', presentError.message || 'Please try again.');
+      }
+      return { success: false };
+    }
+
+    return { success: true, paymentIntentId: paymentIntent.paymentIntentId };
+  } catch (error) {
+    console.error('Live support payment error:', error);
+    Alert.alert('Error', 'Payment failed. Please try again.');
+    return { success: false };
+  }
+}
+
+/**
  * Initialize and present payment sheet for session booking
  * If supporterStripeAccountId is provided, payment is split 75/25 (supporter/platform)
  * Returns the payment intent ID on success for refund tracking

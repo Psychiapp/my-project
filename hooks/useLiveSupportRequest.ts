@@ -12,6 +12,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { Alert, AppState, AppStateStatus } from 'react-native';
 import { supabase } from '@/lib/supabase';
 import { sendLocalNotification } from '@/lib/notifications';
 import {
@@ -70,6 +71,7 @@ export function useLiveSupportRequest(
     processPayment: () => Promise<{ success: boolean; paymentIntentId?: string; error?: string }>
   ): Promise<{ success: boolean; error?: string }> => {
     if (!userId || !supabase) {
+      Alert.alert('DEBUG: Early Return #1', `Not authenticated - userId: ${userId}, supabase: ${!!supabase}`);
       return { success: false, error: 'Not authenticated' };
     }
 
@@ -83,6 +85,7 @@ export function useLiveSupportRequest(
         const paymentResult = await processPayment();
 
         if (!paymentResult.success) {
+          Alert.alert('DEBUG: Early Return #2', `PAYG payment failed: ${paymentResult.error}`);
           return {
             success: false,
             error: paymentResult.error || 'Payment failed',
@@ -109,6 +112,7 @@ export function useLiveSupportRequest(
       }
 
       if (!supporters || supporters.length === 0) {
+        Alert.alert('DEBUG: Early Return #3', `No supporters available - timezone: ${clientTimezone}, error: ${supportersError?.message || 'none'}`);
         return {
           success: false,
           error: 'No supporters are currently available. Please try again later.',
@@ -142,6 +146,14 @@ export function useLiveSupportRequest(
       setCountdown(Math.floor(REQUEST_TIMEOUT_MS / 1000));
 
       // Broadcast push notification to eligible supporters in same timezone (max 10)
+      console.log('=== BROADCAST INVOKE DEBUG ===');
+      console.log('About to call broadcast-live-support-request Edge Function');
+      console.log('Request ID:', request.id);
+      console.log('Session Type:', sessionType);
+      console.log('Client ID:', userId);
+
+      Alert.alert('DEBUG: Reached Invoke #4', `About to call Edge Function - requestId: ${request.id}, sessionType: ${sessionType}`);
+
       try {
         const broadcastResponse = await supabase.functions.invoke('broadcast-live-support-request', {
           body: {
@@ -151,6 +163,11 @@ export function useLiveSupportRequest(
           },
         });
 
+        console.log('=== BROADCAST RESPONSE ===');
+        console.log('Full response:', JSON.stringify(broadcastResponse, null, 2));
+        console.log('Error:', broadcastResponse.error);
+        console.log('Data:', JSON.stringify(broadcastResponse.data, null, 2));
+
         if (broadcastResponse.error) {
           console.error('Broadcast notification error:', broadcastResponse.error);
           // Don't fail the request - notification is best-effort
@@ -158,7 +175,11 @@ export function useLiveSupportRequest(
           console.log('Broadcast sent to', broadcastResponse.data?.sent, 'supporters');
         }
       } catch (notifyError) {
+        console.error('=== BROADCAST CATCH ERROR ===');
         console.error('Failed to send broadcast notification:', notifyError);
+        console.error('Error type:', typeof notifyError);
+        console.error('Error message:', notifyError instanceof Error ? notifyError.message : String(notifyError));
+        console.error('Error stack:', notifyError instanceof Error ? notifyError.stack : 'N/A');
         // Don't fail the request - notification is best-effort
       }
 
@@ -363,7 +384,11 @@ export function useLiveSupportRequest(
               } else if (request.status === 'accepted') {
                 setActiveRequest(request);
                 setCountdown(null);
-                options.onRequestAccepted?.(request);
+                // The RPC writes status='accepted' then session_id in two separate
+                // updates. Only notify when session_id is present (second update).
+                if (request.sessionId) {
+                  options.onRequestAccepted?.(request);
+                }
               } else if (request.status === 'no_supporters') {
                 setActiveRequest(null);
                 setCountdown(null);
@@ -485,6 +510,19 @@ export function useLiveSupportRequest(
     };
 
     loadPendingRequests();
+
+    // Re-fetch when app foregrounds — the Realtime WebSocket is suspended in the
+    // background so INSERT events are missed while the app isn't active. Without
+    // this, tapping a push notification and landing on the dashboard shows nothing.
+    const appStateRef = { current: AppState.currentState };
+    const subscription = AppState.addEventListener('change', (nextState: AppStateStatus) => {
+      if (appStateRef.current.match(/inactive|background/) && nextState === 'active') {
+        loadPendingRequests();
+      }
+      appStateRef.current = nextState;
+    });
+
+    return () => subscription.remove();
   }, [userId, userType]);
 
   // Load active request for clients

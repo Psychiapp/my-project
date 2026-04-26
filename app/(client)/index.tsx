@@ -43,6 +43,7 @@ import { usePresence } from '@/hooks/usePresence';
 import { useSessionUsage } from '@/hooks/useSessionUsage';
 import { useLiveSupportRequest } from '@/hooks/useLiveSupportRequest';
 import { getClientCurrentAssignment, requestSupporterReassignment, getSupporterDetail, getClientProfile } from '@/lib/database';
+import { processLiveSupportPayment } from '@/lib/stripe';
 import type { SessionType } from '@/types/database';
 
 const TUTORIAL_COMPLETED_KEY = '@psychi_client_tutorial_completed';
@@ -140,11 +141,8 @@ export default function ClientHomeScreen() {
       sessionType,
       allowanceCheck,
       async () => {
-        // TODO: Integrate with Stripe payment
-        // For now, simulate payment success if PAYG is required
         if (allowanceCheck.paygRequired) {
-          // In production, this would open Stripe payment sheet
-          return { success: true, paymentIntentId: 'mock_payment_intent' };
+          return processLiveSupportPayment(sessionType, user?.id || '');
         }
         return { success: true };
       }

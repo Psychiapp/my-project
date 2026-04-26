@@ -88,12 +88,24 @@ export function usePresence(
     const previousState = presence.availableForLiveSupport;
 
     // Optimistic update - set state immediately for responsive UI
-    setPresence(prev => ({ ...prev, availableForLiveSupport: available }));
+    setPresence(prev => ({
+      ...prev,
+      availableForLiveSupport: available,
+      ...(available ? { inSession: false } : {}),
+    }));
 
     try {
+      const update: Record<string, unknown> = { available_for_live_support: available };
+      // Turning availability ON implies the supporter is not in an active session.
+      // Clear in_session here as a safety net for the case where the flag got stuck
+      // (e.g. the app crashed before the session-end trigger could fire).
+      if (available) {
+        update.in_session = false;
+      }
+
       const { error } = await supabase
         .from('profiles')
-        .update({ available_for_live_support: available })
+        .update(update)
         .eq('id', userId);
 
       if (error) {
@@ -132,7 +144,11 @@ export function usePresence(
 
   // Handle app state changes
   useEffect(() => {
-    const handleAppStateChange = (nextAppState: AppStateStatus) => {
+    if (!userId || !supabase) return;
+    const db = supabase;
+    const currentUserId = userId;
+
+    const handleAppStateChange = async (nextAppState: AppStateStatus) => {
       if (isUnmountedRef.current) return;
 
       // App came to foreground
@@ -140,6 +156,24 @@ export function usePresence(
         updatePresence(true);
         if (enableHeartbeat) {
           sendHeartbeat();
+        }
+        // Re-read presence from DB so external changes (e.g. admin reset, trigger)
+        // are reflected without requiring a full app restart.
+        try {
+          const { data, error } = await db
+            .from('profiles')
+            .select('is_online, last_seen, in_session, available_for_live_support')
+            .eq('id', currentUserId)
+            .single();
+          if (!isUnmountedRef.current && data && !error) {
+            setPresence(prev => ({
+              ...prev,
+              inSession: data.in_session || false,
+              availableForLiveSupport: data.available_for_live_support || false,
+            }));
+          }
+        } catch {
+          // Non-critical — stale state is better than a crash
         }
       }
       // App went to background
@@ -152,7 +186,7 @@ export function usePresence(
 
     const subscription = AppState.addEventListener('change', handleAppStateChange);
     return () => subscription.remove();
-  }, [updatePresence, sendHeartbeat, enableHeartbeat]);
+  }, [userId, updatePresence, sendHeartbeat, enableHeartbeat]);
 
   // Initial presence load and setup
   useEffect(() => {
