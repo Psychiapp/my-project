@@ -256,7 +256,7 @@ export default function SupporterHomeScreen() {
                 <Text style={styles.launchBadgeText}>PRE-LAUNCH</Text>
               </View>
             </View>
-            <Text style={styles.launchTitle}>Platform Launch: April 1st, 2026</Text>
+            <Text style={styles.launchTitle}>Platform Launch: May 18th, 2026</Text>
             <Text style={styles.launchDescription}>
               Complete all training modules to earn your Psychi Supporter Certificate and become eligible for client assignments.
             </Text>
