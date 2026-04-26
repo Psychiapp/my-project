@@ -127,7 +127,7 @@ export default function SupporterProfileScreen() {
     {
       icon: CheckIcon,
       title: 'Verification',
-      subtitle: verificationStatus === 'approved' ? 'Approved ✓' :
+      subtitle: verificationStatus === 'approved' ? 'Approved' :
                 verificationStatus === 'pending_review' ? 'Pending Review' :
                 verificationStatus === 'rejected' ? 'Rejected - Resubmit' :
                 'Upload transcript and ID',

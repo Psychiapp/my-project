@@ -427,7 +427,7 @@ export function useLiveSupportRequest(
 
                 // Send local notification
                 sendLocalNotification(
-                  '🔔 Live Support Request',
+                  'Live Support Request',
                   `A client needs a ${request.sessionType} session now! First to respond gets it.`,
                   { type: 'live_support_request', requestId: request.id }
                 );

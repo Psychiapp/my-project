@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(supabase db *)",
+      "Bash(supabase secrets *)",
+      "Bash(supabase inspect *)",
+      "Bash(eas branch:list)",
+      "Bash(eas update *)"
+    ]
+  }
+}

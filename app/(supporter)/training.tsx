@@ -753,7 +753,7 @@ SCENARIO 2: THE SOCIAL MEDIA TEMPTATION
 
 Situation: You had a powerful session where you really helped someone. You want to share the experience (without names) on your Instagram.
 
-Wrong response: Posting "Had an amazing session today helping someone realize their worth after years of emotional abuse. This is why I do this work. 💙"
+Wrong response: Posting "Had an amazing session today helping someone realize their worth after years of emotional abuse. This is why I do this work."
 
 Right response: Don't post it. If you want to share about being a supporter generally, keep it completely abstract: "Grateful for the opportunity to support others through Psychi."
 

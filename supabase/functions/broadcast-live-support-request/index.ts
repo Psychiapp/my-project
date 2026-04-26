@@ -105,7 +105,7 @@ serve(async (req) => {
       .filter((s: any) => s.expo_push_token)
       .map((supporter: any) => ({
         to: supporter.expo_push_token,
-        title: '🔔 Live Support Request',
+        title: 'Live Support Request',
         body: `A client needs a ${sessionType} session now! First to respond gets it.`,
         data: {
           type: 'live_support_request',

@@ -74,7 +74,7 @@ serve(async (req) => {
       if (admin.expo_push_token) {
         const pushMessage = {
           to: admin.expo_push_token,
-          title: '🚨 New User Report',
+          title: 'New User Report',
           body: `${reporterName} (${reporterRole}) reported ${reportedName} (${reportedRole}) for ${reasonDisplay}`,
           data: {
             type: 'user_report',
@@ -144,7 +144,7 @@ serve(async (req) => {
           body: JSON.stringify({
             from: 'Psychi App <alerts@psychiapp.com>',
             to: [ADMIN_EMAIL],
-            subject: `🚨 User Report: ${reporterName} reported ${reportedName} for ${reasonDisplay}`,
+            subject: `User Report: ${reporterName} reported ${reportedName} for ${reasonDisplay}`,
             html: emailBody,
           }),
         });

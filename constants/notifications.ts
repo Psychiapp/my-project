@@ -236,7 +236,7 @@ export function getNotificationContent(
     // Verification Approved - sent to supporter when admin approves their documents
     case 'verification_approved':
       return {
-        title: 'Account Verified! ✓',
+        title: 'Account Verified',
         body: `Congratulations! Your verification documents have been approved. You can now start receiving client sessions.`,
         data: {
           type: 'verification_approved',
