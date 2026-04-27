@@ -46,8 +46,6 @@ const footerLinks = {
     links: [
       { label: 'Terms of Service', action: 'route:/legal/terms-of-service' },
       { label: 'Privacy Policy', action: 'route:/legal/privacy-policy' },
-      { label: 'Code of Conduct', action: 'route:/legal/code-of-conduct' },
-      { label: 'Safety Resources', action: 'route:/legal/diversion-advice' },
     ],
   },
 };
