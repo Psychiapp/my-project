@@ -141,7 +141,10 @@ export default function EarningsScreen() {
           pending: (combinedProfile?.pending_payout || 0) / 100,
         },
         all: {
-          total: (combinedProfile?.total_earnings || 0) / 100,
+          // Calculate from sessions table for consistency with week/month.
+          // total_earnings in supporter_details only reflects completed Stripe
+          // transfers and will be $0 until real payouts occur.
+          total: calculateEarnings(allSessions),
           sessions: allSessions.length,
           pending: (combinedProfile?.pending_payout || 0) / 100,
         },
