@@ -136,9 +136,10 @@ const generateTimeSlots = (date: Date, duration: number, availability: Record<st
 
 export default function BookSessionScreen() {
   const { user, profile } = useAuth();
-  const params = useLocalSearchParams<{ supporterId?: string; supporterName?: string }>();
-  const [step, setStep] = useState<BookingStep>('type');
-  const [selectedType, setSelectedType] = useState<SessionType | null>(null);
+  const params = useLocalSearchParams<{ supporterId?: string; supporterName?: string; sessionType?: string }>();
+  const preselectedType = (params.sessionType as SessionType) || null;
+  const [step, setStep] = useState<BookingStep>(preselectedType ? 'date' : 'type');
+  const [selectedType, setSelectedType] = useState<SessionType | null>(preselectedType);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
   const [isBooking, setIsBooking] = useState(false);
@@ -374,7 +375,13 @@ export default function BookSessionScreen() {
   const handleBack = () => {
     switch (step) {
       case 'date':
-        setStep('type');
+        // If session type was pre-selected from the supporter profile, go back
+        // to the profile page rather than showing the type picker again.
+        if (preselectedType) {
+          router.back();
+        } else {
+          setStep('type');
+        }
         break;
       case 'time':
         setStep('date');
