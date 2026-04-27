@@ -81,7 +81,7 @@ export default function PrivacySecurityScreen() {
           onPress: () => {
             Alert.alert(
               'Confirm Deletion',
-              'Type DELETE to confirm account deletion.',
+              'This action is permanent and cannot be undone.',
               [
                 { text: 'Cancel', style: 'cancel' },
                 {
