@@ -25,6 +25,7 @@ import {
   getPermissionDisplayName,
   showPermissionDeniedAlert,
 } from '@/lib/permissions';
+import { setActiveSession } from '@/lib/notifications';
 import { CheckCircleIcon } from '@/components/icons';
 
 type SessionType = 'chat' | 'phone' | 'video';
@@ -477,6 +478,15 @@ export default function SessionScreen() {
       }
     };
   }, [sessionData?.id, sessionData?.type, currentUserId, sessionData?.participant?.id, sessionEnded, currentUserRole]);
+
+  // Mark this session as active so incoming notifications for it are suppressed
+  // while the user is already viewing it (e.g. "X joined the session" toast).
+  // ChatSession sets this itself; we need it here for video/phone sessions too.
+  useEffect(() => {
+    if (!sessionData?.id) return;
+    setActiveSession(sessionData.id);
+    return () => setActiveSession(null);
+  }, [sessionData?.id]);
 
   // Notify other participant when session is entered
   useEffect(() => {
