@@ -48,7 +48,10 @@ interface PostCallContactProps {
   issueReason: 'timeout' | 'disconnect' | 'network' | 'session_ended';
   callType: 'phone' | 'video' | 'chat';
   onClose: () => void;
-  sessionEndedAt?: Date; // When the session ended (for calculating remaining time)
+  sessionEndedAt?: Date;
+  // True when auto-opened because the OTHER person started the chat.
+  // In that case, skip sending them a notification (they're already in it).
+  autoOpened?: boolean;
 }
 
 export default function PostCallContact({
@@ -60,6 +63,7 @@ export default function PostCallContact({
   callType,
   onClose,
   sessionEndedAt,
+  autoOpened = false,
 }: PostCallContactProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
@@ -117,9 +121,10 @@ export default function PostCallContact({
     return () => clearInterval(interval);
   }, [onClose]);
 
-  // Notify other participant when chat is opened
+  // Notify other participant when chat is opened.
+  // Skip if autoOpened — the other person opened it, so they're already here.
   useEffect(() => {
-    if (!supabase || openNotificationSent.current) return;
+    if (!supabase || openNotificationSent.current || autoOpened) return;
     openNotificationSent.current = true;
 
     const notifyOtherParticipant = async () => {

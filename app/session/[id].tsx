@@ -62,6 +62,7 @@ export default function SessionScreen() {
   const [followUpTimeRemaining, setFollowUpTimeRemaining] = useState<number>(5 * 60 * 1000); // 5 minutes in ms
   const enteredNotificationSent = useRef(false); // Track if we've notified the other participant
   const sessionExplicitlyEnded = useRef(false); // Set to true only when user taps End Session
+  const postCallAutoOpened = useRef(false); // True when chat opened by other person's broadcast
 
   // Get current user name from auth context
   const currentUserName = profile?.firstName
@@ -673,6 +674,7 @@ export default function SessionScreen() {
         return;
       }
     }
+    postCallAutoOpened.current = false; // Manually opened — should notify other person
     setConnectionIssueReason('session_ended');
     setShowPostCallContact(true);
   };
@@ -715,6 +717,7 @@ export default function SessionScreen() {
         // Other participant opened the chat - auto-open it for us too
         if (payload.payload?.openedBy !== currentUserId && !showPostCallContact) {
           console.log('[Session] Other participant opened follow-up chat, auto-opening...');
+          postCallAutoOpened.current = true; // Opened by the other person — don't notify them back
           setConnectionIssueReason('session_ended');
           setShowPostCallContact(true);
         }
@@ -840,6 +843,7 @@ export default function SessionScreen() {
         callType={sessionData.type}
         onClose={handleClosePostCallContact}
         sessionEndedAt={sessionEndedAt || undefined}
+        autoOpened={postCallAutoOpened.current}
       />
     );
   }
