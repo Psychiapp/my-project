@@ -50,9 +50,16 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error('Create account link error:', error);
+    const isStaleAccount = error?.message?.includes('not connected to your platform') ||
+      error?.message?.includes('does not exist');
     return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({
+        error: isStaleAccount
+          ? 'Stripe account not found on this platform. Please create a new payout account.'
+          : error.message,
+        code: isStaleAccount ? 'ACCOUNT_NOT_FOUND' : 'STRIPE_ERROR',
+      }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });

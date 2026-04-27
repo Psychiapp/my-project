@@ -153,32 +153,48 @@ export default function PayoutSettingsScreen() {
 
     setIsSettingUp(true);
 
+    const createAndOpenAccount = async () => {
+      const { accountId } = await createConnectAccount(user.id, user.email, fullName);
+      setStripeConnectId(accountId);
+      setStripeConnectStatus('pending');
+      await openConnectOnboarding(accountId);
+    };
+
     try {
       if (stripeConnectId) {
-        // Already have an account, just open onboarding to complete/update
-        await openConnectOnboarding(stripeConnectId);
+        try {
+          await openConnectOnboarding(stripeConnectId);
+        } catch (linkError: unknown) {
+          const msg = linkError instanceof Error ? linkError.message : '';
+          // Stripe returns this when the Connect account no longer exists on this
+          // platform (e.g. test/live mode mismatch, or account was deleted).
+          // Auto-recover: clear the stale ID and create a fresh account.
+          if (msg.includes('not connected to your platform') || msg.includes('does not exist')) {
+            console.warn('Stale stripe_connect_id — clearing and creating new account');
+            const { supabase } = await import('@/lib/supabase');
+            await supabase?.from('profiles').update({
+              stripe_connect_id: null,
+              stripe_connect_status: null,
+              stripe_payouts_enabled: false,
+            }).eq('id', user.id);
+            setStripeConnectId(null);
+            setStripeConnectStatus(null);
+            setPayoutsEnabled(false);
+            await createAndOpenAccount();
+          } else {
+            throw linkError;
+          }
+        }
       } else {
-        // Create a new Connect account
-        const { accountId } = await createConnectAccount(
-          user.id,
-          user.email,
-          fullName
-        );
-        setStripeConnectId(accountId);
-        setStripeConnectStatus('pending');
-
-        // Open onboarding
-        await openConnectOnboarding(accountId);
+        await createAndOpenAccount();
       }
     } catch (error: unknown) {
       console.error('Setup error:', error);
-      const errorMessage = error instanceof Error
-        ? error.message
-        : 'Failed to set up payouts. Please try again.';
-
-      // Show the full error message for diagnostics
-      // This helps identify mode mismatches (test vs live) and other configuration issues
-      Alert.alert('Setup Error', errorMessage);
+      Alert.alert(
+        'Setup Error',
+        'Unable to open payout setup. Please try again or contact support.',
+        [{ text: 'OK' }]
+      );
     } finally {
       setIsSettingUp(false);
     }
