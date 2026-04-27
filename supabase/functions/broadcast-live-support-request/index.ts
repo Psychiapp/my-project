@@ -32,7 +32,7 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
-  const user = await requireUserAuth(req);
+  const user = requireUserAuth(req);
   if (!user) return unauthorizedResponse(corsHeaders);
 
   try {
