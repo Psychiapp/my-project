@@ -89,7 +89,7 @@ function RootLayout() {
     <ErrorBoundary>
       <NetworkProvider>
         <StripeProvider
-          publishableKey={StripeConfig.publishableKey || 'pk_test_placeholder'}
+          publishableKey={StripeConfig.publishableKey}
           merchantIdentifier="merchant.com.psychi.app"
         >
           <AuthProvider>

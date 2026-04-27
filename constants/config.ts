@@ -73,13 +73,12 @@ export const SupabaseConfig = {
   anonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '',
 };
 
-// Stripe config
-// TEMPORARY: Hardcoded test key for testing. Remove after testing!
-const STRIPE_TEST_MODE = true;
+// Stripe config — publishable key comes from environment variable.
+// Development/preview builds use pk_test_ (set in eas.json env).
+// Production builds use pk_live_ (set in eas.json env).
+// Secret keys are NEVER in client-side code — they live in Supabase edge function secrets.
 export const StripeConfig = {
-  publishableKey: STRIPE_TEST_MODE
-    ? 'pk_test_51Sl1DV5j4QYgLJTnG2TCfCrF39yPYtxi7eKOg8ptaNiAGB6gF5FyHwreNKdAIZLRqOda3LVPIH2q1eYhlRBw3E6100ugw5GH9g'
-    : (process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || ''),
+  publishableKey: process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || '',
 };
 
 // Sentry config
