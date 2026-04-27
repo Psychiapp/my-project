@@ -407,6 +407,28 @@ export default function BookSessionScreen() {
         day: 'numeric',
       });
 
+      // Check for client-side double-booking BEFORE charging anything
+      const { supabase: db } = await import('@/lib/supabase');
+      if (db) {
+        const { data: conflictingSessions } = await db
+          .from('sessions')
+          .select('id')
+          .eq('client_id', user.id)
+          .eq('scheduled_at', scheduledTime.toISOString())
+          .not('status', 'in', '("cancelled","no_show")')
+          .limit(1);
+
+        if (conflictingSessions && conflictingSessions.length > 0) {
+          Alert.alert(
+            'Time Slot Unavailable',
+            'You already have a session booked at this time. Please choose a different time slot.',
+            [{ text: 'OK' }]
+          );
+          setIsBooking(false);
+          return;
+        }
+      }
+
       // Process payment first (if PAYG required and Stripe is available)
       // Payment is split 75% to supporter, 25% platform fee (if supporter has Stripe Connect)
       let paymentIntentId: string | undefined;
