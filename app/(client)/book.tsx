@@ -448,12 +448,33 @@ export default function BookSessionScreen() {
       );
 
       if (!session) {
-        // Payment succeeded but session creation failed - needs manual refund
-        Alert.alert(
-          'Booking Error',
-          'Your payment was processed but we couldn\'t create your session. Please contact support for a refund.',
-          [{ text: 'OK' }]
-        );
+        if (paymentIntentId) {
+          // Auto-refund the payment — don't make the client contact support
+          try {
+            const { supabase } = await import('@/lib/supabase');
+            await supabase?.functions.invoke('process-refund', {
+              body: {
+                paymentIntentId,
+                amount: Config.pricing[selectedType].amount,
+                reason: 'other',
+                initiatedBy: 'client',
+              },
+            });
+            Alert.alert(
+              'Booking Error',
+              'We couldn\'t create your session — your payment has been automatically refunded. Please try again in a few minutes.',
+              [{ text: 'OK' }]
+            );
+          } catch {
+            Alert.alert(
+              'Booking Error',
+              'We couldn\'t create your session. Your payment will be refunded within 5-10 business days. If not, contact psychiapp@outlook.com.',
+              [{ text: 'OK' }]
+            );
+          }
+        } else {
+          Alert.alert('Booking Error', 'We couldn\'t create your session. Please try again.', [{ text: 'OK' }]);
+        }
         setIsBooking(false);
         return;
       }

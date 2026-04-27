@@ -1313,6 +1313,15 @@ export async function createSession(
 ): Promise<Session | null> {
   if (!supabase) return null;
 
+  // Reject if the session starts in less than 5 minutes — client-side filtering
+  // should prevent this, but guard here too to protect against race conditions.
+  const scheduledDate = new Date(scheduledAt);
+  const fiveMinutesFromNow = new Date(Date.now() + 5 * 60 * 1000);
+  if (scheduledDate < fiveMinutesFromNow) {
+    console.error('Session rejected: starts in less than 5 minutes', scheduledAt);
+    return null;
+  }
+
   // Optional server-side quota validation
   // (The trigger on session_usage also enforces this, but this is an early check)
   if (validateQuota) {
@@ -2059,6 +2068,8 @@ export function getAvailableTimeSlots(
   const dateInTz = new Date(date.toLocaleString('en-US', { timeZone: tz }));
   const nowInTz = new Date(now.toLocaleString('en-US', { timeZone: tz }));
   const isToday = dateInTz.toDateString() === nowInTz.toDateString();
+  // Earliest bookable start time: 5 minutes from now
+  const cutoffInTz = new Date(nowInTz.getTime() + 5 * 60 * 1000);
 
   // Parse availability ranges and generate slots
   for (const range of dayAvailability) {
@@ -2078,8 +2089,8 @@ export function getAvailableTimeSlots(
           break;
         }
 
-        // Skip past times for today (compare in supporter's timezone)
-        if (isToday && (hour < nowInTz.getHours() || (hour === nowInTz.getHours() && minute <= nowInTz.getMinutes()))) {
+        // Skip slots that start within 5 minutes (or have already started)
+        if (isToday && (hour < cutoffInTz.getHours() || (hour === cutoffInTz.getHours() && minute <= cutoffInTz.getMinutes()))) {
           continue;
         }
 
