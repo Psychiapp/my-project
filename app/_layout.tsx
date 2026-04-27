@@ -1,10 +1,8 @@
 import { useEffect, ReactNode } from 'react';
-import { Alert } from 'react-native';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Platform } from 'react-native';
-import * as Updates from 'expo-updates';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -75,20 +73,6 @@ const PsychiDarkTheme = {
 
 function RootLayout() {
   const colorScheme = useColorScheme();
-
-  // TEMPORARY DEBUG — remove before launch
-  useEffect(() => {
-    const key = StripeConfig.publishableKey;
-    const updateId = Updates.updateId ?? 'embedded (no OTA)';
-    const channel = Updates.channel ?? 'none';
-    Alert.alert(
-      'DEBUG: Bundle Info',
-      `OTA Update ID: ${String(updateId).slice(0, 16)}...\n` +
-      `Channel: ${channel}\n` +
-      `Stripe key: ${key ? key.slice(0, 12) + '...' : 'EMPTY'}\n` +
-      `Key type: ${key?.startsWith('pk_live') ? 'LIVE' : key?.startsWith('pk_test') ? 'TEST' : 'UNKNOWN'}`
-    );
-  }, []);
 
   // Set up deep linking and notification listeners
   useEffect(() => {
