@@ -40,7 +40,7 @@ interface SupporterProfileData {
 type VerificationStatusType = 'not_submitted' | 'pending_review' | 'approved' | 'rejected';
 
 export default function SupporterProfileScreen() {
-  const { user, profile, signOut } = useAuth();
+  const { user, profile, signOut, isDemoMode } = useAuth();
   const [supporterData, setSupporterData] = useState<SupporterProfileData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [verificationStatus, setVerificationStatus] = useState<VerificationStatusType>('not_submitted');
@@ -50,6 +50,22 @@ export default function SupporterProfileScreen() {
     useCallback(() => {
       const fetchSupporterData = async () => {
         if (!user?.id) {
+          setIsLoading(false);
+          return;
+        }
+
+        // Demo mode: inject mock supporter profile
+        if (isDemoMode) {
+          setVerificationStatus('approved');
+          setSupporterData({
+            name: 'Sam Martinez',
+            avatarUrl: null,
+            education: 'Psychology Graduate',
+            totalSessions: 47,
+            bio: "Psychology graduate with a passion for helping others navigate life's challenges. Specializing in anxiety, stress management, and building healthy coping strategies.",
+            specialties: ['Anxiety', 'Stress', 'Self-Esteem', 'Life Transitions'],
+            communicationStyles: [],
+          });
           setIsLoading(false);
           return;
         }

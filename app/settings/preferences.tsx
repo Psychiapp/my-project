@@ -56,7 +56,7 @@ const sessionTypes = [
 ];
 
 export default function PreferencesScreen() {
-  const { profile, user } = useAuth();
+  const { profile, user, isDemoMode } = useAuth();
   const [selectedTimezone, setSelectedTimezone] = useState('America/New_York');
   const [selectedSessionTypes, setSelectedSessionTypes] = useState<string[]>(['chat', 'phone', 'video']);
   const [showQuizModal, setShowQuizModal] = useState(false);
@@ -68,6 +68,15 @@ export default function PreferencesScreen() {
   useEffect(() => {
     const loadData = async () => {
       if (!user?.id) {
+        setIsLoadingAssignment(false);
+        return;
+      }
+
+      if (isDemoMode) {
+        // Auto-detect timezone for demo, skip Supabase
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        const matchingTz = timezones.find(t => t.id === tz);
+        if (matchingTz) setSelectedTimezone(tz);
         setIsLoadingAssignment(false);
         return;
       }

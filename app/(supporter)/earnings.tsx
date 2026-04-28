@@ -47,7 +47,7 @@ interface ProfileData {
 
 export default function EarningsScreen() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, isDemoMode } = useAuth();
   const [timeRange, setTimeRange] = useState<TimeRange>('month');
   const [isLoading, setIsLoading] = useState(true);
   const [isRequestingPayout, setIsRequestingPayout] = useState(false);
@@ -73,6 +73,18 @@ export default function EarningsScreen() {
 
   const loadData = async () => {
     if (!user?.id || !supabase) return;
+
+    // Demo mode: inject plausible mock earnings so the screen isn't blank
+    if (isDemoMode) {
+      setProfile({ stripe_connect_id: null, stripe_connect_status: null, stripe_payouts_enabled: false });
+      setEarnings({
+        week:  { total: 33.75, sessions: 3, pending: 33.75 },
+        month: { total: 135.00, sessions: 12, pending: 135.00 },
+        all:   { total: 472.50, sessions: 42, pending: 135.00 },
+      });
+      setIsLoading(false);
+      return;
+    }
 
     try {
       // Load profile data (Stripe info)

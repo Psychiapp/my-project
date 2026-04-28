@@ -81,7 +81,7 @@ const getTypeIcon = (type: string) => {
 };
 
 export default function SessionsScreen() {
-  const { user, profile } = useAuth();
+  const { user, profile, isDemoMode } = useAuth();
   const [activeTab, setActiveTab] = useState<SessionTab>('upcoming');
   const [upcomingSessions, setUpcomingSessions] = useState<Session[]>([]);
   const [pastSessions, setPastSessions] = useState<Session[]>([]);
@@ -96,6 +96,11 @@ export default function SessionsScreen() {
   useEffect(() => {
     const fetchSessions = async () => {
       if (!user?.id) {
+        setIsLoading(false);
+        return;
+      }
+      // Demo mode: show empty state cleanly
+      if (isDemoMode) {
         setIsLoading(false);
         return;
       }
@@ -116,7 +121,7 @@ export default function SessionsScreen() {
     };
 
     fetchSessions();
-  }, [user?.id]);
+  }, [user?.id, isDemoMode]);
 
   // Fetch pending reschedule requests and process expired ones
   useEffect(() => {

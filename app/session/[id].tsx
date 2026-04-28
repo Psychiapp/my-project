@@ -364,8 +364,8 @@ export default function SessionScreen() {
     sessionExplicitlyEnded.current = true; // Mark as intentional before any state changes
     const endTime = new Date();
 
-    // Mark session as completed with ended timestamp
-    if (sessionData?.id) {
+    // Mark session as completed (skip Supabase for demo sessions)
+    if (sessionData?.id && sessionData.id !== 'demo-session-001') {
       await updateSessionStatus(sessionData.id, 'completed', {
         ended_at: endTime.toISOString()
       });
@@ -451,7 +451,7 @@ export default function SessionScreen() {
     // Guard with the ref (not state) so we read the current value at unmount time,
     // not the value captured when the effect ran.
     return () => {
-      if (sessionData?.type === 'chat' && sessionData?.id && !sessionExplicitlyEnded.current && !sessionEnded) {
+      if (sessionData?.type === 'chat' && sessionData?.id && sessionData.id !== 'demo-session-001' && !sessionExplicitlyEnded.current && !sessionEnded) {
         console.log('[Session] Cleanup: User navigated away, ending session automatically');
 
         // End the session
@@ -491,22 +491,11 @@ export default function SessionScreen() {
   // Notify other participant when session is entered
   useEffect(() => {
     const sendEnteredNotification = async () => {
-      console.log('[Session] sendEnteredNotification check:', {
-        alreadySent: enteredNotificationSent.current,
-        hasSessionData: !!sessionData,
-        sessionType: sessionData?.type,
-        hasDailyRoomUrl: !!dailySession?.roomUrl,
-      });
+      // Skip all Supabase calls for demo sessions
+      if (sessionData?.id === 'demo-session-001') return;
 
-      // Quick local check - useRef serves as a cache for same-mount-cycle
-      if (enteredNotificationSent.current) {
-        console.log('[Session] Notification already sent (local cache), skipping');
-        return;
-      }
-      if (!sessionData) {
-        console.log('[Session] No session data yet, skipping');
-        return;
-      }
+      if (enteredNotificationSent.current) return;
+      if (!sessionData) return;
 
       // For chat: send immediately when session data loads
       // For video/phone: send when room is ready (dailySession is set)

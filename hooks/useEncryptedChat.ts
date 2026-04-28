@@ -65,6 +65,27 @@ export const useEncryptedChat = (
   // Initialize encryption keys
   useEffect(() => {
     const initKeys = async () => {
+      // Demo mode: skip all Supabase calls, seed a welcome message so the
+      // chat screen renders with something for Apple's reviewer to interact with.
+      if (currentUserId.startsWith('demo-') || recipientId.startsWith('demo-')) {
+        const welcomeMsg: ChatMessage = {
+          id: 'demo-msg-001',
+          content: "Hi! I'm Sam, your Psychi supporter. How are you feeling today?",
+          senderId: recipientId,
+          timestamp: new Date(),
+          isOwn: false,
+          isEncrypted: true,
+        };
+        setState({
+          messages: [welcomeMsg],
+          isReady: true,
+          isLoading: false,
+          error: null,
+          recipientPublicKey: 'demo-key',
+        });
+        return;
+      }
+
       try {
         // Initialize our encryption (creates keys if needed)
         const myKeyPair = await initializeE2EEncryption(currentUserId);
@@ -252,6 +273,20 @@ export const useEncryptedChat = (
   // Send an encrypted message
   const sendMessage = useCallback(
     async (content: string): Promise<boolean> => {
+      // Demo mode: add message to local state only — no Supabase
+      if (currentUserId.startsWith('demo-') || recipientId.startsWith('demo-')) {
+        const demoMessage: ChatMessage = {
+          id: Date.now().toString(),
+          content,
+          senderId: currentUserId,
+          timestamp: new Date(),
+          isOwn: true,
+          isEncrypted: true,
+        };
+        setState((prev) => ({ ...prev, messages: [...prev.messages, demoMessage] }));
+        return true;
+      }
+
       if (!myKeyPairRef.current || !state.recipientPublicKey || !supabase) {
         console.warn('Cannot send message - encryption not ready');
         return false;

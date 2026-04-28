@@ -77,7 +77,7 @@ const tierNumberToString: Record<number, string> = {
 
 export default function ClientHomeScreen() {
   const insets = useSafeAreaInsets();
-  const { profile, user } = useAuth();
+  const { profile, user, isDemoMode } = useAuth();
 
   // Dashboard tutorial state
   const [showTutorial, setShowTutorial] = useState(false);
@@ -162,6 +162,7 @@ export default function ClientHomeScreen() {
   // Function to fetch subscription (used for refetching on focus)
   const fetchSubscription = useCallback(async () => {
     if (!user?.id) return;
+    if (isDemoMode) { setSubscriptionTier('premium'); return; }
     try {
       const clientProfile = await getClientProfile(user.id);
       if (clientProfile?.subscription_tier && clientProfile?.subscription_status === 'active') {
@@ -208,6 +209,25 @@ export default function ClientHomeScreen() {
   useEffect(() => {
     const fetchData = async () => {
       if (!user?.id) {
+        setIsLoadingSupporter(false);
+        return;
+      }
+
+      // Demo mode: inject mock assigned supporter and subscription
+      if (isDemoMode) {
+        setAssignedSupporter({
+          id: 'demo-supporter-001',
+          name: 'Sam Martinez',
+          image: '',
+          year: '3rd Year',
+          university: 'Psychology Graduate',
+          bio: 'Specializing in anxiety, stress management, and building healthy coping strategies.',
+          specialties: ['Anxiety', 'Stress', 'Self-Esteem'],
+          rating: 4.9,
+          sessionCount: 47,
+          stripeConnectId: null,
+        });
+        setSubscriptionTier('premium');
         setIsLoadingSupporter(false);
         return;
       }

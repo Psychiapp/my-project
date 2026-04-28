@@ -24,7 +24,7 @@ import { supabase } from '@/lib/supabase';
 
 export default function EditProfileScreen() {
   const router = useRouter();
-  const { profile, user, refreshProfile } = useAuth();
+  const { profile, user, refreshProfile, isDemoMode } = useAuth();
 
   const [firstName, setFirstName] = useState(profile?.firstName || '');
   const [lastName, setLastName] = useState(profile?.lastName || '');
@@ -39,6 +39,15 @@ export default function EditProfileScreen() {
   useEffect(() => {
     const loadProfileData = async () => {
       if (!user?.id || !supabase) {
+        setIsLoadingData(false);
+        return;
+      }
+
+      // Demo mode: pre-fill from AuthContext profile (already populated)
+      if (isDemoMode) {
+        setFirstName(profile?.firstName || '');
+        setLastName(profile?.lastName || '');
+        setEmail(user.email || '');
         setIsLoadingData(false);
         return;
       }

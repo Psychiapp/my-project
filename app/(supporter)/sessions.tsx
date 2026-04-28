@@ -101,7 +101,7 @@ const TIME_SLOTS = [
 ];
 
 export default function SupporterSessionsScreen() {
-  const { user } = useAuth();
+  const { user, isDemoMode } = useAuth();
   const [activeTab, setActiveTab] = useState<SessionTab>('upcoming');
   const [upcomingSessions, setUpcomingSessions] = useState<Session[]>([]);
   const [pastSessions, setPastSessions] = useState<Session[]>([]);
@@ -125,6 +125,7 @@ export default function SupporterSessionsScreen() {
         setIsLoading(false);
         return;
       }
+      if (isDemoMode) { setIsLoading(false); return; }
 
       try {
         const [upcoming, past] = await Promise.all([

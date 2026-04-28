@@ -40,7 +40,7 @@ const AVAILABILITY_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 export default function SupporterEditProfileScreen() {
   const router = useRouter();
-  const { user, profile, refreshProfile } = useAuth();
+  const { user, profile, refreshProfile, isDemoMode } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -56,6 +56,15 @@ export default function SupporterEditProfileScreen() {
   useEffect(() => {
     const loadProfile = async () => {
       if (!user?.id) {
+        setIsLoadingProfile(false);
+        return;
+      }
+
+      if (isDemoMode) {
+        setDisplayName('Sam Martinez');
+        setBio("Psychology graduate with a passion for helping others navigate life's challenges.");
+        setSelectedSpecialties(['Anxiety', 'Stress', 'Self-Esteem', 'Life Transitions']);
+        setAvailableDays(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
         setIsLoadingProfile(false);
         return;
       }
