@@ -46,6 +46,21 @@ export default function SubscriptionScreen() {
         return;
       }
 
+      // Demo mode: use the pre-configured demo subscription directly
+      if (isDemoMode) {
+        const { getDemoProfile } = await import('@/constants/demo');
+        const demoResult = getDemoProfile(user.email);
+        const demoClient = demoResult?.profile as any;
+        if (demoClient?.subscription_tier && demoClient?.subscription_status === 'active') {
+          setCurrentPlan(demoClient.subscription_tier as PlanTier);
+          if (demoClient.subscription_expires_at) {
+            setRenewalDate(new Date(demoClient.subscription_expires_at));
+          }
+        }
+        setIsLoading(false);
+        return;
+      }
+
       try {
         // Fetch client profile for subscription info
         const profile = await getClientProfile(user.id);

@@ -48,6 +48,24 @@ export function useSessionUsage(userId: string | null): UseSessionUsageReturn {
       return;
     }
 
+    // Demo mode: return Premium subscription data so the demo client
+    // can access all features without hitting Supabase.
+    if (userId.startsWith('demo-')) {
+      const premiumAllowances = TIER_ALLOWANCES[3]; // Premium tier
+      setUsage({
+        chatUsed: 0,
+        chatAllowed: 999,
+        voiceVideoUsed: 0,
+        voiceVideoAllowed: premiumAllowances.voiceVideo,
+        billingPeriodStart: new Date(),
+        billingPeriodEnd: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+        subscriptionTier: 3,
+        sessionsRemaining: { chat: 999, phone: 3, video: 3 },
+      });
+      setIsLoading(false);
+      return;
+    }
+
     try {
       setError(null);
 

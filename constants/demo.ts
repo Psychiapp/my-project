@@ -35,6 +35,12 @@ const DEMO_PROFILES = {
     created_at: new Date().toISOString(),
     // Demo client has a pre-assigned supporter for testing chat/call
     assigned_supporter_id: 'demo-supporter-001',
+    // Pre-activated Premium subscription so Apple's reviewer sees all features
+    // without going through the Stripe payment flow
+    subscription_tier: 'premium' as const,
+    subscription_status: 'active' as const,
+    subscription_expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+    sessions_remaining: { chat: 999, phone: 3, video: 3 },
   },
   supporter: {
     id: 'demo-supporter-001',
