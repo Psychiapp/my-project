@@ -1234,6 +1234,35 @@ export async function getPastSessions(
  * Get session by ID
  */
 export async function getSession(sessionId: string): Promise<SessionWithDetails | null> {
+  // Demo mode: return a mock chat session so the reviewer can see the session UI
+  if (sessionId === 'demo-session-001') {
+    return {
+      id: 'demo-session-001',
+      client_id: 'demo-client-001',
+      supporter_id: 'demo-supporter-001',
+      session_type: 'chat',
+      status: 'in_progress',
+      scheduled_at: new Date().toISOString(),
+      duration_minutes: 30,
+      payment_status: 'not_required',
+      stripe_payment_intent_id: null,
+      room_url: null,
+      ended_at: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      supporter: {
+        id: 'demo-supporter-001',
+        full_name: 'Sam Martinez',
+        avatar_url: null,
+      },
+      client: {
+        id: 'demo-client-001',
+        full_name: 'Alex Johnson',
+        avatar_url: null,
+      },
+    } as any;
+  }
+
   if (!supabase) return null;
 
   const { data, error } = await supabase

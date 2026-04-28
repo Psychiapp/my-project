@@ -74,6 +74,34 @@ export function useLiveSupportRequest(
       return { success: false, error: 'Not authenticated' };
     }
 
+    // Demo mode: simulate a successful request → accepted by demo supporter.
+    // The demo user has no real Supabase session so RPC calls would fail.
+    if (userId.startsWith('demo-')) {
+      setIsSubmitting(true);
+      // Short delay to simulate network round-trip
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      setIsSubmitting(false);
+      // Simulate accepted request with a demo session
+      options.onRequestAccepted?.({
+        id: 'demo-request-001',
+        clientId: userId,
+        requestedSupporterId: 'demo-supporter-001',
+        sessionType,
+        status: 'accepted',
+        paymentIntentId: null,
+        chargedAsPayg: false,
+        amountCharged: null,
+        createdAt: new Date(),
+        expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+        acceptedAt: new Date(),
+        completedAt: null,
+        sessionId: 'demo-session-001',
+        declineHistory: [],
+        attemptCount: 1,
+      });
+      return { success: true };
+    }
+
     setIsSubmitting(true);
 
     try {
