@@ -29,7 +29,7 @@ interface PlanFeature {
 
 export default function SubscriptionScreen() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, isDemoMode } = useAuth();
   const [currentPlan, setCurrentPlan] = useState<PlanTier | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<PlanTier | null>(null);
   const [renewalDate, setRenewalDate] = useState<Date | null>(null);
@@ -137,9 +137,16 @@ export default function SubscriptionScreen() {
             setIsProcessing(true);
             setSelectedPlan(plan);
             try {
-              // Process payment first (if Stripe is available)
+              // Process payment first (if Stripe is available and not in demo mode)
               // If client has an assigned supporter, split payment 75/25 (supporter/platform)
-              if (stripeAvailable) {
+              if (isDemoMode) {
+                // Demo mode: skip real payment and activate subscription for preview
+                Alert.alert(
+                  'Demo Mode',
+                  'This is a preview of the subscription flow. No payment will be charged.',
+                  [{ text: 'Continue' }]
+                );
+              } else if (stripeAvailable) {
                 const paymentSuccess = await processSubscriptionPaymentSheet(
                   plan,
                   user.id,
