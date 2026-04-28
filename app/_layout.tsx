@@ -90,7 +90,6 @@ function RootLayout() {
       <NetworkProvider>
         <StripeProvider
           publishableKey={StripeConfig.publishableKey}
-          merchantIdentifier="merchant.com.psychi.app"
         >
           <AuthProvider>
             <ThemeProvider value={colorScheme === 'dark' ? PsychiDarkTheme : PsychiLightTheme}>

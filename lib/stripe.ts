@@ -221,6 +221,37 @@ export interface SessionPaymentResult {
 }
 
 /**
+ * Map a Stripe payment sheet error to a user-friendly message.
+ * Stripe error codes: https://stripe.com/docs/error-codes
+ */
+function stripeErrorMessage(error: { code?: string; message?: string }): string {
+  switch (error.code) {
+    case 'Canceled':
+      return 'Payment was cancelled.';
+    case 'Failed':
+      return error.message || 'Your payment was declined. Please check your card details and try again.';
+    case 'Timeout':
+      return 'The payment timed out. Please check your connection and try again.';
+    case 'Unknown':
+      return 'An unexpected error occurred. Please try again.';
+    default:
+      // Surface the Stripe message when available — it's already user-facing
+      return error.message || 'Payment could not be completed. Please try again.';
+  }
+}
+
+/** Map a network/fetch error to a user-friendly message. */
+function networkOrGenericMessage(message: string): string {
+  if (message.includes('Network') || message.includes('network') || message.includes('fetch')) {
+    return 'Could not connect to the payment service. Please check your internet connection and try again.';
+  }
+  if (message.includes('Unauthorized') || message.includes('401')) {
+    return 'Authentication error. Please sign out and sign back in, then try again.';
+  }
+  return 'Something went wrong with your payment. Please try again or contact support.';
+}
+
+/**
  * Process PAYG payment for a live support request.
  * Called before a request is created, so no supporter is assigned yet —
  * no Connect account is used; the platform holds the funds and pays out
@@ -275,7 +306,8 @@ export async function processLiveSupportPayment(
     return { success: true, paymentIntentId: paymentIntent.paymentIntentId };
   } catch (error) {
     console.error('Live support payment error:', error);
-    Alert.alert('Error', 'Payment failed. Please try again.');
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    Alert.alert('Payment Error', networkOrGenericMessage(message));
     return { success: false };
   }
 }
@@ -329,8 +361,9 @@ export async function processSessionPayment(
     const { error: presentError } = await presentPaymentSheet();
 
     if (presentError) {
+      console.error('Payment sheet error:', presentError.code, presentError.message);
       if (presentError.code !== 'Canceled') {
-        Alert.alert('Payment Failed', presentError.message || 'Please try again.');
+        Alert.alert('Payment Failed', stripeErrorMessage(presentError));
       }
       return { success: false };
     }
@@ -338,7 +371,8 @@ export async function processSessionPayment(
     return { success: true, paymentIntentId: paymentIntent.paymentIntentId };
   } catch (error) {
     console.error('Payment error:', error);
-    Alert.alert('Error', 'Payment failed. Please try again.');
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    Alert.alert('Payment Error', networkOrGenericMessage(message));
     return { success: false };
   }
 }
@@ -393,8 +427,9 @@ export async function processSubscriptionPaymentSheet(
     const { error: presentError } = await presentPaymentSheet();
 
     if (presentError) {
+      console.error('Subscription payment sheet error:', presentError.code, presentError.message);
       if (presentError.code !== 'Canceled') {
-        Alert.alert('Payment Failed', presentError.message || 'Please try again.');
+        Alert.alert('Payment Failed', stripeErrorMessage(presentError));
       }
       return false;
     }
@@ -402,7 +437,8 @@ export async function processSubscriptionPaymentSheet(
     return true;
   } catch (error) {
     console.error('Subscription payment error:', error);
-    Alert.alert('Error', 'Payment failed. Please try again.');
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    Alert.alert('Payment Error', networkOrGenericMessage(message));
     return false;
   }
 }

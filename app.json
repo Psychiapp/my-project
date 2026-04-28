@@ -19,8 +19,7 @@
         "NSPhotoLibraryUsageDescription": "Psychi needs access to your photo library to set your profile picture",
         "NSFaceIDUsageDescription": "Use Face ID to quickly sign in to Psychi",
         "UIBackgroundModes": [
-          "audio",
-          "voip"
+          "audio"
         ]
       },
       "config": {
