@@ -125,7 +125,7 @@ export default function PreferencesScreen() {
     setSelectedSessionTypes(newSessionTypes);
 
     // Save to database
-    if (user?.id) {
+    if (user?.id && !isDemoMode) {
       try {
         const existingPrefs = await getClientPreferences(user.id);
         const success = await saveClientPreferences(user.id, {
@@ -158,7 +158,7 @@ export default function PreferencesScreen() {
     setSelectedTimezone(tzId);
 
     // Save to database
-    if (user?.id) {
+    if (user?.id && !isDemoMode) {
       try {
         const existingPrefs = await getClientPreferences(user.id);
         const success = await saveClientPreferences(user.id, {
@@ -187,6 +187,10 @@ export default function PreferencesScreen() {
   };
 
   const handleRequestNewSupporter = () => {
+    if (isDemoMode) {
+      Alert.alert('Demo Mode', 'Supporter reassignment is not available in demo mode.', [{ text: 'OK' }]);
+      return;
+    }
     Alert.alert(
       'Request New Supporter',
       'Would you like to be matched with a different supporter? Your current supporter will be notified, and we\'ll find you a new match based on your preferences.',
