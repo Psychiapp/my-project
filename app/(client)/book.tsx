@@ -135,7 +135,7 @@ const generateTimeSlots = (date: Date, duration: number, availability: Record<st
 };
 
 export default function BookSessionScreen() {
-  const { user, profile } = useAuth();
+  const { user, profile, isDemoMode } = useAuth();
   const params = useLocalSearchParams<{ supporterId?: string; supporterName?: string; sessionType?: string }>();
   const preselectedType = (params.sessionType as SessionType) || null;
   const [step, setStep] = useState<BookingStep>(preselectedType ? 'date' : 'type');
@@ -394,6 +394,17 @@ export default function BookSessionScreen() {
 
   const handleConfirmBooking = async () => {
     if (!selectedDate || !selectedSlot || !selectedType || !user?.id || !supporter) return;
+
+    // Demo mode: skip all Supabase/Stripe calls and show success immediately
+    if (isDemoMode) {
+      const sessionTypeName = sessionTypes.find((t) => t.id === selectedType)?.name || selectedType;
+      Alert.alert(
+        'Session Booked!',
+        `Your ${sessionTypeName} with ${supporter.name} has been scheduled. You'll receive reminders before the session.`,
+        [{ text: 'View Sessions', onPress: () => router.replace('/(client)/sessions') }]
+      );
+      return;
+    }
 
     setIsBooking(true);
 
