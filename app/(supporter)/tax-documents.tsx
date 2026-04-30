@@ -41,7 +41,7 @@ interface TaxYear {
 const TAX_THRESHOLD = 60000; // $600 threshold for 1099 (in cents)
 
 export default function TaxDocumentsScreen() {
-  const { user } = useAuth();
+  const { user, isDemoMode } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [taxYears, setTaxYears] = useState<TaxYear[]>([]);
   const [totalEarnings, setTotalEarnings] = useState(0);
@@ -54,6 +54,13 @@ export default function TaxDocumentsScreen() {
 
   const loadTaxData = async () => {
     if (!user?.id || !supabase) {
+      setIsLoading(false);
+      return;
+    }
+    if (isDemoMode) {
+      setTotalEarnings(47250); // $472.50 in cents
+      setW9Completed(true);
+      setW9CompletedDate(new Date().toISOString());
       setIsLoading(false);
       return;
     }

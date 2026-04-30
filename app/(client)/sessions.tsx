@@ -156,7 +156,7 @@ export default function SessionsScreen() {
   // Fetch pending reschedule requests and process expired ones
   useEffect(() => {
     const fetchRescheduleRequests = async () => {
-      if (!user?.id) return;
+      if (!user?.id || isDemoMode) return;
 
       // First, process any expired requests (auto-cancel sessions)
       await processExpiredRescheduleRequests(user.id);
@@ -218,6 +218,12 @@ export default function SessionsScreen() {
 
   const processCancellation = async () => {
     if (!selectedSession) return;
+    if (isDemoMode) {
+      setCancelModalVisible(false);
+      setUpcomingSessions(prev => prev.filter(s => s.id !== selectedSession.id));
+      Alert.alert('Session Cancelled', 'Your session has been cancelled.', [{ text: 'OK' }]);
+      return;
+    }
 
     setIsProcessing(true);
 

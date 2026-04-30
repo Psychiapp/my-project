@@ -34,7 +34,7 @@ import {
 
 export default function NotificationSettingsScreen() {
   const router = useRouter();
-  const { profile } = useAuth();
+  const { profile, isDemoMode } = useAuth();
   const isSupporter = profile?.role === 'supporter';
 
   const [pushEnabled, setPushEnabled] = useState(false);
@@ -55,8 +55,8 @@ export default function NotificationSettingsScreen() {
 
   const loadSettings = async () => {
     try {
-      // Also save the token to database when loading settings
-      const userId = profile?.id;
+      // Demo mode: skip token registration (demo ID is not a valid UUID)
+      const userId = isDemoMode ? null : profile?.id;
       const token = userId
         ? await registerAndSavePushToken(userId)
         : await registerForPushNotifications();
@@ -73,14 +73,13 @@ export default function NotificationSettingsScreen() {
 
   const handleTogglePush = async () => {
     if (!pushEnabled) {
-      // Use registerAndSavePushToken to ensure token is saved to database
-      const userId = profile?.id;
+      const userId = isDemoMode ? null : profile?.id;
       if (!userId) {
         Alert.alert('Error', 'Please sign in to enable notifications.');
         return;
       }
 
-      const token = await registerAndSavePushToken(userId);
+      const token = userId ? await registerAndSavePushToken(userId) : await registerForPushNotifications();
       if (token) {
         setPushEnabled(true);
         Alert.alert('Notifications Enabled', 'You will now receive push notifications.');
@@ -313,12 +312,12 @@ export default function NotificationSettingsScreen() {
             <TouchableOpacity
               style={styles.refreshButton}
               onPress={async () => {
-                const userId = profile?.id;
-                if (!userId) {
+                const userId = isDemoMode ? null : profile?.id;
+                if (!userId && !isDemoMode) {
                   Alert.alert('Error', 'Please sign in first.');
                   return;
                 }
-                const token = await registerAndSavePushToken(userId);
+                const token = userId ? await registerAndSavePushToken(userId) : await registerForPushNotifications();
                 if (token) {
                   Alert.alert('Success', 'Push notification token refreshed and saved to server.');
                 } else {

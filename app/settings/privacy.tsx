@@ -27,11 +27,15 @@ import { ExternalUrls } from '@/constants/config';
 
 export default function PrivacySecurityScreen() {
   const router = useRouter();
-  const { signOut, profile } = useAuth();
+  const { signOut, profile, isDemoMode } = useAuth();
 
   const [isSendingReset, setIsSendingReset] = useState(false);
 
   const handleChangePassword = () => {
+    if (isDemoMode) {
+      Alert.alert('Demo Mode', 'Password changes are not available in demo mode.', [{ text: 'OK' }]);
+      return;
+    }
     const userEmail = profile?.email;
 
     if (!userEmail) {

@@ -17,7 +17,7 @@ import { getSupporterReviews } from '@/lib/database';
 import type { SupporterReview } from '@/types/database';
 
 export default function FeedbackScreen() {
-  const { user } = useAuth();
+  const { user, isDemoMode } = useAuth();
   const [reviews, setReviews] = useState<SupporterReview[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'chat' | 'phone' | 'video'>('all');
@@ -30,6 +30,7 @@ export default function FeedbackScreen() {
 
   const loadReviews = async () => {
     if (!user?.id) return;
+    if (isDemoMode) { setIsLoading(false); return; }
     setIsLoading(true);
     try {
       const data = await getSupporterReviews(user.id);

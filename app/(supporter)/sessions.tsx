@@ -125,7 +125,36 @@ export default function SupporterSessionsScreen() {
         setIsLoading(false);
         return;
       }
-      if (isDemoMode) { setIsLoading(false); return; }
+      if (isDemoMode) {
+        const now = new Date();
+        const tomorrow = new Date(now);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setHours(10, 0, 0, 0);
+        setUpcomingSessions([{
+          id: 'demo-session-upcoming-sup',
+          clientName: 'Alex Johnson',
+          clientEmail: 'demo@psychi.app',
+          type: 'phone',
+          date: tomorrow.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }),
+          time: '10:00 AM',
+          scheduledAt: tomorrow.toISOString(),
+          duration: 45,
+          status: 'scheduled',
+        }]);
+        setPastSessions([{
+          id: 'demo-session-001',
+          clientName: 'Alex Johnson',
+          clientEmail: 'demo@psychi.app',
+          type: 'chat',
+          date: now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }),
+          time: now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
+          scheduledAt: now.toISOString(),
+          duration: 30,
+          status: 'completed',
+        }]);
+        setIsLoading(false);
+        return;
+      }
 
       try {
         const [upcoming, past] = await Promise.all([
@@ -177,6 +206,12 @@ export default function SupporterSessionsScreen() {
 
   const confirmCancellation = async () => {
     if (!selectedSession) return;
+    if (isDemoMode) {
+      setCancelModalVisible(false);
+      setUpcomingSessions(prev => prev.filter(s => s.id !== selectedSession.id));
+      Alert.alert('Session Cancelled', 'The session has been cancelled.', [{ text: 'OK' }]);
+      return;
+    }
 
     if (!cancelReason.trim()) {
       Alert.alert('Reason Required', 'Please provide a reason for cancellation.');

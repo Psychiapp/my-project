@@ -86,7 +86,7 @@ const moodLabels = ['Very Low', 'Low', 'Okay', 'Good', 'Great'];
 const moodColors = ['#E57373', '#FFB74D', '#FFF176', '#AED581', '#81C784'];
 
 export default function ClientsScreen() {
-  const { user } = useAuth();
+  const { user, isDemoMode } = useAuth();
   const [clients, setClients] = useState<ClientAssignment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -121,6 +121,7 @@ export default function ClientsScreen() {
 
   const loadClients = async () => {
     if (!user?.id) return;
+    if (isDemoMode) { setIsLoading(false); return; }
     setIsLoading(true);
     try {
       const data = await getSupporterClients(user.id);

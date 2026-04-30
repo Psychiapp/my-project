@@ -192,6 +192,7 @@ export default function EditProfileScreen() {
 
   const handleRemovePhoto = async () => {
     if (!user?.id) return;
+    if (isDemoMode) { Alert.alert('Demo Mode', 'Not available in demo mode.', [{ text: 'OK' }]); return; }
 
     setIsUploadingPhoto(true);
     try {
@@ -240,6 +241,11 @@ export default function EditProfileScreen() {
 
     if (!user?.id) {
       Alert.alert('Error', 'Not logged in');
+      return;
+    }
+
+    if (isDemoMode) {
+      Alert.alert('Profile Updated', 'Your profile has been updated.', [{ text: 'OK' }]);
       return;
     }
 

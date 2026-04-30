@@ -75,7 +75,7 @@ const US_STATES = [
 ];
 
 export default function W9FormScreen() {
-  const { user } = useAuth();
+  const { user, isDemoMode } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
@@ -105,6 +105,7 @@ export default function W9FormScreen() {
       setIsLoading(false);
       return;
     }
+    if (isDemoMode) { setIsCompleted(true); setIsLoading(false); return; }
 
     try {
       const { data: profile } = await supabase
@@ -205,6 +206,12 @@ export default function W9FormScreen() {
 
     if (!user?.id || !supabase) {
       Alert.alert('Error', 'Unable to save. Please try again.');
+      return;
+    }
+
+    if (isDemoMode) {
+      setIsCompleted(true);
+      Alert.alert('W-9 Submitted', 'Your W-9 form has been submitted successfully.', [{ text: 'OK' }]);
       return;
     }
 
