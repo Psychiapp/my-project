@@ -227,6 +227,12 @@ export default function SupporterEditProfileScreen() {
       return;
     }
 
+    // Demo mode: skip Supabase, just show success
+    if (isDemoMode) {
+      Alert.alert('Profile Updated', 'Your profile has been updated successfully.', [{ text: 'OK' }]);
+      return;
+    }
+
     setIsLoading(true);
 
     try {
