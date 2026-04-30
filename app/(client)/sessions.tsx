@@ -99,9 +99,27 @@ export default function SessionsScreen() {
         setIsLoading(false);
         return;
       }
-      // Demo mode: show the completed live-support session in past sessions
+      // Demo mode: show mock sessions so the reviewer sees a realistic picture
       if (isDemoMode) {
         const now = new Date();
+
+        // Upcoming: a scheduled session tomorrow at 10am
+        const tomorrow = new Date(now);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setHours(10, 0, 0, 0);
+        setUpcomingSessions([{
+          id: 'demo-session-upcoming',
+          supporterName: 'Sam Martinez',
+          supporterEmail: 'supporter@psychi.app',
+          type: 'phone',
+          date: tomorrow.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }),
+          time: '10:00 AM',
+          scheduledAt: tomorrow.toISOString(),
+          duration: 45,
+          status: 'scheduled',
+        }]);
+
+        // Past: the completed live-support chat session
         setPastSessions([{
           id: 'demo-session-001',
           supporterName: 'Sam Martinez',
