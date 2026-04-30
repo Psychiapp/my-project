@@ -215,6 +215,13 @@ export default function SessionScreen() {
         return;
       }
 
+      // Demo phone/video sessions: skip Daily.co entirely — DemoCallUI handles the UI
+      if (sessionData.id.startsWith('demo-session-')) {
+        setPermissionsGranted(true);
+        setIsCreatingRoom(false);
+        return;
+      }
+
       // Check and request required permissions
       setCheckingPermissions(true);
       const { granted, missing } = await ensureSessionPermissions(sessionData.type);
