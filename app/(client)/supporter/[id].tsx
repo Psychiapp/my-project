@@ -46,6 +46,30 @@ export default function SupporterProfileScreen() {
         return;
       }
 
+      // Demo mode: return mock supporter profile for the demo supporter
+      if (id === 'demo-supporter-001') {
+        setSupporter({
+          id: 'demo-supporter-001',
+          name: 'Sam Martinez',
+          avatarUrl: null,
+          education: 'Psychology Graduate',
+          specialties: ['Anxiety', 'Stress', 'Self-Esteem', 'Life Transitions'],
+          sessions: 47,
+          bio: "Psychology graduate with a passion for helping others navigate life's challenges. Specializing in anxiety, stress management, and building healthy coping strategies. I believe in creating a safe, non-judgmental space where you can explore your feelings and develop practical tools for everyday life.",
+          available: true,
+          languages: ['English'],
+          experience: '2+ years',
+          approach: 'Person-centred, solution-focused',
+          availability: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+          feedback: [
+            { author: 'Anonymous', text: 'Sam was incredibly supportive and helped me work through a really tough time.', date: 'March 2026' },
+            { author: 'Anonymous', text: 'Very empathetic and professional. Highly recommend.', date: 'February 2026' },
+          ],
+        });
+        setIsLoading(false);
+        return;
+      }
+
       try {
         const detail = await getSupporterDetail(id);
         const availabilityData = await getSupporterAvailability(id);
