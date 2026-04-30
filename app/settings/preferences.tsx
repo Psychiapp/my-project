@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   View,
   Text,
@@ -73,10 +74,21 @@ export default function PreferencesScreen() {
       }
 
       if (isDemoMode) {
-        // Auto-detect timezone for demo, skip Supabase
-        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        const matchingTz = timezones.find(t => t.id === tz);
-        if (matchingTz) setSelectedTimezone(tz);
+        // Load from AsyncStorage so demo preferences persist across navigations
+        try {
+          const stored = await AsyncStorage.getItem('@demo_preferences');
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            if (parsed.timezone) setSelectedTimezone(parsed.timezone);
+            if (parsed.sessionTypes?.length) setSelectedSessionTypes(parsed.sessionTypes);
+          } else {
+            const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            if (timezones.find(t => t.id === tz)) setSelectedTimezone(tz);
+          }
+        } catch {
+          const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+          if (timezones.find(t => t.id === tz)) setSelectedTimezone(tz);
+        }
         setIsLoadingAssignment(false);
         return;
       }
@@ -124,6 +136,11 @@ export default function PreferencesScreen() {
 
     setSelectedSessionTypes(newSessionTypes);
 
+    // Demo: persist to AsyncStorage so changes survive navigation
+    if (isDemoMode) {
+      AsyncStorage.setItem('@demo_preferences', JSON.stringify({ sessionTypes: newSessionTypes, timezone: selectedTimezone })).catch(() => {});
+    }
+
     // Save to database
     if (user?.id && !isDemoMode) {
       try {
@@ -156,6 +173,12 @@ export default function PreferencesScreen() {
   const handleTimezoneChange = async (tzId: string) => {
     const previousTimezone = selectedTimezone;
     setSelectedTimezone(tzId);
+
+    // Demo: persist to AsyncStorage
+    if (isDemoMode) {
+      AsyncStorage.setItem('@demo_preferences', JSON.stringify({ sessionTypes: selectedSessionTypes, timezone: tzId })).catch(() => {});
+      return;
+    }
 
     // Save to database
     if (user?.id && !isDemoMode) {
