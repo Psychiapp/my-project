@@ -84,6 +84,16 @@ export function usePresence(
   const setAvailableForLiveSupport = useCallback(async (available: boolean) => {
     if (!userId || !supabase) return;
 
+    // Demo mode: update local state only, no Supabase write
+    if (userId.startsWith('demo-')) {
+      setPresence(prev => ({
+        ...prev,
+        availableForLiveSupport: available,
+        ...(available ? { inSession: false } : {}),
+      }));
+      return;
+    }
+
     // Store previous state for rollback
     const previousState = presence.availableForLiveSupport;
 
