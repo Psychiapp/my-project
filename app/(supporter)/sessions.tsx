@@ -273,6 +273,12 @@ export default function SupporterSessionsScreen() {
       return;
     }
 
+    if (isDemoMode) {
+      setRescheduleModalVisible(false);
+      Alert.alert('Reschedule Request Sent', 'The client has been notified of your proposed new time.', [{ text: 'OK' }]);
+      return;
+    }
+
     setIsProcessing(true);
 
     // Parse the selected time
