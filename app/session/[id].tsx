@@ -14,6 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import ChatSession from '@/components/session/ChatSession';
 import VideoCall from '@/components/session/VideoCall';
 import PostCallContact from '@/components/session/PostCallContact';
+import DemoCallUI from '@/components/session/DemoCallUI';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
 import { createSession as createDailySession, SessionConfig, deleteRoom, getRoomNameFromUrl } from '@/lib/daily';
 import { getSession, updateSessionStatus, updateSessionRoomUrl, notifySessionEntered, setInSessionStatus, checkAndMarkEnteredNotificationSent } from '@/lib/database';
@@ -827,6 +828,22 @@ export default function SessionScreen() {
           </TouchableOpacity>
         </View>
       </SafeAreaView>
+    );
+  }
+
+  // Demo phone/video call — show functional call UI without Daily.co
+  if (sessionData && (sessionData.id === 'demo-session-phone' || sessionData.id === 'demo-session-video')) {
+    const callType = sessionData.id === 'demo-session-video' ? 'video' : 'phone';
+    return (
+      <DemoCallUI
+        callType={callType}
+        supporterName={sessionData.participant?.name || 'Sam Martinez'}
+        onEndCall={() => {
+          setSessionEnded(true);
+          setSessionEndedAt(new Date());
+          router.replace(currentUserRole === 'supporter' ? '/(supporter)' : '/(client)');
+        }}
+      />
     );
   }
 

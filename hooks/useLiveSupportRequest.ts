@@ -95,7 +95,7 @@ export function useLiveSupportRequest(
         expiresAt: new Date(Date.now() + 15 * 60 * 1000),
         acceptedAt: new Date(),
         completedAt: null,
-        sessionId: 'demo-session-001',
+        sessionId: `demo-session-${sessionType}`,
         declineHistory: [],
         attemptCount: 1,
       });

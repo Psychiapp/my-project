@@ -1234,20 +1234,29 @@ export async function getPastSessions(
  * Get session by ID
  */
 export async function getSession(sessionId: string): Promise<SessionWithDetails | null> {
-  // Demo mode: return mock sessions so the reviewer sees a functional session screen
-  if (sessionId === 'demo-session-001' || sessionId === 'demo-session-upcoming' || sessionId === 'demo-session-upcoming-sup') {
-    const isPhone = sessionId === 'demo-session-upcoming' || sessionId === 'demo-session-upcoming-sup';
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    tomorrow.setHours(10, 0, 0, 0);
+  // Demo mode: return mock sessions for all demo session IDs
+  if (sessionId.startsWith('demo-session-')) {
+    const typeMap: Record<string, string> = {
+      'demo-session-chat': 'chat',
+      'demo-session-phone': 'phone',
+      'demo-session-video': 'video',
+      'demo-session-001': 'chat',
+      'demo-session-upcoming': 'phone',
+      'demo-session-upcoming-sup': 'phone',
+    };
+    const sessionType = typeMap[sessionId] ?? 'chat';
+    const isScheduled = sessionId === 'demo-session-upcoming' || sessionId === 'demo-session-upcoming-sup';
+    const scheduledAt = isScheduled
+      ? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+      : new Date().toISOString();
     return {
       id: sessionId,
       client_id: 'demo-client-001',
       supporter_id: 'demo-supporter-001',
-      session_type: isPhone ? 'phone' : 'chat',
-      status: isPhone ? 'scheduled' : 'in_progress',
-      scheduled_at: isPhone ? tomorrow.toISOString() : new Date().toISOString(),
-      duration_minutes: isPhone ? 45 : 30,
+      session_type: sessionType,
+      status: isScheduled ? 'scheduled' : 'in_progress',
+      scheduled_at: scheduledAt,
+      duration_minutes: sessionType === 'chat' ? 30 : 45,
       payment_status: 'not_required',
       stripe_payment_intent_id: null,
       room_url: null,
