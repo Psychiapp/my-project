@@ -99,8 +99,20 @@ export default function SessionsScreen() {
         setIsLoading(false);
         return;
       }
-      // Demo mode: show empty state cleanly
+      // Demo mode: show the completed live-support session in past sessions
       if (isDemoMode) {
+        const now = new Date();
+        setPastSessions([{
+          id: 'demo-session-001',
+          supporterName: 'Sam Martinez',
+          supporterEmail: 'supporter@psychi.app',
+          type: 'chat',
+          date: now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }),
+          time: now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
+          scheduledAt: now.toISOString(),
+          duration: 30,
+          status: 'completed',
+        }]);
         setIsLoading(false);
         return;
       }
