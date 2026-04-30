@@ -138,8 +138,26 @@ export default function SubscriptionScreen() {
     setSelectedPlan(plan);
   };
 
+  const tierRank: Record<PlanTier, number> = { basic: 1, standard: 2, premium: 3 };
+
   const handleSubscribeToPlan = (plan: PlanTier) => {
     if (plan === currentPlan || !user?.id) return;
+
+    // Demo mode: never attempt any payment or database call
+    if (isDemoMode) {
+      Alert.alert('Demo Mode', 'Plan changes are not available in demo mode.', [{ text: 'OK' }]);
+      return;
+    }
+
+    // Downgrade: block silently — user must cancel first
+    if (currentPlan && tierRank[plan] < tierRank[currentPlan]) {
+      Alert.alert(
+        'Downgrade Not Available',
+        'To switch to a lower plan, please cancel your current subscription first and re-subscribe.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
 
     Alert.alert(
       'Confirm Subscription',
@@ -152,16 +170,7 @@ export default function SubscriptionScreen() {
             setIsProcessing(true);
             setSelectedPlan(plan);
             try {
-              // Process payment first (if Stripe is available and not in demo mode)
-              // If client has an assigned supporter, split payment 75/25 (supporter/platform)
-              if (isDemoMode) {
-                // Demo mode: skip real payment and activate subscription for preview
-                Alert.alert(
-                  'Demo Mode',
-                  'This is a preview of the subscription flow. No payment will be charged.',
-                  [{ text: 'Continue' }]
-                );
-              } else if (stripeAvailable) {
+              if (stripeAvailable) {
                 const paymentSuccess = await processSubscriptionPaymentSheet(
                   plan,
                   user.id,
@@ -169,16 +178,15 @@ export default function SubscriptionScreen() {
                 );
 
                 if (!paymentSuccess) {
-                  // Payment failed or was cancelled
                   setIsProcessing(false);
                   setSelectedPlan(null);
                   return;
                 }
               } else {
-                // In development/Expo Go, show notice but allow for testing
+                // Development / Expo Go — allow without payment for testing
                 Alert.alert(
                   'Development Mode',
-                  'Payment processing is not available in Expo Go. Subscription will be activated for testing purposes.',
+                  'Payment processing is not available here. Subscription will be activated for testing.',
                   [{ text: 'Continue' }]
                 );
               }
@@ -396,7 +404,8 @@ export default function SubscriptionScreen() {
                   <Text style={styles.planDescription}>{plan.description}</Text>
 
                   {/* Subscribe Button on each card */}
-                  {!isCurrent && (
+                  {/* Hide for current plan, lower-tier plans, and demo mode */}
+                  {!isCurrent && !isDemoMode && !(currentPlan && tierRank[tier] < tierRank[currentPlan]) && (
                     <TouchableOpacity
                       style={[
                         styles.planSubscribeButton,
@@ -427,8 +436,8 @@ export default function SubscriptionScreen() {
           </View>
         </View>
 
-        {/* Subscribe Button */}
-        {selectedPlan && selectedPlan !== currentPlan && (
+        {/* Subscribe Button — hidden in demo mode, or when selected plan is lower than current */}
+        {selectedPlan && selectedPlan !== currentPlan && !isDemoMode && !(currentPlan && tierRank[selectedPlan] < tierRank[currentPlan]) && (
           <View style={styles.subscribeSection}>
             {/* Subscription Disclosure */}
             <View style={styles.disclosureContainer}>
