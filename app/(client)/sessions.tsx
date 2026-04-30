@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
 import {
   calculateRefundAmount,
@@ -92,8 +92,10 @@ export default function SessionsScreen() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [rescheduleRequests, setRescheduleRequests] = useState<RescheduleRequestWithDetails[]>([]);
 
-  // Fetch sessions from database
-  useEffect(() => {
+  // Fetch sessions — re-runs every time this tab is focused so completed
+  // demo sessions appear immediately when the user navigates back.
+  useFocusEffect(
+  useCallback(() => {
     const fetchSessions = async () => {
       if (!user?.id) {
         setIsLoading(false);
@@ -119,18 +121,16 @@ export default function SessionsScreen() {
           status: 'scheduled',
         }]);
 
-        // Past: the completed live-support chat session
-        setPastSessions([{
-          id: 'demo-session-001',
-          supporterName: 'Sam Martinez',
-          supporterEmail: 'supporter@psychi.app',
-          type: 'chat',
-          date: now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }),
-          time: now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
-          scheduledAt: now.toISOString(),
-          duration: 30,
-          status: 'completed',
-        }]);
+        // Past: show a completed session for each type so any recently
+        // completed live support session is represented in the list.
+        const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+        const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+        const base = { supporterName: 'Sam Martinez', supporterEmail: 'supporter@psychi.app', date: dateStr, time: timeStr, scheduledAt: now.toISOString(), status: 'completed' as const };
+        setPastSessions([
+          { ...base, id: 'demo-session-chat',  type: 'chat',  duration: 30 },
+          { ...base, id: 'demo-session-phone', type: 'phone', duration: 45 },
+          { ...base, id: 'demo-session-video', type: 'video', duration: 45 },
+        ]);
         setIsLoading(false);
         return;
       }
@@ -151,7 +151,7 @@ export default function SessionsScreen() {
     };
 
     fetchSessions();
-  }, [user?.id, isDemoMode]);
+  }, [user?.id, isDemoMode]));
 
   // Fetch pending reschedule requests and process expired ones
   useEffect(() => {

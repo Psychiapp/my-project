@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -13,7 +13,7 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
 import {
   ChatIcon,
@@ -118,8 +118,9 @@ export default function SupporterSessionsScreen() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
 
-  // Fetch sessions from database
-  useEffect(() => {
+  // Fetch sessions — re-runs on focus so completed demo sessions appear immediately.
+  useFocusEffect(
+  useCallback(() => {
     const fetchSessions = async () => {
       if (!user?.id) {
         setIsLoading(false);
@@ -141,17 +142,14 @@ export default function SupporterSessionsScreen() {
           duration: 45,
           status: 'scheduled',
         }]);
-        setPastSessions([{
-          id: 'demo-session-001',
-          clientName: 'Alex Johnson',
-          clientEmail: 'demo@psychi.app',
-          type: 'chat',
-          date: now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }),
-          time: now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
-          scheduledAt: now.toISOString(),
-          duration: 30,
-          status: 'completed',
-        }]);
+        const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+        const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+        const base = { clientName: 'Alex Johnson', clientEmail: 'demo@psychi.app', date: dateStr, time: timeStr, scheduledAt: now.toISOString(), status: 'completed' as const };
+        setPastSessions([
+          { ...base, id: 'demo-session-chat',  type: 'chat',  duration: 30 },
+          { ...base, id: 'demo-session-phone', type: 'phone', duration: 45 },
+          { ...base, id: 'demo-session-video', type: 'video', duration: 45 },
+        ]);
         setIsLoading(false);
         return;
       }
@@ -172,7 +170,7 @@ export default function SupporterSessionsScreen() {
     };
 
     fetchSessions();
-  }, [user?.id]);
+  }, [user?.id, isDemoMode]));
 
   // Generate next 7 days for date selection
   const getAvailableDates = () => {
