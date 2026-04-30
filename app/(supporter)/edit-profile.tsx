@@ -110,6 +110,10 @@ export default function SupporterEditProfileScreen() {
   }, [user?.id, profile]);
 
   const handleChangePhoto = async () => {
+    if (isDemoMode) {
+      Alert.alert('Demo Mode', 'Photo upload is not available in demo mode.', [{ text: 'OK' }]);
+      return;
+    }
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
       Alert.alert(

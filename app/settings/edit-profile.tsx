@@ -83,6 +83,10 @@ export default function EditProfileScreen() {
   }, [user?.id]);
 
   const handleChangePhoto = async () => {
+    if (isDemoMode) {
+      Alert.alert('Demo Mode', 'Photo upload is not available in demo mode.', [{ text: 'OK' }]);
+      return;
+    }
     // Request permission
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
