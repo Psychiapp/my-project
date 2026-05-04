@@ -1,6 +1,8 @@
 /**
  * Permissions Request Screen
- * Asks user to enable camera, microphone, and notification permissions
+ * Informs the user why permissions are needed before the system dialogs appear.
+ * Apple guideline: the informational screen must always advance to the system
+ * prompt — no "Skip" or "Deny" path. The user can deny in the system dialog.
  */
 
 import React, { useState, useEffect } from 'react';
@@ -13,6 +15,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { PsychiColors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
 import {
@@ -21,51 +24,10 @@ import {
   getPermissionStatus,
   requestPermission,
   markPermissionsRequested,
-  openSettings,
   getPermissionDisplayName,
   getPermissionDescription,
 } from '@/lib/permissions';
-import { CameraIcon, MicIcon, NotificationsIcon, LockIcon, InfoIcon } from '@/components/icons';
-
-interface PermissionItemProps {
-  type: PermissionType;
-  granted: boolean;
-  onRequest: () => void;
-  isLoading: boolean;
-}
-
-function PermissionItem({ type, granted, onRequest, isLoading }: PermissionItemProps) {
-  const icons: Record<PermissionType, React.FC<{ size?: number; color?: string }>> = {
-    camera: CameraIcon,
-    microphone: MicIcon,
-    notifications: NotificationsIcon,
-  };
-
-  const IconComponent = icons[type];
-
-  return (
-    <View style={styles.permissionItem}>
-      <View style={styles.permissionIcon}>
-        <IconComponent size={24} color={PsychiColors.azure} />
-      </View>
-      <View style={styles.permissionInfo}>
-        <Text style={styles.permissionName}>{getPermissionDisplayName(type)}</Text>
-        <Text style={styles.permissionDescription}>{getPermissionDescription(type)}</Text>
-      </View>
-      {isLoading ? (
-        <ActivityIndicator size="small" color={PsychiColors.azure} />
-      ) : granted ? (
-        <View style={styles.grantedBadge}>
-          <Text style={styles.grantedText}>Enabled</Text>
-        </View>
-      ) : (
-        <TouchableOpacity style={styles.enableButton} onPress={onRequest}>
-          <Text style={styles.enableButtonText}>Enable</Text>
-        </TouchableOpacity>
-      )}
-    </View>
-  );
-}
+import { CameraIcon, MicIcon, NotificationsIcon, LockIcon } from '@/components/icons';
 
 export default function PermissionsScreen() {
   const params = useLocalSearchParams<{ returnTo?: string; required?: string }>();
@@ -75,49 +37,39 @@ export default function PermissionsScreen() {
     notifications: false,
   });
   const [isLoading, setIsLoading] = useState(true);
-  const [loadingPermission, setLoadingPermission] = useState<PermissionType | null>(null);
+  const [isRequesting, setIsRequesting] = useState(false);
 
-  // Parse required permissions from params
   const requiredPermissions: PermissionType[] = params.required
     ? (params.required.split(',') as PermissionType[])
     : ['camera', 'microphone', 'notifications'];
 
+  const icons: Record<PermissionType, React.FC<{ size?: number; color?: string }>> = {
+    camera: CameraIcon,
+    microphone: MicIcon,
+    notifications: NotificationsIcon,
+  };
+
   useEffect(() => {
-    loadPermissions();
+    getPermissionStatus().then((status) => {
+      setPermissions(status);
+      setIsLoading(false);
+    });
   }, []);
 
-  const loadPermissions = async () => {
-    setIsLoading(true);
-    const status = await getPermissionStatus();
-    setPermissions(status);
-    setIsLoading(false);
-  };
-
-  const handleRequestPermission = async (type: PermissionType) => {
-    setLoadingPermission(type);
-    const granted = await requestPermission(type);
-    setPermissions((prev) => ({ ...prev, [type]: granted }));
-    setLoadingPermission(null);
-
-    // If permission was denied, it may have been permanently denied
-    // The user will need to go to settings
-    if (!granted) {
-      // Permission was denied - the alert will be shown by the OS
-    }
-  };
-
-  const handleRequestAll = async () => {
-    setIsLoading(true);
-    for (const type of requiredPermissions) {
-      if (!permissions[type]) {
-        await handleRequestPermission(type);
-      }
-    }
-    setIsLoading(false);
-  };
-
   const handleContinue = async () => {
+    setIsRequesting(true);
+
+    // Request each permission in sequence — system dialogs appear one at a time.
+    // We request regardless of current state; the OS skips its dialog if already granted.
+    const updated = { ...permissions };
+    for (const type of requiredPermissions) {
+      const granted = await requestPermission(type);
+      updated[type] = granted;
+    }
+
+    setPermissions(updated);
     await markPermissionsRequested();
+    setIsRequesting(false);
 
     if (params.returnTo) {
       router.replace(params.returnTo as any);
@@ -126,19 +78,11 @@ export default function PermissionsScreen() {
     }
   };
 
-  const handleOpenSettings = () => {
-    openSettings();
-  };
-
-  const allRequiredGranted = requiredPermissions.every((type) => permissions[type]);
-  const someGranted = requiredPermissions.some((type) => permissions[type]);
-
-  if (isLoading && !someGranted) {
+  if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={PsychiColors.azure} />
-          <Text style={styles.loadingText}>Checking permissions...</Text>
         </View>
       </SafeAreaView>
     );
@@ -156,66 +100,64 @@ export default function PermissionsScreen() {
           <View style={styles.headerIcon}>
             <LockIcon size={40} color={PsychiColors.azure} />
           </View>
-          <Text style={styles.title}>Enable Permissions</Text>
+          <Text style={styles.title}>App Permissions</Text>
           <Text style={styles.subtitle}>
-            To provide the best experience, Psychi needs access to the following features on your
-            device.
+            Psychi needs access to the following features on your device to provide video and voice sessions.
           </Text>
         </View>
 
-        {/* Permission Items */}
+        {/* Permission list — informational only, no per-item buttons */}
         <View style={styles.permissionsList}>
-          {requiredPermissions.map((type) => (
-            <PermissionItem
-              key={type}
-              type={type}
-              granted={permissions[type]}
-              onRequest={() => handleRequestPermission(type)}
-              isLoading={loadingPermission === type}
-            />
-          ))}
+          {requiredPermissions.map((type, index) => {
+            const IconComponent = icons[type];
+            const isLast = index === requiredPermissions.length - 1;
+            return (
+              <View
+                key={type}
+                style={[styles.permissionItem, isLast && styles.permissionItemLast]}
+              >
+                <View style={styles.permissionIcon}>
+                  <IconComponent size={24} color={PsychiColors.azure} />
+                </View>
+                <View style={styles.permissionInfo}>
+                  <Text style={styles.permissionName}>{getPermissionDisplayName(type)}</Text>
+                  <Text style={styles.permissionDescription}>{getPermissionDescription(type)}</Text>
+                </View>
+                {permissions[type] && (
+                  <View style={styles.grantedBadge}>
+                    <Text style={styles.grantedText}>Granted</Text>
+                  </View>
+                )}
+              </View>
+            );
+          })}
         </View>
 
-        {/* Info Box */}
-        <View style={styles.infoBox}>
-          <InfoIcon size={16} color={PsychiColors.azure} />
-          <Text style={styles.infoText}>
-            You can change these permissions anytime in your device settings. Your privacy is
-            important to us.
-          </Text>
-        </View>
+        {/* Info note */}
+        <Text style={styles.infoNote}>
+          You can change these permissions at any time in your device Settings.
+        </Text>
 
-        {/* Actions */}
-        <View style={styles.actions}>
-          {!allRequiredGranted && (
-            <TouchableOpacity style={styles.settingsButton} onPress={handleOpenSettings}>
-              <Text style={styles.settingsButtonText}>Open Settings</Text>
-            </TouchableOpacity>
-          )}
-
-          {!allRequiredGranted && !someGranted && (
-            <TouchableOpacity
-              style={styles.enableAllButton}
-              onPress={handleRequestAll}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.enableAllButtonText}>Enable All</Text>
-            </TouchableOpacity>
-          )}
-
-          <TouchableOpacity
-            style={[
-              styles.continueButton,
-              allRequiredGranted && styles.continueButtonPrimary,
-            ]}
-            onPress={handleContinue}
-            activeOpacity={0.8}
+        {/* Single Continue button — always shown, always advances to system dialogs */}
+        <TouchableOpacity
+          style={styles.continueButton}
+          onPress={handleContinue}
+          activeOpacity={0.85}
+          disabled={isRequesting}
+          accessibilityRole="button"
+          accessibilityLabel="Continue"
+        >
+          <LinearGradient
+            colors={[PsychiColors.royalBlue, PsychiColors.azure]}
+            style={styles.continueGradient}
           >
-            <Text style={allRequiredGranted ? styles.continueButtonTextPrimary : styles.continueButtonText}>
-              {allRequiredGranted ? 'Continue' : 'Skip for Now'}
-            </Text>
-          </TouchableOpacity>
-        </View>
+            {isRequesting ? (
+              <ActivityIndicator color={PsychiColors.white} />
+            ) : (
+              <Text style={styles.continueButtonText}>Continue</Text>
+            )}
+          </LinearGradient>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
@@ -230,11 +172,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: Spacing.md,
-    fontSize: 16,
-    color: PsychiColors.textMuted,
   },
   scrollView: {
     flex: 1,
@@ -278,6 +215,7 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.xl,
     ...Shadows.medium,
     marginBottom: Spacing.lg,
+    overflow: 'hidden',
   },
   permissionItem: {
     flexDirection: 'row',
@@ -285,6 +223,9 @@ const styles = StyleSheet.create({
     padding: Spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  permissionItemLast: {
+    borderBottomWidth: 0,
   },
   permissionIcon: {
     width: 48,
@@ -321,77 +262,27 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: PsychiColors.success,
   },
-  enableButton: {
-    backgroundColor: PsychiColors.azure,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 8,
-    borderRadius: BorderRadius.md,
-  },
-  enableButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: PsychiColors.white,
-  },
-  infoBox: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(74, 144, 226, 0.1)',
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
+  infoNote: {
+    fontSize: 13,
+    color: PsychiColors.textMuted,
+    textAlign: 'center',
+    lineHeight: 18,
     marginBottom: Spacing.xl,
-  },
-  infoIconContainer: {
-    marginRight: Spacing.sm,
-  },
-  infoText: {
-    flex: 1,
-    fontSize: 14,
-    color: PsychiColors.textSecondary,
-    lineHeight: 20,
-  },
-  actions: {
-    marginTop: Spacing.xl,
-    gap: Spacing.sm,
-  },
-  settingsButton: {
-    paddingVertical: Spacing.md,
-    borderRadius: BorderRadius.lg,
-    backgroundColor: PsychiColors.white,
-    alignItems: 'center',
-    ...Shadows.soft,
-  },
-  settingsButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: PsychiColors.textSecondary,
-  },
-  enableAllButton: {
-    backgroundColor: PsychiColors.royalBlue,
-    borderRadius: BorderRadius.full,
-    paddingVertical: Spacing.md,
-    alignItems: 'center',
-  },
-  enableAllButtonText: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: PsychiColors.white,
+    paddingHorizontal: Spacing.md,
   },
   continueButton: {
-    paddingVertical: Spacing.md,
     borderRadius: BorderRadius.full,
-    backgroundColor: 'transparent',
-    alignItems: 'center',
+    overflow: 'hidden',
   },
-  continueButtonPrimary: {
-    backgroundColor: PsychiColors.royalBlue,
+  continueGradient: {
+    paddingVertical: Spacing.md + 2,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   continueButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: PsychiColors.textMuted,
-  },
-  continueButtonTextPrimary: {
     fontSize: 17,
-    fontWeight: '600',
+    fontWeight: '700',
     color: PsychiColors.white,
+    letterSpacing: 0.3,
   },
 });
