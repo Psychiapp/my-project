@@ -118,7 +118,7 @@ export default function DemoCallUI({ callType, supporterName, onEndCall }: DemoC
         const path = (FileSystem.cacheDirectory ?? '') + 'demo-call-tone.wav';
         setAudioStatus('step 3: writing file...');
         await FileSystem.writeAsStringAsync(path, wavB64, {
-          encoding: FileSystem.EncodingType.Base64,
+          encoding: 'base64' as any,
         });
         const info = await FileSystem.getInfoAsync(path);
         const fileSize = (info as any).size ?? 'n/a';
