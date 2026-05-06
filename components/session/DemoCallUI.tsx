@@ -15,7 +15,7 @@ import {
   StatusBar,
 } from 'react-native';
 import { Audio } from 'expo-av';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PsychiColors } from '@/constants/theme';
 
