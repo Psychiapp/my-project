@@ -1,10 +1,11 @@
 /**
  * DemoCallUI
  * Renders a functional phone or video call UI for demo mode.
- * No Daily.co connection — shows controls + timer + layout only.
+ * No Daily.co connection, but configures AVAudioSession and plays a soft
+ * looping tone so Apple's reviewer can verify background audio works.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -13,6 +14,8 @@ import {
   SafeAreaView,
   StatusBar,
 } from 'react-native';
+import { Audio } from 'expo-av';
+import * as FileSystem from 'expo-file-system';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PsychiColors } from '@/constants/theme';
 
@@ -22,19 +25,204 @@ interface DemoCallUIProps {
   onEndCall: () => void;
 }
 
+// ---------------------------------------------------------------------------
+// WAV generation
+// Generate a gentle 440 Hz sine-wave tone (2 s, 22 050 Hz, mono, 16-bit PCM).
+// The file is written once to the cache directory and played on loop.
+// ---------------------------------------------------------------------------
+
+function buildSineWaveWAV(
+  frequency = 440,
+  durationSec = 2,
+  sampleRate = 22050,
+  amplitude = 0.25   // 25% volume — audible but not harsh
+): string {
+  const numSamples = Math.floor(sampleRate * durationSec);
+  const dataBytes  = numSamples * 2; // 16-bit = 2 bytes per sample
+
+  // Build a DataView over an ArrayBuffer large enough for the WAV
+  const buffer = new ArrayBuffer(44 + dataBytes);
+  const v      = new DataView(buffer);
+
+  // Helper: write an ASCII string at byte offset
+  const str = (offset: number, text: string) => {
+    for (let i = 0; i < text.length; i++) {
+      v.setUint8(offset + i, text.charCodeAt(i));
+    }
+  };
+
+  // --- RIFF header ---
+  str(0, 'RIFF');
+  v.setUint32(4,  36 + dataBytes, true); // file size - 8
+  str(8, 'WAVE');
+
+  // --- fmt  chunk ---
+  str(12, 'fmt ');
+  v.setUint32(16, 16,          true); // chunk size
+  v.setUint16(20, 1,           true); // PCM
+  v.setUint16(22, 1,           true); // mono
+  v.setUint32(24, sampleRate,  true);
+  v.setUint32(28, sampleRate * 2, true); // byte rate
+  v.setUint16(32, 2,           true); // block align
+  v.setUint16(34, 16,          true); // bits per sample
+
+  // --- data chunk ---
+  str(36, 'data');
+  v.setUint32(40, dataBytes, true);
+
+  // --- PCM samples ---
+  for (let i = 0; i < numSamples; i++) {
+    // Sine wave sample, scaled to 16-bit signed range
+    const sample = Math.sin((2 * Math.PI * frequency * i) / sampleRate) * amplitude * 32767;
+    v.setInt16(44 + i * 2, Math.round(sample), true);
+  }
+
+  // Convert ArrayBuffer → base64 string
+  const bytes  = new Uint8Array(buffer);
+  let   binary = '';
+  // Process in chunks to avoid stack overflow on large arrays
+  const chunk  = 8192;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+
+// ---------------------------------------------------------------------------
+
 export default function DemoCallUI({ callType, supporterName, onEndCall }: DemoCallUIProps) {
-  const [elapsed, setElapsed] = useState(0);
-  const [isMuted, setIsMuted] = useState(false);
+  const [elapsed,     setElapsed]     = useState(0);
+  const [isMuted,     setIsMuted]     = useState(false);
   const [isSpeakerOn, setIsSpeakerOn] = useState(true);
   const [isCameraOff, setIsCameraOff] = useState(false);
 
+  const soundRef = useRef<Audio.Sound | null>(null);
+
+  // ------------------------------------------------------------------
+  // Audio session + tone
+  // ------------------------------------------------------------------
+  useEffect(() => {
+    let cancelled = false;
+
+    const setupAudio = async () => {
+      try {
+        // Configure AVAudioSession identically to the real VideoCall component
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS:       false,
+          playsInSilentModeIOS:     true,
+          staysActiveInBackground:  true,   // keeps audio alive when app is backgrounded
+          interruptionModeIOS:      2,       // DoNotMix — prioritise this app's audio
+          shouldDuckAndroid:        false,
+          interruptionModeAndroid:  1,       // DoNotMix
+          playThroughEarpieceAndroid: false,
+        });
+
+        // Write the generated WAV to the cache directory
+        const path     = FileSystem.cacheDirectory + 'demo-call-tone.wav';
+        const wavB64   = buildSineWaveWAV(440, 2, 22050, 0.25);
+        await FileSystem.writeAsStringAsync(path, wavB64, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+
+        if (cancelled) return;
+
+        // Load and play on loop
+        const { sound } = await Audio.Sound.createAsync(
+          { uri: path },
+          {
+            isLooping:  true,
+            volume:     1.0,
+            shouldPlay: true,
+          }
+        );
+
+        if (cancelled) {
+          await sound.unloadAsync();
+          return;
+        }
+
+        soundRef.current = sound;
+      } catch (err) {
+        // Non-fatal — call UI still works even if audio setup fails
+        console.warn('[DemoCallUI] Audio setup error:', err);
+      }
+    };
+
+    setupAudio();
+
+    return () => {
+      cancelled = true;
+      const teardown = async () => {
+        try {
+          if (soundRef.current) {
+            await soundRef.current.stopAsync();
+            await soundRef.current.unloadAsync();
+            soundRef.current = null;
+          }
+          // Reset audio session
+          await Audio.setAudioModeAsync({
+            allowsRecordingIOS:      false,
+            playsInSilentModeIOS:    false,
+            staysActiveInBackground: false,
+            interruptionModeIOS:     1, // DoNotMix default
+            shouldDuckAndroid:       true,
+            interruptionModeAndroid: 1,
+          });
+        } catch {
+          // Ignore cleanup errors
+        }
+      };
+      teardown();
+    };
+  }, []);
+
+  // ------------------------------------------------------------------
+  // Speaker toggle — route audio to earpiece or main speaker
+  // ------------------------------------------------------------------
+  const handleSpeakerToggle = async () => {
+    const next = !isSpeakerOn;
+    setIsSpeakerOn(next);
+    try {
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS:       false,
+        playsInSilentModeIOS:     true,
+        staysActiveInBackground:  true,
+        interruptionModeIOS:      2,
+        shouldDuckAndroid:        false,
+        interruptionModeAndroid:  1,
+        playThroughEarpieceAndroid: !next,
+      });
+    } catch {
+      // Non-fatal
+    }
+  };
+
+  // ------------------------------------------------------------------
+  // End call — stop audio then invoke parent callback
+  // ------------------------------------------------------------------
+  const handleEnd = async () => {
+    try {
+      if (soundRef.current) {
+        await soundRef.current.stopAsync();
+        await soundRef.current.unloadAsync();
+        soundRef.current = null;
+      }
+    } catch {
+      // Ignore
+    }
+    onEndCall();
+  };
+
+  // ------------------------------------------------------------------
+  // Timer
+  // ------------------------------------------------------------------
   useEffect(() => {
     const interval = setInterval(() => setElapsed(s => s + 1), 1000);
     return () => clearInterval(interval);
   }, []);
 
   const formatTime = (s: number) => {
-    const m = Math.floor(s / 60);
+    const m   = Math.floor(s / 60);
     const sec = s % 60;
     return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
   };
@@ -45,16 +233,17 @@ export default function DemoCallUI({ callType, supporterName, onEndCall }: DemoC
     .join('')
     .toUpperCase();
 
+  // ------------------------------------------------------------------
+  // Render
+  // ------------------------------------------------------------------
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
 
-      {/* Remote area — gradient background for video, solid for phone */}
       <LinearGradient
         colors={['#1A1A2E', '#16213E', '#0F3460']}
         style={styles.remoteArea}
       >
-        {/* Supporter placeholder (always shown — no real remote video in demo) */}
         <View style={styles.supporterCard}>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{initials}</Text>
@@ -63,7 +252,6 @@ export default function DemoCallUI({ callType, supporterName, onEndCall }: DemoC
           <Text style={styles.statusLabel}>Connected</Text>
         </View>
 
-        {/* Local camera placeholder for video (bottom-right corner) */}
         {callType === 'video' && !isCameraOff && (
           <View style={styles.localCamera}>
             <LinearGradient
@@ -76,9 +264,7 @@ export default function DemoCallUI({ callType, supporterName, onEndCall }: DemoC
         )}
       </LinearGradient>
 
-      {/* Bottom controls */}
       <SafeAreaView style={styles.controlsContainer}>
-        {/* Timer */}
         <Text style={styles.timer}>{formatTime(elapsed)}</Text>
 
         <View style={styles.controls}>
@@ -96,7 +282,7 @@ export default function DemoCallUI({ callType, supporterName, onEndCall }: DemoC
           {callType === 'phone' ? (
             <TouchableOpacity
               style={[styles.controlBtn, isSpeakerOn && styles.controlBtnActive]}
-              onPress={() => setIsSpeakerOn(s => !s)}
+              onPress={handleSpeakerToggle}
               accessibilityLabel="Speaker"
             >
               <Text style={styles.controlIcon}>speaker</Text>
@@ -116,7 +302,7 @@ export default function DemoCallUI({ callType, supporterName, onEndCall }: DemoC
           {/* End call */}
           <TouchableOpacity
             style={styles.endBtn}
-            onPress={onEndCall}
+            onPress={handleEnd}
             accessibilityLabel="End call"
           >
             <Text style={styles.endIcon}>End</Text>
