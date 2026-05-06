@@ -77,10 +77,11 @@ function buildSineWaveWAV(
 // ---------------------------------------------------------------------------
 
 export default function DemoCallUI({ callType, supporterName, onEndCall }: DemoCallUIProps) {
-  const [elapsed,     setElapsed]     = useState(0);
-  const [isMuted,     setIsMuted]     = useState(false);
-  const [isSpeakerOn, setIsSpeakerOn] = useState(true);
-  const [isCameraOff, setIsCameraOff] = useState(false);
+  const [elapsed,      setElapsed]      = useState(0);
+  const [isMuted,      setIsMuted]      = useState(false);
+  const [isSpeakerOn,  setIsSpeakerOn]  = useState(true);
+  const [isCameraOff,  setIsCameraOff]  = useState(false);
+  const [audioStatus,  setAudioStatus]  = useState('initializing...');
 
   const soundRef = useRef<Audio.Sound | null>(null);
 
@@ -94,7 +95,7 @@ export default function DemoCallUI({ callType, supporterName, onEndCall }: DemoC
       console.log('[DemoAudio] ── setup start ──────────────────────');
       try {
         // Step 1: configure AVAudioSession
-        console.log('[DemoAudio] 1. calling setAudioModeAsync...');
+        setAudioStatus('step 1: audio session...');
         await Audio.setAudioModeAsync({
           allowsRecordingIOS:         false,
           playsInSilentModeIOS:       true,
@@ -105,49 +106,54 @@ export default function DemoCallUI({ callType, supporterName, onEndCall }: DemoC
           playThroughEarpieceAndroid: false,
         });
         console.log('[DemoAudio] 1. setAudioModeAsync OK');
+        setAudioStatus('step 2: generating WAV...');
 
         // Step 2: generate WAV
-        console.log('[DemoAudio] 2. generating WAV...');
         const wavB64 = buildSineWaveWAV(440, 1, 8000, 0.5);
-        console.log('[DemoAudio] 2. WAV base64 length:', wavB64.length,
-          '(expected ~', Math.round((44 + 8000 * 2) * 4 / 3), ')');
+        const expectedLen = Math.round((44 + 8000 * 2) * 4 / 3);
+        console.log('[DemoAudio] 2. WAV b64 length:', wavB64.length, 'expected ~', expectedLen);
+        setAudioStatus(`step 2: WAV ${wavB64.length}b (exp ~${expectedLen}b)`);
 
         // Step 3: write to cache
         const path = (FileSystem.cacheDirectory ?? '') + 'demo-call-tone.wav';
-        console.log('[DemoAudio] 3. writing to:', path);
+        setAudioStatus('step 3: writing file...');
         await FileSystem.writeAsStringAsync(path, wavB64, {
           encoding: FileSystem.EncodingType.Base64,
         });
-        // Verify the file exists and has expected size
         const info = await FileSystem.getInfoAsync(path);
-        console.log('[DemoAudio] 3. file written — exists:', info.exists,
-          'size:', (info as any).size ?? 'n/a');
+        const fileSize = (info as any).size ?? 'n/a';
+        console.log('[DemoAudio] 3. file written — exists:', info.exists, 'size:', fileSize);
+        setAudioStatus(`step 3: file ${info.exists ? 'OK' : 'MISSING'} ${fileSize}b`);
 
-        if (cancelled) { console.log('[DemoAudio] cancelled after write'); return; }
+        if (cancelled) { setAudioStatus('cancelled'); return; }
 
-        // Step 4: load sound
-        console.log('[DemoAudio] 4. creating Audio.Sound...');
+        // Step 4: load and play sound
+        setAudioStatus('step 4: loading sound...');
         const { sound, status } = await Audio.Sound.createAsync(
           { uri: path },
           { isLooping: true, volume: 1.0, shouldPlay: true }
         );
-        console.log('[DemoAudio] 4. Sound created — status:', JSON.stringify(status));
+        const isLoaded = (status as any).isLoaded;
+        const isPlaying = (status as any).isPlaying;
+        console.log('[DemoAudio] 4. created — isLoaded:', isLoaded, 'isPlaying:', isPlaying);
+        setAudioStatus(`step 4: loaded=${isLoaded} playing=${isPlaying}`);
 
-        if (cancelled) {
-          console.log('[DemoAudio] cancelled after createAsync — unloading');
-          await sound.unloadAsync();
-          return;
-        }
+        if (cancelled) { await sound.unloadAsync(); setAudioStatus('cancelled'); return; }
 
-        // Step 5: confirm playback
-        const playStatus = await sound.getStatusAsync();
-        console.log('[DemoAudio] 5. getStatusAsync:', JSON.stringify(playStatus));
+        // Step 5: confirm status
+        const ps = await sound.getStatusAsync();
+        const playing = (ps as any).isPlaying;
+        const looping = (ps as any).isLooping;
+        const vol     = (ps as any).volume;
+        console.log('[DemoAudio] 5. status — playing:', playing, 'looping:', looping, 'vol:', vol);
+        setAudioStatus(`playing=${playing} loop=${looping} vol=${vol}`);
 
         soundRef.current = sound;
         console.log('[DemoAudio] ── setup complete ─────────────────');
       } catch (err: any) {
-        console.error('[DemoAudio] SETUP ERROR:', err?.message ?? err);
-        console.error('[DemoAudio] stack:', err?.stack ?? 'no stack');
+        const msg = err?.message ?? String(err);
+        console.error('[DemoAudio] ERROR:', msg);
+        setAudioStatus(`ERROR: ${msg}`);
       }
     };
 
@@ -243,6 +249,11 @@ export default function DemoCallUI({ callType, supporterName, onEndCall }: DemoC
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
 
+      {/* Debug overlay — remove before final submission */}
+      <View style={styles.debugOverlay} pointerEvents="none">
+        <Text style={styles.debugText}>DEMO AUDIO: {audioStatus}</Text>
+      </View>
+
       <LinearGradient
         colors={['#1A1A2E', '#16213E', '#0F3460']}
         style={styles.remoteArea}
@@ -320,6 +331,23 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#1A1A2E',
+  },
+  debugOverlay: {
+    position: 'absolute',
+    top: 52,
+    left: 8,
+    right: 8,
+    zIndex: 999,
+    backgroundColor: 'rgba(0,0,0,0.75)',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  debugText: {
+    color: '#00FF88',
+    fontSize: 11,
+    fontFamily: 'Courier',
+    textAlign: 'center',
   },
   remoteArea: {
     flex: 1,
