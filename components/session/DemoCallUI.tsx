@@ -31,61 +31,47 @@ interface DemoCallUIProps {
 // The file is written once to the cache directory and played on loop.
 // ---------------------------------------------------------------------------
 
+// Use 8000 Hz / 1 s to keep the buffer small (~16 KB) and Hermes-safe
 function buildSineWaveWAV(
   frequency = 440,
-  durationSec = 2,
-  sampleRate = 22050,
-  amplitude = 0.25   // 25% volume — audible but not harsh
+  durationSec = 1,
+  sampleRate = 8000,
+  amplitude = 0.5
 ): string {
   const numSamples = Math.floor(sampleRate * durationSec);
-  const dataBytes  = numSamples * 2; // 16-bit = 2 bytes per sample
+  const dataBytes  = numSamples * 2;
 
-  // Build a DataView over an ArrayBuffer large enough for the WAV
   const buffer = new ArrayBuffer(44 + dataBytes);
   const v      = new DataView(buffer);
 
-  // Helper: write an ASCII string at byte offset
   const str = (offset: number, text: string) => {
-    for (let i = 0; i < text.length; i++) {
-      v.setUint8(offset + i, text.charCodeAt(i));
-    }
+    for (let i = 0; i < text.length; i++) v.setUint8(offset + i, text.charCodeAt(i));
   };
 
-  // --- RIFF header ---
   str(0, 'RIFF');
-  v.setUint32(4,  36 + dataBytes, true); // file size - 8
+  v.setUint32(4,  36 + dataBytes,      true);
   str(8, 'WAVE');
-
-  // --- fmt  chunk ---
   str(12, 'fmt ');
-  v.setUint32(16, 16,          true); // chunk size
-  v.setUint16(20, 1,           true); // PCM
-  v.setUint16(22, 1,           true); // mono
-  v.setUint32(24, sampleRate,  true);
-  v.setUint32(28, sampleRate * 2, true); // byte rate
-  v.setUint16(32, 2,           true); // block align
-  v.setUint16(34, 16,          true); // bits per sample
-
-  // --- data chunk ---
+  v.setUint32(16, 16,                  true);
+  v.setUint16(20, 1,                   true); // PCM
+  v.setUint16(22, 1,                   true); // mono
+  v.setUint32(24, sampleRate,          true);
+  v.setUint32(28, sampleRate * 2,      true); // byte rate
+  v.setUint16(32, 2,                   true); // block align
+  v.setUint16(34, 16,                  true); // bits per sample
   str(36, 'data');
-  v.setUint32(40, dataBytes, true);
+  v.setUint32(40, dataBytes,           true);
 
-  // --- PCM samples ---
   for (let i = 0; i < numSamples; i++) {
-    // Sine wave sample, scaled to 16-bit signed range
-    const sample = Math.sin((2 * Math.PI * frequency * i) / sampleRate) * amplitude * 32767;
-    v.setInt16(44 + i * 2, Math.round(sample), true);
+    const s = Math.sin((2 * Math.PI * frequency * i) / sampleRate) * amplitude * 32767;
+    v.setInt16(44 + i * 2, Math.round(s), true);
   }
 
-  // Convert ArrayBuffer → base64 string
+  // Hermes-safe base64: iterate byte-by-byte (no spread on TypedArrays)
   const bytes  = new Uint8Array(buffer);
-  let   binary = '';
-  // Process in chunks to avoid stack overflow on large arrays
-  const chunk  = 8192;
-  for (let i = 0; i < bytes.length; i += chunk) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
-  }
-  return btoa(binary);
+  const chars  = new Array(bytes.length);
+  for (let i = 0; i < bytes.length; i++) chars[i] = String.fromCharCode(bytes[i]);
+  return btoa(chars.join(''));
 }
 
 // ---------------------------------------------------------------------------
@@ -105,46 +91,63 @@ export default function DemoCallUI({ callType, supporterName, onEndCall }: DemoC
     let cancelled = false;
 
     const setupAudio = async () => {
+      console.log('[DemoAudio] ── setup start ──────────────────────');
       try {
-        // Configure AVAudioSession identically to the real VideoCall component
+        // Step 1: configure AVAudioSession
+        console.log('[DemoAudio] 1. calling setAudioModeAsync...');
         await Audio.setAudioModeAsync({
-          allowsRecordingIOS:       false,
-          playsInSilentModeIOS:     true,
-          staysActiveInBackground:  true,   // keeps audio alive when app is backgrounded
-          interruptionModeIOS:      2,       // DoNotMix — prioritise this app's audio
-          shouldDuckAndroid:        false,
-          interruptionModeAndroid:  1,       // DoNotMix
+          allowsRecordingIOS:         false,
+          playsInSilentModeIOS:       true,
+          staysActiveInBackground:    true,
+          interruptionModeIOS:        2,
+          shouldDuckAndroid:          false,
+          interruptionModeAndroid:    1,
           playThroughEarpieceAndroid: false,
         });
+        console.log('[DemoAudio] 1. setAudioModeAsync OK');
 
-        // Write the generated WAV to the cache directory
-        const path     = FileSystem.cacheDirectory + 'demo-call-tone.wav';
-        const wavB64   = buildSineWaveWAV(440, 2, 22050, 0.25);
+        // Step 2: generate WAV
+        console.log('[DemoAudio] 2. generating WAV...');
+        const wavB64 = buildSineWaveWAV(440, 1, 8000, 0.5);
+        console.log('[DemoAudio] 2. WAV base64 length:', wavB64.length,
+          '(expected ~', Math.round((44 + 8000 * 2) * 4 / 3), ')');
+
+        // Step 3: write to cache
+        const path = (FileSystem.cacheDirectory ?? '') + 'demo-call-tone.wav';
+        console.log('[DemoAudio] 3. writing to:', path);
         await FileSystem.writeAsStringAsync(path, wavB64, {
           encoding: FileSystem.EncodingType.Base64,
         });
+        // Verify the file exists and has expected size
+        const info = await FileSystem.getInfoAsync(path);
+        console.log('[DemoAudio] 3. file written — exists:', info.exists,
+          'size:', (info as any).size ?? 'n/a');
 
-        if (cancelled) return;
+        if (cancelled) { console.log('[DemoAudio] cancelled after write'); return; }
 
-        // Load and play on loop
-        const { sound } = await Audio.Sound.createAsync(
+        // Step 4: load sound
+        console.log('[DemoAudio] 4. creating Audio.Sound...');
+        const { sound, status } = await Audio.Sound.createAsync(
           { uri: path },
-          {
-            isLooping:  true,
-            volume:     1.0,
-            shouldPlay: true,
-          }
+          { isLooping: true, volume: 1.0, shouldPlay: true }
         );
+        console.log('[DemoAudio] 4. Sound created — status:', JSON.stringify(status));
 
         if (cancelled) {
+          console.log('[DemoAudio] cancelled after createAsync — unloading');
           await sound.unloadAsync();
           return;
         }
 
+        // Step 5: confirm playback
+        const playStatus = await sound.getStatusAsync();
+        console.log('[DemoAudio] 5. getStatusAsync:', JSON.stringify(playStatus));
+
         soundRef.current = sound;
-      } catch (err) {
-        // Non-fatal — call UI still works even if audio setup fails
-        console.warn('[DemoCallUI] Audio setup error:', err);
+        console.log('[DemoAudio] ── setup complete ─────────────────');
+      } catch (err: any) {
+        console.error('[DemoAudio] SETUP ERROR:', err?.message ?? err);
+        console.error('[DemoAudio] stack:', err?.stack ?? 'no stack');
       }
     };
 
