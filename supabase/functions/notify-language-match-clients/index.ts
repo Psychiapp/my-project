@@ -58,30 +58,42 @@ serve(async (req) => {
 
       for (const client of pendingClients ?? []) {
         try {
-          // Send "a supporter just joined" push notification
-          if (client.expo_push_token) {
-            await sendPush(client.expo_push_token, {
-              title: 'Great news!',
-              body: `A supporter who speaks ${client.preferred_language} just joined Psychi. Open the app to get matched.`,
-              data: { type: 'language_match_available', language: client.preferred_language },
-            });
-          }
-
-          // Attempt re-matching — the new supporter is now in the pool
+          // Attempt re-matching FIRST — the new supporter is now in the pool.
+          // Each client is processed independently; if one fails the rest continue.
+          // A supporter can match multiple clients simultaneously (no cap in the RPC).
           const { error: matchErr } = await supabase.rpc('match_and_assign_client', {
             p_client_id: client.id,
           });
 
           if (matchErr) {
-            // Re-match RPC failed — keep pending flag, they'll see the notification
-            console.warn(`Re-match failed for client ${client.id}:`, matchErr.message);
-            r.errors.push(`Re-match failed for ${client.id}: ${matchErr.message}`);
-          } else {
-            // Successfully matched — clear the pending flag
-            await supabase
-              .from('profiles')
-              .update({ pending_language_match: false })
-              .eq('id', client.id);
+            // RPC itself errored (DB error, not "no supporter found")
+            console.warn(`RPC error for client ${client.id}:`, matchErr.message);
+            r.errors.push(`RPC error for ${client.id}: ${matchErr.message}`);
+            continue; // do NOT notify — they're still unmatched
+          }
+
+          // The RPC clears pending_language_match = false only on a successful match.
+          // Check the flag to distinguish "matched" from "no eligible supporter found".
+          const { data: refreshed } = await supabase
+            .from('profiles')
+            .select('pending_language_match')
+            .eq('id', client.id)
+            .single();
+
+          if (refreshed?.pending_language_match !== false) {
+            // Flag still true → no eligible supporter was found for this client
+            // (e.g. availability mismatch). Keep pending, skip notification.
+            console.log(`No match found yet for client ${client.id} — leaving pending.`);
+            continue;
+          }
+
+          // Match succeeded → NOW send the notification
+          if (client.expo_push_token) {
+            await sendPush(client.expo_push_token, {
+              title: 'Great news!',
+              body: `A supporter who speaks ${client.preferred_language} just joined Psychi. Open the app to see your match.`,
+              data: { type: 'language_match_available', language: client.preferred_language },
+            });
           }
 
           r.pending++;
