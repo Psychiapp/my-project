@@ -319,6 +319,8 @@ export default function PreferencesScreen() {
     goals: string[];
     urgency: string;
     timezone: string;
+    preferred_language?: string;
+    comfortable_in_english?: boolean;
   }) => {
     setIsSaving(true);
     setShowQuizModal(false);
@@ -327,6 +329,8 @@ export default function PreferencesScreen() {
       // Update local state with new preferences
       setSelectedTimezone(preferences.timezone);
       setSelectedSessionTypes(preferences.preferred_session_types);
+      if (preferences.preferred_language) setPreferredLanguage(preferences.preferred_language);
+      if (preferences.comfortable_in_english !== undefined) setComfortableInEnglish(preferences.comfortable_in_english);
 
       // Ask if they want a new supporter match based on updated preferences
       Alert.alert(
