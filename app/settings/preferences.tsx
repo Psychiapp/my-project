@@ -61,6 +61,14 @@ export default function PreferencesScreen() {
   const [selectedTimezone, setSelectedTimezone] = useState('America/New_York');
   const [selectedSessionTypes, setSelectedSessionTypes] = useState<string[]>(['chat', 'phone', 'video']);
   const [showQuizModal, setShowQuizModal] = useState(false);
+  const [preferredLanguage, setPreferredLanguage] = useState('English');
+  const [comfortableInEnglish, setComfortableInEnglish] = useState(true);
+
+  const LANGUAGE_OPTIONS = [
+    'English', 'Spanish', 'Mandarin', 'Cantonese', 'French', 'Arabic',
+    'Hindi', 'Urdu', 'Portuguese', 'Korean', 'Tagalog', 'Vietnamese',
+    'Japanese', 'Russian', 'German', 'Italian', 'Haitian Creole', 'Polish', 'Other',
+  ];
   const [isSaving, setIsSaving] = useState(false);
   const [currentAssignment, setCurrentAssignment] = useState<ClientAssignment | null>(null);
   const [isLoadingAssignment, setIsLoadingAssignment] = useState(true);
@@ -101,6 +109,12 @@ export default function PreferencesScreen() {
         }
         if (savedPrefs.preferred_session_types && savedPrefs.preferred_session_types.length > 0) {
           setSelectedSessionTypes(savedPrefs.preferred_session_types);
+        }
+        if (savedPrefs.preferred_language) {
+          setPreferredLanguage(savedPrefs.preferred_language);
+        }
+        if (savedPrefs.comfortable_in_english !== undefined) {
+          setComfortableInEnglish(savedPrefs.comfortable_in_english);
         }
       } else {
         // No saved preferences - auto-detect timezone
@@ -206,6 +220,22 @@ export default function PreferencesScreen() {
         setSelectedTimezone(previousTimezone);
         Alert.alert('Error', 'Failed to save timezone. Please try again.');
       }
+    }
+  };
+
+  const handleLanguageSave = async (lang: string, comfortable: boolean) => {
+    setPreferredLanguage(lang);
+    setComfortableInEnglish(comfortable);
+    if (!user?.id || isDemoMode) return;
+    try {
+      const existing = await getClientPreferences(user.id);
+      await saveClientPreferences(user.id, {
+        ...(existing || {} as any),
+        preferred_language: lang,
+        comfortable_in_english: comfortable,
+      });
+    } catch {
+      // Non-fatal — preferences still updated locally
     }
   };
 
@@ -484,6 +514,47 @@ export default function PreferencesScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Session Language */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle} accessibilityRole="header">Session Language</Text>
+          <Text style={styles.sectionSubtitle}>Preferred language for your sessions</Text>
+          {LANGUAGE_OPTIONS.map((lang) => (
+            <TouchableOpacity
+              key={lang}
+              style={[
+                styles.optionCard,
+                preferredLanguage === lang && styles.optionCardSelected,
+              ]}
+              onPress={() => handleLanguageSave(lang, lang === 'English' ? true : comfortableInEnglish)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.optionContent}>
+                <Text style={[styles.optionTitle, preferredLanguage === lang && styles.optionTitleSelected]}>
+                  {lang}
+                </Text>
+              </View>
+              {preferredLanguage === lang && (
+                <CheckIcon size={18} color={PsychiColors.royalBlue} />
+              )}
+            </TouchableOpacity>
+          ))}
+
+          {preferredLanguage !== 'English' && (
+            <TouchableOpacity
+              style={[styles.optionCard, { marginTop: 12 }, comfortableInEnglish && styles.optionCardSelected]}
+              onPress={() => handleLanguageSave(preferredLanguage, !comfortableInEnglish)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.optionContent}>
+                <Text style={styles.optionTitle}>
+                  I'm comfortable in English if a {preferredLanguage}-speaking supporter isn't available
+                </Text>
+              </View>
+              {comfortableInEnglish && <CheckIcon size={18} color={PsychiColors.royalBlue} />}
+            </TouchableOpacity>
+          )}
+        </View>
+
         {/* Retake Quiz Section */}
         <View style={styles.section}>
           <TouchableOpacity
@@ -717,5 +788,32 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.8)',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  optionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: PsychiColors.white,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.md,
+    marginBottom: Spacing.xs,
+    borderWidth: 1,
+    borderColor: PsychiColors.divider,
+  },
+  optionCardSelected: {
+    borderColor: PsychiColors.royalBlue,
+    backgroundColor: `${PsychiColors.royalBlue}08`,
+  },
+  optionContent: {
+    flex: 1,
+    marginRight: Spacing.sm,
+  },
+  optionTitle: {
+    fontSize: 14,
+    color: PsychiColors.textPrimary,
+    fontWeight: '500',
+  },
+  optionTitleSelected: {
+    color: PsychiColors.royalBlue,
+    fontWeight: '600',
   },
 });

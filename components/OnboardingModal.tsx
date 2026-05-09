@@ -13,6 +13,7 @@ import {
   ScrollView,
   Dimensions,
   ActivityIndicator,
+  TextInput,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -33,7 +34,15 @@ interface UserPreferences {
   goals: string[];
   urgency: string;
   timezone: string;
+  preferred_language: string;
+  comfortable_in_english: boolean;
 }
+
+const LANGUAGE_OPTIONS = [
+  'English', 'Spanish', 'Mandarin', 'Cantonese', 'French', 'Arabic',
+  'Hindi', 'Urdu', 'Portuguese', 'Korean', 'Tagalog', 'Vietnamese',
+  'Japanese', 'Russian', 'German', 'Italian', 'Haitian Creole', 'Polish', 'Other',
+];
 
 interface OnboardingModalProps {
   visible: boolean;
@@ -146,6 +155,10 @@ export default function OnboardingModal({
   const [personalityPref, setPersonalityPref] = useState<string>('');
   const [selectedGoals, setSelectedGoals] = useState<string[]>([]);
   const [urgency, setUrgency] = useState<string>('');
+  // Step 4: Language preference
+  const [preferredLanguage, setPreferredLanguage] = useState<string>('English');
+  const [otherLanguageText, setOtherLanguageText] = useState<string>('');
+  const [comfortableInEnglish, setComfortableInEnglish] = useState<boolean>(true);
 
   // Auto-detect timezone
   useEffect(() => {
@@ -174,7 +187,9 @@ export default function OnboardingModal({
       case 1: return selectedTopics.length > 0;
       case 2: return communicationStyle && selectedSessionTypes.length > 0;
       case 3: return schedulingPref && selectedTimes.length > 0 && timezone;
-      case 4: return personalityPref && selectedGoals.length > 0 && urgency;
+      case 4: return preferredLanguage !== '' &&
+        (preferredLanguage !== 'Other' || otherLanguageText.trim().length > 0);
+      case 5: return personalityPref && selectedGoals.length > 0 && urgency;
       default: return false;
     }
   };
@@ -183,6 +198,10 @@ export default function OnboardingModal({
   const handleComplete = async () => {
     setLoading(true);
     try {
+      const resolvedLanguage = preferredLanguage === 'Other'
+        ? (otherLanguageText.trim() || 'Other')
+        : preferredLanguage;
+
       const preferences: UserPreferences = {
         mood,
         topics: selectedTopics,
@@ -194,6 +213,8 @@ export default function OnboardingModal({
         goals: selectedGoals,
         urgency,
         timezone,
+        preferred_language: resolvedLanguage,
+        comfortable_in_english: resolvedLanguage === 'English' ? true : comfortableInEnglish,
       };
       await onComplete(preferences);
       // Note: Don't call onClose() here - the parent component handles navigation
@@ -208,9 +229,9 @@ export default function OnboardingModal({
   // Render progress bar
   const renderProgressBar = () => (
     <View style={styles.progressContainer}>
-      <Text style={styles.progressText}>Step {step} of 4</Text>
+      <Text style={styles.progressText}>Step {step} of 5</Text>
       <View style={styles.progressBar}>
-        {[1, 2, 3, 4].map((s) => (
+        {[1, 2, 3, 4, 5].map((s) => (
           <View
             key={s}
             style={[
@@ -506,13 +527,71 @@ export default function OnboardingModal({
     </View>
   );
 
+  // Step 4: Language preference
+  const renderStep4Language = () => (
+    <View style={styles.stepContent}>
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Session Language</Text>
+        <Text style={styles.sectionSubtitle}>What language would you prefer for your sessions?</Text>
+        <View style={styles.topicsGrid}>
+          {LANGUAGE_OPTIONS.map((lang) => (
+            <TouchableOpacity
+              key={lang}
+              style={[
+                styles.topicButton,
+                preferredLanguage === lang && styles.topicButtonSelected,
+              ]}
+              onPress={() => {
+                setPreferredLanguage(lang);
+                if (lang === 'English') setComfortableInEnglish(true);
+              }}
+              activeOpacity={0.7}
+            >
+              {preferredLanguage === lang && <CheckIcon size={14} color={PsychiColors.royalBlue} />}
+              <Text style={[
+                styles.topicText,
+                preferredLanguage === lang && styles.topicTextSelected,
+              ]}>
+                {lang}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {preferredLanguage === 'Other' && (
+          <TextInput
+            style={[styles.textInput, { marginTop: 12 }]}
+            placeholder="Enter your language"
+            placeholderTextColor={PsychiColors.textMuted}
+            value={otherLanguageText}
+            onChangeText={setOtherLanguageText}
+          />
+        )}
+
+        {preferredLanguage !== '' && preferredLanguage !== 'English' && (
+          <TouchableOpacity
+            style={[styles.topicButton, comfortableInEnglish && styles.topicButtonSelected, { marginTop: 16, width: '100%' }]}
+            onPress={() => setComfortableInEnglish(!comfortableInEnglish)}
+            activeOpacity={0.7}
+          >
+            {comfortableInEnglish && <CheckIcon size={14} color={PsychiColors.royalBlue} />}
+            <Text style={[styles.topicText, comfortableInEnglish && styles.topicTextSelected]}>
+              I'm comfortable in English if a {preferredLanguage === 'Other' ? 'preferred-language' : preferredLanguage}-speaking supporter isn't available
+            </Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    </View>
+  );
+
   // Render content based on step
   const renderContent = () => {
     switch (step) {
       case 1: return renderStep1();
       case 2: return renderStep2();
       case 3: return renderStep3();
-      case 4: return renderStep4();
+      case 4: return renderStep4Language();
+      case 5: return renderStep4();    // Personality, Goals & Urgency (was step 4)
       default: return renderStep1();
     }
   };
@@ -530,7 +609,7 @@ export default function OnboardingModal({
         </TouchableOpacity>
       )}
 
-      {step < 4 ? (
+      {step < 5 ? (
         <TouchableOpacity
           style={[styles.nextButton, !canProceed() && styles.buttonDisabled]}
           onPress={() => canProceed() && setStep(step + 1)}
@@ -1076,6 +1155,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: PsychiColors.textMuted,
     marginTop: 4,
+  },
+
+  textInput: {
+    borderWidth: 1,
+    borderColor: PsychiColors.divider,
+    borderRadius: BorderRadius.lg,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    fontSize: 15,
+    color: PsychiColors.textPrimary,
+    backgroundColor: PsychiColors.white,
   },
 
   // Navigation

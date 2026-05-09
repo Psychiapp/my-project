@@ -223,16 +223,20 @@ export default function SignUpScreen() {
             const matchResult = await matchAndAssignSupporter(user.id, preferences);
 
             if (matchResult.success && matchResult.supporter) {
-              // Successfully matched - go to dashboard
-              Alert.alert(
-                'Welcome to Psychi!',
-                `You've been matched with ${matchResult.supporter.name}. Let's get started!`,
+              const isFallback = matchResult.language_match_status === 'fallback';
+              const lang = matchResult.preferred_language;
+              const msg = isFallback
+                ? `We don't currently have a supporter who speaks ${lang}, but we've matched you with ${matchResult.supporter.name} who specializes in your areas of concern. We'll notify you when a ${lang}-speaking supporter becomes available.`
+                : `You've been matched with ${matchResult.supporter.name}. Let's get started!`;
+              Alert.alert('Welcome to Psychi!', msg,
+                [{ text: 'Continue', onPress: () => router.replace('/(client)') }]
+              );
+            } else if (matchResult.pending_language_match) {
+              Alert.alert('Welcome to Psychi!', matchResult.error || 'Your preferences have been saved.',
                 [{ text: 'Continue', onPress: () => router.replace('/(client)') }]
               );
             } else {
-              // No supporters available right now - still go to dashboard
-              Alert.alert(
-                'Welcome to Psychi!',
+              Alert.alert('Welcome to Psychi!',
                 'Your preferences have been saved. We\'ll match you with a supporter soon.',
                 [{ text: 'Continue', onPress: () => router.replace('/(client)') }]
               );
@@ -284,14 +288,20 @@ export default function SignUpScreen() {
         setShowOnboardingModal(false);
 
         if (matchResult.success && matchResult.supporter) {
-          Alert.alert(
-            'You\'re All Set!',
-            `You've been matched with ${matchResult.supporter.name}. Let's get started!`,
+          const isFallback = matchResult.language_match_status === 'fallback';
+          const lang = matchResult.preferred_language;
+          const msg = isFallback
+            ? `We don't currently have a supporter who speaks ${lang}, but we've matched you with ${matchResult.supporter.name} who specializes in your areas of concern. We'll notify you when a ${lang}-speaking supporter becomes available.`
+            : `You've been matched with ${matchResult.supporter.name}. Let's get started!`;
+          Alert.alert("You're All Set!", msg,
+            [{ text: 'Continue', onPress: () => router.replace('/(client)') }]
+          );
+        } else if (matchResult.pending_language_match) {
+          Alert.alert('Welcome to Psychi!', matchResult.error || 'Your preferences have been saved.',
             [{ text: 'Continue', onPress: () => router.replace('/(client)') }]
           );
         } else {
-          Alert.alert(
-            'Welcome to Psychi!',
+          Alert.alert('Welcome to Psychi!',
             'Your preferences have been saved. We\'ll match you with a supporter soon.',
             [{ text: 'Continue', onPress: () => router.replace('/(client)') }]
           );

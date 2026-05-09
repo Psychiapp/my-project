@@ -2856,6 +2856,8 @@ export interface ClientPreferences {
   goals: string[];
   urgency: string;
   timezone: string;
+  preferred_language?: string;
+  comfortable_in_english?: boolean;
 }
 
 /**
@@ -3021,6 +3023,19 @@ export async function matchSupportersToClient(
       score += 5;
       if (preferences.urgency === 'soon') {
         matchReasons.push('Available now');
+      }
+    }
+
+    // 6. LANGUAGE MATCH BONUS (up to 20 points)
+    // Only applied when the client prefers a non-English language.
+    const supporterLanguages: string[] = (details.languages || ['English']).map(
+      (l: string) => l.toLowerCase()
+    );
+    const clientLang = (preferences.preferred_language || 'English').toLowerCase();
+    if (clientLang !== 'english') {
+      if (supporterLanguages.includes(clientLang)) {
+        score += 20;
+        matchReasons.push(`Speaks ${preferences.preferred_language}`);
       }
     }
 
@@ -3193,12 +3208,21 @@ export async function saveClientPreferences(
 ): Promise<boolean> {
   if (!supabase) return false;
 
+  // Build the update — always save the JSONB blob; also persist language
+  // fields to dedicated columns so the matching algorithm can query them directly.
+  const updatePayload: Record<string, unknown> = {
+    preferences,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (preferences.preferred_language !== undefined) {
+    updatePayload.preferred_language     = preferences.preferred_language;
+    updatePayload.comfortable_in_english = preferences.comfortable_in_english ?? true;
+  }
+
   const { error } = await supabase
     .from('profiles')
-    .update({
-      preferences: preferences,
-      updated_at: new Date().toISOString(),
-    })
+    .update(updatePayload)
     .eq('id', clientId);
 
   if (error) {
@@ -3238,7 +3262,8 @@ export async function getClientPreferences(
 export async function assignSupporterToClient(
   clientId: string,
   supporterId: string,
-  compatibilityScore?: number
+  compatibilityScore?: number,
+  languageMatchStatus?: 'matched' | 'fallback'
 ): Promise<boolean> {
   if (!supabase) return false;
 
@@ -3250,6 +3275,7 @@ export async function assignSupporterToClient(
       status: 'active',
       started_at: new Date().toISOString(),
       compatibility_score: compatibilityScore ?? null,
+      language_match_status: languageMatchStatus ?? null,
     });
 
   if (error) {
@@ -3272,7 +3298,14 @@ export async function matchAndAssignSupporter(
   clientId: string,
   preferences?: ClientPreferences | null,
   excludeSupporterIds?: string[]
-): Promise<{ success: boolean; supporter?: { id: string; name: string; specialty: string }; error?: string }> {
+): Promise<{
+  success: boolean;
+  supporter?: { id: string; name: string; specialty: string };
+  language_match_status?: 'matched' | 'fallback';
+  preferred_language?: string;
+  pending_language_match?: boolean;
+  error?: string;
+}> {
   if (!supabase) {
     return { success: false, error: 'Database not available' };
   }
@@ -3297,21 +3330,62 @@ export async function matchAndAssignSupporter(
         goals: [],
         urgency: 'not_urgent',
         timezone: 'America/Chicago',
+        preferred_language: 'English',
+        comfortable_in_english: true,
       };
     }
 
-    // Find matching supporters based on preferences
-    const matches = await matchSupportersToClient(clientPreferences, excludeSupporterIds);
+    const preferredLang   = clientPreferences.preferred_language || 'English';
+    const comfortableInEn = clientPreferences.comfortable_in_english ?? true;
+    const wantsNonEnglish = preferredLang.toLowerCase() !== 'english';
 
-    if (matches.length === 0) {
+    // Find all matching supporters (language boost already applied in scoring)
+    const allMatches = await matchSupportersToClient(clientPreferences, excludeSupporterIds);
+
+    // Separate language-matched supporters from English-only ones
+    const langMatched = wantsNonEnglish
+      ? allMatches.filter(s =>
+          (s as any).languages?.some((l: string) =>
+            l.toLowerCase() === preferredLang.toLowerCase()
+          ) ||
+          // The match score boost means language-matched supporters sort first;
+          // identify them via matchReasons as a secondary signal
+          s.matchReasons?.some(r => r.toLowerCase().includes('speaks'))
+        )
+      : allMatches;
+
+    // --- HARD FILTER: client insists on their language only ---
+    if (wantsNonEnglish && !comfortableInEn) {
+      if (langMatched.length === 0) {
+        // No language match found — flag as pending and do NOT create an assignment
+        await supabase
+          .from('profiles')
+          .update({ pending_language_match: true })
+          .eq('id', clientId);
+
+        return {
+          success: false,
+          pending_language_match: true,
+          preferred_language: preferredLang,
+          error: `We don't currently have a supporter who speaks ${preferredLang}. We'll notify you when one becomes available. In the meantime, you can update your language preference in your profile settings if you'd like to be matched with an English-speaking supporter.`,
+        };
+      }
+    }
+
+    // Choose the best match (language-matched preferred, then overall best)
+    const bestMatch = langMatched.length > 0 ? langMatched[0] : allMatches[0];
+
+    if (!bestMatch) {
       return {
         success: false,
         error: 'No supporters are currently available. Please try again later.',
       };
     }
 
-    // Get the best match (highest score)
-    const bestMatch = matches[0];
+    // Determine language match status for the UI
+    const isLanguageMatch = !wantsNonEnglish || langMatched.includes(bestMatch);
+    const languageMatchStatus: 'matched' | 'fallback' =
+      isLanguageMatch ? 'matched' : 'fallback';
 
     // End any existing active assignments for this client
     await supabase
@@ -3320,8 +3394,10 @@ export async function matchAndAssignSupporter(
       .eq('client_id', clientId)
       .eq('status', 'active');
 
-    // Create the new assignment with compatibility score
-    const assigned = await assignSupporterToClient(clientId, bestMatch.id, bestMatch.compatibilityScore);
+    // Create the assignment with compatibility score + language match status
+    const assigned = await assignSupporterToClient(
+      clientId, bestMatch.id, bestMatch.compatibilityScore, languageMatchStatus
+    );
 
     if (!assigned) {
       return {
@@ -3329,6 +3405,12 @@ export async function matchAndAssignSupporter(
         error: 'Failed to create supporter assignment. Please try again.',
       };
     }
+
+    // Clear any pending language match flag (we found a match now)
+    await supabase
+      .from('profiles')
+      .update({ pending_language_match: false })
+      .eq('id', clientId);
 
     // Get client name for notification
     const { data: clientProfile } = await supabase
@@ -3353,6 +3435,8 @@ export async function matchAndAssignSupporter(
         name: bestMatch.full_name,
         specialty: bestMatch.matchReasons?.[0] || 'Peer Support',
       },
+      language_match_status: languageMatchStatus,
+      preferred_language: preferredLang,
     };
   } catch (error) {
     console.error('Error in matchAndAssignSupporter:', error);

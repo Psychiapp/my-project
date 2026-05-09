@@ -51,6 +51,20 @@ export default function SupporterEditProfileScreen() {
   const [bio, setBio] = useState('');
   const [selectedSpecialties, setSelectedSpecialties] = useState<string[]>([]);
   const [availableDays, setAvailableDays] = useState<string[]>([]);
+  const [languagesSpoken, setLanguagesSpoken] = useState<string[]>(['English']);
+  const [otherLanguage, setOtherLanguage] = useState('');
+
+  const LANGUAGE_OPTIONS = [
+    'English', 'Spanish', 'Mandarin', 'Cantonese', 'French', 'Arabic',
+    'Hindi', 'Urdu', 'Portuguese', 'Korean', 'Tagalog', 'Vietnamese',
+    'Japanese', 'Russian', 'German', 'Italian', 'Haitian Creole', 'Polish', 'Other',
+  ];
+
+  const toggleLanguage = (lang: string) => {
+    setLanguagesSpoken(prev =>
+      prev.includes(lang) ? prev.filter(l => l !== lang) : [...prev, lang]
+    );
+  };
 
   // Load supporter profile on mount
   useEffect(() => {
@@ -65,6 +79,7 @@ export default function SupporterEditProfileScreen() {
         setBio("Psychology graduate with a passion for helping others navigate life's challenges.");
         setSelectedSpecialties(['Anxiety', 'Stress', 'Self-Esteem', 'Life Transitions']);
         setAvailableDays(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
+        setLanguagesSpoken(['English', 'Spanish']);
         setIsLoadingProfile(false);
         return;
       }
@@ -78,6 +93,9 @@ export default function SupporterEditProfileScreen() {
           setBio(details.bio || '');
           setSelectedSpecialties(details.specialties || []);
           setAvatarUrl(details.avatar_url || null);
+          if (details.languages && details.languages.length > 0) {
+            setLanguagesSpoken(details.languages);
+          }
 
           // Convert availability object to day abbreviations
           if (details.availability) {
@@ -222,6 +240,16 @@ export default function SupporterEditProfileScreen() {
       return;
     }
 
+    if (languagesSpoken.length < 1) {
+      Alert.alert('Error', 'Please select at least one language you can offer sessions in');
+      return;
+    }
+
+    if (languagesSpoken.includes('Other') && !otherLanguage.trim()) {
+      Alert.alert('Error', 'Please enter the name of the other language');
+      return;
+    }
+
     if (!user?.id) {
       Alert.alert('Error', 'Not logged in');
       return;
@@ -288,6 +316,10 @@ export default function SupporterEditProfileScreen() {
           throw new Error('Profile update failed - no data returned. Check RLS policies.');
         }
         // Update supporter_details table
+        const resolvedLanguages = languagesSpoken.includes('Other')
+          ? [...languagesSpoken.filter(l => l !== 'Other'), ...(otherLanguage.trim() ? [otherLanguage.trim()] : [])]
+          : languagesSpoken;
+
         const { data: detailsData, error: detailsError } = await supabase
           .from('supporter_details')
           .upsert({
@@ -295,6 +327,7 @@ export default function SupporterEditProfileScreen() {
             bio,
             specialties: selectedSpecialties,
             availability,
+            languages: resolvedLanguages.length > 0 ? resolvedLanguages : ['English'],
           }, {
             onConflict: 'supporter_id'
           })
@@ -449,6 +482,36 @@ export default function SupporterEditProfileScreen() {
                 </TouchableOpacity>
               ))}
             </View>
+          </View>
+
+          {/* Languages Spoken */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Languages Spoken</Text>
+            <Text style={styles.sectionSubtitle}>
+              Select all languages you can offer sessions in (at least one required)
+            </Text>
+            <View style={styles.tagsContainer}>
+              {LANGUAGE_OPTIONS.map((lang) => (
+                <TouchableOpacity
+                  key={lang}
+                  style={[styles.tag, languagesSpoken.includes(lang) && styles.tagSelected]}
+                  onPress={() => toggleLanguage(lang)}
+                >
+                  <Text style={[styles.tagText, languagesSpoken.includes(lang) && styles.tagTextSelected]}>
+                    {lang}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            {languagesSpoken.includes('Other') && (
+              <TextInput
+                style={styles.input}
+                placeholder="Enter language name"
+                placeholderTextColor={PsychiColors.textMuted}
+                value={otherLanguage}
+                onChangeText={setOtherLanguage}
+              />
+            )}
           </View>
 
           {/* Availability */}
