@@ -1,117 +1,52 @@
 /**
  * Daily.co Video/Voice Call Service for React Native
- * Handles room creation and session management
- *
- * NOTE: Daily.co API key is stored server-side in Supabase secrets.
- * All Daily.co API operations go through the daily-room Edge Function.
+ * Room creation is handled server-side via a Supabase Edge Function.
+ * The Daily.co API key is never exposed to the client.
  */
 
-import { supabase } from '@/lib/supabase';
-
-export interface DailyRoom {
-  id: string;
-  name: string;
-  url: string;
-  created_at: string;
-  config: {
-    exp?: number;
-    nbf?: number;
-    max_participants?: number;
-    enable_chat?: boolean;
-    start_video_off?: boolean;
-    start_audio_off?: boolean;
-    enable_e2ee_sframe?: boolean;
-  };
-}
+import { SupabaseConfig } from '@/constants/config';
 
 export interface CreateRoomOptions {
-  name?: string;
+  type?: 'video' | 'voice';
   expiryMinutes?: number;
-  maxParticipants?: number;
-  startVideoOff?: boolean;
-  startAudioOff?: boolean;
 }
 
-// Generate a unique room name
-export const generateRoomName = (prefix: string = 'psychi'): string => {
-  const timestamp = Date.now();
-  const random = Math.random().toString(36).substring(2, 8);
-  return `${prefix}-${timestamp}-${random}`;
-};
+export interface DailyRoom {
+  url: string;
+  name: string;
+}
 
-// Create a Daily.co room via Edge Function (API key is server-side)
+// Create a Daily.co room via the server-side Edge Function
 export const createRoom = async (options: CreateRoomOptions = {}): Promise<DailyRoom | null> => {
-  const {
-    name = generateRoomName(),
-    expiryMinutes = 60,
-    maxParticipants = 2,
-    startVideoOff = false,
-    startAudioOff = false,
-  } = options;
-
-  if (!supabase) {
-    throw new Error('Supabase client not initialized');
+  if (!SupabaseConfig.url || !SupabaseConfig.anonKey) {
+    console.warn('Daily.co: Supabase not configured. Video/voice calls unavailable.');
+    return null;
   }
 
   try {
-    console.log('Daily.co: Creating room via Edge Function:', name);
-
-    const { data, error } = await supabase.functions.invoke('daily-room', {
-      body: {
-        action: 'create',
-        name,
-        expiryMinutes,
-        maxParticipants,
-        startVideoOff,
-        startAudioOff,
+    const response = await fetch(`${SupabaseConfig.url}/functions/v1/create-daily-room`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SupabaseConfig.anonKey}`,
       },
+      body: JSON.stringify({
+        type: options.type ?? 'video',
+        expiryMinutes: options.expiryMinutes ?? 60,
+      }),
     });
 
-    if (error) {
-      console.error('Edge Function error:', error);
-      throw new Error(`Edge Function error: ${error.message}`);
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `HTTP error: ${response.status}`);
     }
 
-    if (data?.error) {
-      console.error('Daily API error:', data.error);
-      throw new Error(data.error);
-    }
-
-    console.log('Daily.co: Room created successfully:', data.name, data.url);
+    const data = await response.json();
     return data;
   } catch (error: any) {
     const errorMsg = error?.message || String(error);
     console.error('Error creating Daily room:', errorMsg);
     throw new Error(`Daily room creation failed: ${errorMsg}`);
-  }
-};
-
-// Delete a Daily.co room via Edge Function (API key is server-side)
-export const deleteRoom = async (roomName: string): Promise<boolean> => {
-  if (!supabase) {
-    console.error('Supabase client not initialized');
-    return false;
-  }
-
-  try {
-    console.log('Daily.co: Deleting room via Edge Function:', roomName);
-
-    const { data, error } = await supabase.functions.invoke('daily-room', {
-      body: {
-        action: 'delete',
-        roomName,
-      },
-    });
-
-    if (error) {
-      console.error('Edge Function error:', error);
-      return false;
-    }
-
-    return data?.success === true;
-  } catch (error) {
-    console.error('Error deleting Daily room:', error);
-    return false;
   }
 };
 
@@ -138,16 +73,11 @@ export const createSession = async (
     return {
       type: 'chat',
       participantName,
-      roomName: generateRoomName('chat'),
+      roomName: `chat-${Date.now()}`,
     };
   }
 
-  // Create Daily room for video/voice
-  // This will throw with error details if it fails
-  const room = await createRoom({
-    startVideoOff: type === 'voice',
-    startAudioOff: false,
-  });
+  const room = await createRoom({ type });
 
   if (!room) {
     throw new Error('Room creation returned null');
@@ -161,15 +91,7 @@ export const createSession = async (
   };
 };
 
-// Extract room name from Daily.co room URL
-// URL format: https://domain.daily.co/room-name
-export const getRoomNameFromUrl = (roomUrl: string): string | null => {
-  try {
-    const url = new URL(roomUrl);
-    const pathname = url.pathname;
-    // Remove leading slash and return room name
-    return pathname.startsWith('/') ? pathname.slice(1) : pathname;
-  } catch {
-    return null;
-  }
+// Check if Daily.co is configured (Supabase must be set up)
+export const isDailyConfigured = (): boolean => {
+  return !!(SupabaseConfig.url && SupabaseConfig.anonKey);
 };

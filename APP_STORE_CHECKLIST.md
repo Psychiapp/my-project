@@ -95,15 +95,15 @@ Include these notes for Apple reviewers:
 ```
 Demo Account (Client):
 Email: demo@psychi.app
-Password: Demo2024!
+Password: demo123
 
 Demo Account (Supporter):
 Email: supporter@psychi.app
-Password: Demo2024!
+Password: demo123
 
 Demo Account (Admin):
 Email: admin@psychi.app
-Password: Demo2024!
+Password: demo123
 
 IMPORTANT: This app provides peer support, NOT licensed therapy.
 All disclaimers are displayed prominently in the app.
