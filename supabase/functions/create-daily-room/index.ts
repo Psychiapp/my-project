@@ -1,5 +1,3 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-
 const DAILY_API_URL = 'https://api.daily.co/v1';
 
 const corsHeaders = {
@@ -7,7 +5,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -48,7 +46,7 @@ serve(async (req) => {
 
     if (!response.ok) {
       const error = await response.json();
-      console.error('Daily.co room creation failed:', error);
+      console.error('Daily.co room creation failed:', JSON.stringify(error));
       return new Response(
         JSON.stringify({ error: 'Failed to create call room' }),
         { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
